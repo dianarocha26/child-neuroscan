@@ -1,0 +1,15 @@
+# robots.txt for ChildNeuroScan
+
+User-agent: *
+Allow: /
+
+# Optimize crawling
+Sitemap: https://childneuroscan.com/sitemap.xml
+
+# Block sensitive areas (user data, API endpoints)
+Disallow: /api/
+Disallow: /auth/
+Disallow: /dashboard/private/
+
+# Crawl delay (be respectful)
+Crawl-delay: 1

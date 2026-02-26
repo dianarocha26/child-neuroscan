@@ -1,0 +1,63 @@
+{
+  "name": "ChildNeuroScan - Child Development Screening & Tracking",
+  "short_name": "ChildNeuroScan",
+  "description": "Comprehensive neurodevelopmental screening and tracking platform for parents, caregivers, and professionals. Screen for Autism, ADHD, Speech Delays, and more.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
+  "background_color": "#ffffff",
+  "theme_color": "#0ea5e9",
+  "orientation": "any",
+  "dir": "ltr",
+  "lang": "en",
+  "prefer_related_applications": false,
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ],
+  "categories": ["health", "medical", "education", "lifestyle", "utilities"],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "New Screening",
+      "short_name": "Screen",
+      "description": "Start a new developmental screening",
+      "url": "/?action=screen",
+      "icons": [{ "src": "/CS1.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "Progress Dashboard",
+      "short_name": "Progress",
+      "description": "View child's progress",
+      "url": "/?action=dashboard",
+      "icons": [{ "src": "/CS1.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "Behavior Diary",
+      "short_name": "Diary",
+      "description": "Log behavior entry",
+      "url": "/?action=behavior",
+      "icons": [{ "src": "/CS1.png", "sizes": "96x96" }]
+    }
+  ],
+  "protocol_handlers": [],
+  "related_applications": [],
+  "iarc_rating_id": ""
+}
