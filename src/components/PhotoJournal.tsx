@@ -26,6 +26,7 @@ export default function PhotoJournal() {
   const { loading, setLoading } = useLoadingState();
   const [showUploadForm, setShowUploadForm] = useState(false);
   const [selectedEntry, setSelectedEntry] = useState<PhotoEntry | null>(null);
+  const [editingEntry, setEditingEntry] = useState<PhotoEntry | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCondition, setFilterCondition] = useState('');
   const [uploading, setUploading] = useState(false);
@@ -219,13 +220,14 @@ export default function PhotoJournal() {
       linked_condition: entry.linked_condition,
       tags: entry.tags.join(', ')
     });
-    setSelectedEntry(entry);
+    setEditingEntry(entry);
+    setSelectedEntry(null);
     setShowUploadForm(true);
   };
 
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedEntry) return;
+    if (!editingEntry) return;
 
     setUploading(true);
     try {
@@ -242,7 +244,7 @@ export default function PhotoJournal() {
           linked_condition: formData.linked_condition,
           tags: tagsArray
         })
-        .eq('id', selectedEntry.id);
+        .eq('id', editingEntry.id);
 
       if (error) throw error;
 
@@ -325,7 +327,7 @@ export default function PhotoJournal() {
           <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6">
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-2xl font-bold text-gray-900">
-                {selectedEntry ? 'Edit Entry' : 'Add Photo/Video Entry'}
+                {editingEntry ? 'Edit Entry' : 'Add Photo/Video Entry'}
               </h3>
               <button onClick={() => {
                 setShowUploadForm(false);
@@ -346,8 +348,8 @@ export default function PhotoJournal() {
               </button>
             </div>
 
-            <form onSubmit={selectedEntry ? handleUpdate : handleUpload} className="space-y-4">
-              {!selectedEntry && (
+            <form onSubmit={editingEntry ? handleUpdate : handleUpload} className="space-y-4">
+              {!editingEntry && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Photo or Video *
@@ -509,7 +511,7 @@ export default function PhotoJournal() {
                   disabled={uploading}
                   className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:bg-gray-400"
                 >
-                  {uploading ? (selectedEntry ? 'Updating...' : 'Uploading...') : (selectedEntry ? 'Update Entry' : 'Add Entry')}
+                  {uploading ? (editingEntry ? 'Updating...' : 'Uploading...') : (editingEntry ? 'Update Entry' : 'Add Entry')}
                 </button>
               </div>
             </form>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BookOpen, Plus, TrendingUp, Filter, Calendar, Clock, AlertCircle } from 'lucide-react';
+import { BookOpen, Plus, TrendingUp, Filter, Calendar, Clock, AlertCircle, Edit2, Trash2, X } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useLoadingState } from '../hooks/useLoadingState';
@@ -12,10 +12,11 @@ export default function BehaviorDiary() {
   const [triggers, setTriggers] = useState<BehaviorTrigger[]>([]);
   const [interventions, setInterventions] = useState<BehaviorIntervention[]>([]);
   const [showForm, setShowForm] = useState(false);
+  const [editingEntry, setEditingEntry] = useState<BehaviorEntry | null>(null);
   const { loading, setLoading } = useLoadingState();
   const [filterType, setFilterType] = useState<string>('all');
 
-  const [formData, setFormData] = useState({
+  const emptyForm = {
     child_name: '',
     entry_date: new Date().toISOString().split('T')[0],
     entry_time: new Date().toTimeString().slice(0, 5),
@@ -29,21 +30,13 @@ export default function BehaviorDiary() {
     interventions_used: [] as string[],
     effectiveness: '',
     notes: ''
-  });
+  };
+
+  const [formData, setFormData] = useState(emptyForm);
 
   const behaviorTypes = [
     'Meltdown', 'Tantrum', 'Positive Behavior', 'Aggressive', 'Self-Harm',
     'Repetitive Behavior', 'Withdrawal', 'Defiance', 'Other'
-  ];
-
-  const triggerCategories = [
-    'Sensory', 'Social', 'Transition', 'Food', 'Sleep', 'Routine Change',
-    'Communication', 'Environmental', 'Physical', 'Other'
-  ];
-
-  const interventionTypes = [
-    'Calming', 'Redirection', 'Sensory', 'Communication', 'Physical Support',
-    'Environmental Modification', 'Break/Time Out', 'Social Story', 'Other'
   ];
 
   useEffect(() => {
@@ -54,7 +47,6 @@ export default function BehaviorDiary() {
 
   const loadData = async () => {
     if (!user) {
-      logger.error('Cannot load data: user is null');
       setLoading(false);
       return;
     }
@@ -67,14 +59,8 @@ export default function BehaviorDiary() {
           .eq('user_id', user.id)
           .order('entry_date', { ascending: false })
           .order('entry_time', { ascending: false }),
-        supabase
-          .from('behavior_triggers')
-          .select('*')
-          .eq('user_id', user.id),
-        supabase
-          .from('behavior_interventions')
-          .select('*')
-          .eq('user_id', user.id)
+        supabase.from('behavior_triggers').select('*').eq('user_id', user.id),
+        supabase.from('behavior_interventions').select('*').eq('user_id', user.id)
       ]);
 
       if (entriesRes.data) setEntries(entriesRes.data);
@@ -87,16 +73,41 @@ export default function BehaviorDiary() {
     }
   };
 
+  const openNewEntry = () => {
+    setEditingEntry(null);
+    setFormData(emptyForm);
+    setShowForm(true);
+  };
+
+  const openEditEntry = (entry: BehaviorEntry) => {
+    setEditingEntry(entry);
+    setFormData({
+      child_name: entry.child_name,
+      entry_date: entry.entry_date,
+      entry_time: entry.entry_time || '',
+      behavior_type: entry.behavior_type || '',
+      severity: entry.severity || 3,
+      duration_minutes: entry.duration_minutes ? String(entry.duration_minutes) : '',
+      location: entry.location || '',
+      triggers: Array.isArray(entry.triggers) ? entry.triggers as string[] : [],
+      antecedents: entry.antecedents || '',
+      consequences: entry.consequences || '',
+      interventions_used: entry.interventions_used || [],
+      effectiveness: entry.effectiveness ? String(entry.effectiveness) : '',
+      notes: entry.notes || ''
+    });
+    setShowForm(true);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
     if (!user) {
-      alert('You must be logged in to create a behavior entry');
+      alert('You must be logged in');
       return;
     }
 
     try {
-      const { error } = await supabase.from('behavior_entries').insert({
+      const payload = {
         user_id: user.id,
         child_name: formData.child_name,
         entry_date: formData.entry_date,
@@ -111,68 +122,38 @@ export default function BehaviorDiary() {
         interventions_used: formData.interventions_used,
         effectiveness: formData.effectiveness ? parseInt(formData.effectiveness) : null,
         notes: formData.notes || null
-      });
+      };
 
-      if (error) throw error;
+      if (editingEntry) {
+        const { error } = await supabase
+          .from('behavior_entries')
+          .update(payload)
+          .eq('id', editingEntry.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from('behavior_entries').insert(payload);
+        if (error) throw error;
+      }
 
       setShowForm(false);
-      setFormData({
-        child_name: '',
-        entry_date: new Date().toISOString().split('T')[0],
-        entry_time: new Date().toTimeString().slice(0, 5),
-        behavior_type: '',
-        severity: 3,
-        duration_minutes: '',
-        location: '',
-        triggers: [],
-        antecedents: '',
-        consequences: '',
-        interventions_used: [],
-        effectiveness: '',
-        notes: ''
-      });
+      setEditingEntry(null);
+      setFormData(emptyForm);
       loadData();
     } catch (error) {
-      logger.error('Error creating behavior entry:', error);
-      alert('Failed to create behavior entry');
+      logger.error('Error saving behavior entry:', error);
+      alert('Failed to save entry. Please try again.');
     }
   };
 
-  const addCustomTrigger = async (triggerName: string, category: string) => {
-    if (!user) {
-      logger.error('Cannot add trigger: user is null');
-      return;
-    }
-
+  const handleDelete = async (entryId: string) => {
+    if (!confirm('Are you sure you want to delete this entry?')) return;
     try {
-      const { error } = await supabase.from('behavior_triggers').insert({
-        user_id: user.id,
-        trigger_name: triggerName,
-        trigger_category: category
-      });
-
-      if (!error) loadData();
+      const { error } = await supabase.from('behavior_entries').delete().eq('id', entryId);
+      if (error) throw error;
+      loadData();
     } catch (error) {
-      logger.error('Error adding trigger:', error);
-    }
-  };
-
-  const addCustomIntervention = async (interventionName: string, type: string) => {
-    if (!user) {
-      logger.error('Cannot add intervention: user is null');
-      return;
-    }
-
-    try {
-      const { error } = await supabase.from('behavior_interventions').insert({
-        user_id: user.id,
-        intervention_name: interventionName,
-        intervention_type: type
-      });
-
-      if (!error) loadData();
-    } catch (error) {
-      logger.error('Error adding intervention:', error);
+      logger.error('Error deleting entry:', error);
+      alert('Failed to delete entry. Please try again.');
     }
   };
 
@@ -202,7 +183,7 @@ export default function BehaviorDiary() {
           <h1 className="text-3xl font-bold text-gray-900">Behavior Diary</h1>
         </div>
         <button
-          onClick={() => setShowForm(true)}
+          onClick={openNewEntry}
           className="flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition"
         >
           <Plus className="w-5 h-5" />
@@ -241,7 +222,7 @@ export default function BehaviorDiary() {
           </div>
           <p className="text-3xl font-bold text-gray-900">
             {entries.length > 0
-              ? (entries.reduce((sum, e) => sum + e.severity, 0) / entries.length).toFixed(1)
+              ? (entries.reduce((sum, e) => sum + (e.severity || 0), 0) / entries.length).toFixed(1)
               : '0'}
           </p>
         </div>
@@ -272,13 +253,16 @@ export default function BehaviorDiary() {
       {showForm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <h2 className="text-2xl font-bold mb-6">New Behavior Entry</h2>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold">{editingEntry ? 'Edit Entry' : 'New Behavior Entry'}</h2>
+              <button onClick={() => { setShowForm(false); setEditingEntry(null); }} className="text-gray-500 hover:text-gray-700">
+                <X className="w-6 h-6" />
+              </button>
+            </div>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Child Name
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Child Name</label>
                   <input
                     type="text"
                     required
@@ -287,11 +271,8 @@ export default function BehaviorDiary() {
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
-
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Behavior Type
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Behavior Type</label>
                   <select
                     required
                     value={formData.behavior_type}
@@ -308,9 +289,7 @@ export default function BehaviorDiary() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Date
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
                   <input
                     type="date"
                     required
@@ -319,14 +298,10 @@ export default function BehaviorDiary() {
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
-
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Time
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Time</label>
                   <input
                     type="time"
-                    required
                     value={formData.entry_time}
                     onChange={(e) => setFormData({ ...formData, entry_time: e.target.value })}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
@@ -336,9 +311,7 @@ export default function BehaviorDiary() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Severity (1-5)
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Severity (1-5)</label>
                   <input
                     type="range"
                     min="1"
@@ -349,11 +322,8 @@ export default function BehaviorDiary() {
                   />
                   <div className="text-center font-semibold text-lg">{formData.severity}</div>
                 </div>
-
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Duration (minutes)
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Duration (minutes)</label>
                   <input
                     type="number"
                     value={formData.duration_minutes}
@@ -364,9 +334,7 @@ export default function BehaviorDiary() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Location
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
                 <input
                   type="text"
                   value={formData.location}
@@ -376,9 +344,7 @@ export default function BehaviorDiary() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  What happened before? (Antecedents)
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">What happened before? (Antecedents)</label>
                 <textarea
                   value={formData.antecedents}
                   onChange={(e) => setFormData({ ...formData, antecedents: e.target.value })}
@@ -388,9 +354,7 @@ export default function BehaviorDiary() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  What happened after? (Consequences)
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">What happened after? (Consequences)</label>
                 <textarea
                   value={formData.consequences}
                   onChange={(e) => setFormData({ ...formData, consequences: e.target.value })}
@@ -400,9 +364,7 @@ export default function BehaviorDiary() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Notes
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
                 <textarea
                   value={formData.notes}
                   onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
@@ -416,11 +378,11 @@ export default function BehaviorDiary() {
                   type="submit"
                   className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition"
                 >
-                  Save Entry
+                  {editingEntry ? 'Update Entry' : 'Save Entry'}
                 </button>
                 <button
                   type="button"
-                  onClick={() => setShowForm(false)}
+                  onClick={() => { setShowForm(false); setEditingEntry(null); }}
                   className="flex-1 bg-gray-200 text-gray-700 py-2 rounded-lg hover:bg-gray-300 transition"
                 >
                   Cancel
@@ -438,7 +400,7 @@ export default function BehaviorDiary() {
               <div>
                 <div className="flex items-center gap-3 mb-2">
                   <h3 className="text-xl font-bold text-gray-900">{entry.child_name}</h3>
-                  <span className={`px-3 py-1 rounded-full text-sm font-semibold ${getSeverityColor(entry.severity)}`}>
+                  <span className={`px-3 py-1 rounded-full text-sm font-semibold ${getSeverityColor(entry.severity || 3)}`}>
                     Severity {entry.severity}/5
                   </span>
                   <span className="px-3 py-1 rounded-full text-sm font-semibold bg-blue-100 text-blue-800">
@@ -450,17 +412,31 @@ export default function BehaviorDiary() {
                     <Calendar className="w-4 h-4" />
                     {new Date(entry.entry_date).toLocaleDateString()}
                   </span>
-                  <span className="flex items-center gap-1">
-                    <Clock className="w-4 h-4" />
-                    {entry.entry_time}
-                  </span>
-                  {entry.duration_minutes && (
-                    <span>{entry.duration_minutes} min</span>
+                  {entry.entry_time && (
+                    <span className="flex items-center gap-1">
+                      <Clock className="w-4 h-4" />
+                      {entry.entry_time}
+                    </span>
                   )}
-                  {entry.location && (
-                    <span>@ {entry.location}</span>
-                  )}
+                  {entry.duration_minutes && <span>{entry.duration_minutes} min</span>}
+                  {entry.location && <span>@ {entry.location}</span>}
                 </div>
+              </div>
+              <div className="flex items-center gap-2 ml-4">
+                <button
+                  onClick={() => openEditEntry(entry)}
+                  className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"
+                  title="Edit entry"
+                >
+                  <Edit2 className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => handleDelete(entry.id)}
+                  className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
+                  title="Delete entry"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
               </div>
             </div>
 
@@ -470,39 +446,31 @@ export default function BehaviorDiary() {
                 <span className="text-gray-600">{entry.antecedents}</span>
               </div>
             )}
-
             {entry.consequences && (
               <div className="mb-3">
                 <span className="font-semibold text-gray-700">After: </span>
                 <span className="text-gray-600">{entry.consequences}</span>
               </div>
             )}
-
             {entry.notes && (
               <div className="mb-3">
                 <span className="font-semibold text-gray-700">Notes: </span>
                 <span className="text-gray-600">{entry.notes}</span>
               </div>
             )}
-
-            {entry.triggers.length > 0 && (
+            {Array.isArray(entry.triggers) && entry.triggers.length > 0 && (
               <div className="flex gap-2 flex-wrap mt-3">
                 <span className="text-sm font-semibold text-gray-700">Triggers:</span>
-                {entry.triggers.map((trigger, idx) => (
-                  <span key={idx} className="px-2 py-1 bg-orange-100 text-orange-800 rounded text-sm">
-                    {trigger}
-                  </span>
+                {(entry.triggers as string[]).map((trigger, idx) => (
+                  <span key={idx} className="px-2 py-1 bg-orange-100 text-orange-800 rounded text-sm">{trigger}</span>
                 ))}
               </div>
             )}
-
-            {entry.interventions_used.length > 0 && (
+            {entry.interventions_used && entry.interventions_used.length > 0 && (
               <div className="flex gap-2 flex-wrap mt-3">
                 <span className="text-sm font-semibold text-gray-700">Interventions:</span>
                 {entry.interventions_used.map((intervention, idx) => (
-                  <span key={idx} className="px-2 py-1 bg-green-100 text-green-800 rounded text-sm">
-                    {intervention}
-                  </span>
+                  <span key={idx} className="px-2 py-1 bg-green-100 text-green-800 rounded text-sm">{intervention}</span>
                 ))}
               </div>
             )}
@@ -515,7 +483,7 @@ export default function BehaviorDiary() {
             <h3 className="text-xl font-semibold text-gray-700 mb-2">No Entries Yet</h3>
             <p className="text-gray-600 mb-6">Start tracking behaviors to see patterns and progress</p>
             <button
-              onClick={() => setShowForm(true)}
+              onClick={openNewEntry}
               className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition"
             >
               Create First Entry

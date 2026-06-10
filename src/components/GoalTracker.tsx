@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Target, Plus, TrendingUp, Calendar, Edit2, Trash2, CheckCircle, Clock, AlertCircle, X } from 'lucide-react';
-import { useLanguage } from '../contexts/LanguageContext';
+import { Target, Plus, Calendar, Edit2, Trash2, X } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { logger } from '../lib/logger';
 
@@ -31,10 +30,10 @@ interface ProgressLog {
 }
 
 export default function GoalTracker() {
-  const { t } = useLanguage();
   const [goals, setGoals] = useState<Goal[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showGoalForm, setShowGoalForm] = useState(false);
+  const [dateError, setDateError] = useState(false);
+  const [activeModal, setActiveModal] = useState<'none' | 'form' | 'detail'>('none');
   const [editingGoal, setEditingGoal] = useState<Goal | null>(null);
   const [selectedGoal, setSelectedGoal] = useState<Goal | null>(null);
   const [progressLogs, setProgressLogs] = useState<ProgressLog[]>([]);
@@ -111,15 +110,24 @@ export default function GoalTracker() {
 
   const handleSubmitGoal = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!goalForm.target_date) {
+      setDateError(true);
+      return;
+    }
+    setDateError(false);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
+      const { target_date, ...restForm } = goalForm;
       const goalData = {
-        ...goalForm,
+        ...restForm,
         user_id: user.id,
+        target_date: target_date ? target_date : null,
         status: goalForm.current_value === 0 ? 'not_started' : 'in_progress'
       };
+
+      console.log('Submitting goalData:', JSON.stringify(goalData, null, 2));
 
       if (editingGoal) {
         const { error } = await supabase
@@ -134,13 +142,14 @@ export default function GoalTracker() {
         if (error) throw error;
       }
 
-      setShowGoalForm(false);
+      setActiveModal("none");
       setEditingGoal(null);
       resetGoalForm();
       loadGoals();
-    } catch (error) {
+    } catch (error: any) {
       logger.error('Error saving goal', error);
-      alert('Failed to save goal. Please try again.');
+      console.error('Full error:', JSON.stringify(error, null, 2));
+      alert('Failed to save goal: ' + (error?.message || JSON.stringify(error)));
     }
   };
 
@@ -202,6 +211,7 @@ export default function GoalTracker() {
       if (error) throw error;
       loadGoals();
       setSelectedGoal(null);
+      setActiveModal("none");
     } catch (error) {
       logger.error('Error deleting goal', error);
       alert('Failed to delete goal. Please try again.');
@@ -239,7 +249,8 @@ export default function GoalTracker() {
       priority: goal.priority,
       notes: goal.notes
     });
-    setShowGoalForm(true);
+    setSelectedGoal(null);
+    setActiveModal("form");
   };
 
   const getProgressPercentage = (goal: Goal) => {
@@ -294,7 +305,7 @@ export default function GoalTracker() {
             onClick={() => {
               setEditingGoal(null);
               resetGoalForm();
-              setShowGoalForm(true);
+              setActiveModal("form");
             }}
             className="flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition"
           >
@@ -333,14 +344,14 @@ export default function GoalTracker() {
         </div>
       </div>
 
-      {showGoalForm && (
+      {activeModal === "form" && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6">
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-2xl font-bold text-gray-900">
                 {editingGoal ? 'Edit Goal' : 'Create New Goal'}
               </h3>
-              <button onClick={() => setShowGoalForm(false)} className="text-gray-500 hover:text-gray-700">
+              <button onClick={() => setActiveModal("none")} className="text-gray-500 hover:text-gray-700">
                 <X className="w-6 h-6" />
               </button>
             </div>
@@ -445,13 +456,15 @@ export default function GoalTracker() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Target Date</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Target Date *</label>
                   <input
                     type="date"
+                    required
                     value={goalForm.target_date}
-                    onChange={(e) => setGoalForm({ ...goalForm, target_date: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    onChange={(e) => { setGoalForm({ ...goalForm, target_date: e.target.value }); setDateError(false); }}
+                    className={"w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 " + (dateError ? "border-red-500" : "border-gray-300")}
                   />
+                  {dateError && <p className="text-red-500 text-xs mt-1">Target date is required</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Related Condition</label>
@@ -478,7 +491,7 @@ export default function GoalTracker() {
               <div className="flex gap-3 pt-4">
                 <button
                   type="button"
-                  onClick={() => setShowGoalForm(false)}
+                  onClick={() => setActiveModal("none")}
                   className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
                 >
                   Cancel
@@ -495,7 +508,7 @@ export default function GoalTracker() {
         </div>
       )}
 
-      {selectedGoal && (
+      {selectedGoal && activeModal === "detail" && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto p-6">
             <div className="flex justify-between items-start mb-6">
@@ -508,7 +521,7 @@ export default function GoalTracker() {
                 </div>
                 <div className="text-gray-600">{selectedGoal.child_name} • {selectedGoal.category}</div>
               </div>
-              <button onClick={() => setSelectedGoal(null)} className="text-gray-500 hover:text-gray-700">
+              <button onClick={() => { setSelectedGoal(null); setActiveModal("none"); }} className="text-gray-500 hover:text-gray-700">
                 <X className="w-6 h-6" />
               </button>
             </div>
@@ -658,7 +671,7 @@ export default function GoalTracker() {
           <button
             onClick={() => {
               resetGoalForm();
-              setShowGoalForm(true);
+              setActiveModal("form");
             }}
             className="inline-flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition"
           >
@@ -671,7 +684,7 @@ export default function GoalTracker() {
           {filteredGoals.map(goal => (
             <div
               key={goal.id}
-              onClick={() => setSelectedGoal(goal)}
+              onClick={() => { setSelectedGoal(goal); setActiveModal("detail"); }}
               className="bg-white rounded-lg shadow-md p-6 cursor-pointer hover:shadow-xl transition"
             >
               <div className="flex justify-between items-start mb-3">

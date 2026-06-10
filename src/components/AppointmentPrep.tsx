@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Calendar, Plus, ChevronLeft, FileText, Save, Trash2,
+  Calendar, Plus, ChevronLeft, FileText, Save, Trash2, Edit2,
   AlertCircle, CheckCircle2, Clock, MapPin, User,
   ClipboardList, MessageSquare, FolderOpen, ListTodo,
-  Download, Printer, X
+  Download, X
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -72,11 +72,11 @@ interface AppointmentPrepProps {
 export default function AppointmentPrep({ userId, onBack }: AppointmentPrepProps) {
   const { t } = useLanguage();
   const [view, setView] = useState<'list' | 'create' | 'detail'>('list');
+  const [editingApt, setEditingApt] = useState<Appointment | null>(null);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [appointmentTypes, setAppointmentTypes] = useState<AppointmentType[]>([]);
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'overview' | 'observations' | 'questions' | 'documents' | 'followup'>('overview');
 
   const [formData, setFormData] = useState({
     child_name: '',
@@ -117,34 +117,72 @@ export default function AppointmentPrep({ userId, onBack }: AppointmentPrepProps
   const handleCreateAppointment = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const { data, error } = await supabase
-      .from('appointments')
-      .insert({
-        user_id: userId,
-        ...formData
-      })
-      .select(`
-        *,
-        appointment_type:appointment_types(*),
-        observations:appointment_observations(*),
-        questions:appointment_questions(*),
-        documents:appointment_documents(*),
-        followups:appointment_followups(*)
-      `)
-      .single();
+    if (editingApt) {
+      // Update existing appointment
+      const { data, error } = await supabase
+        .from('appointments')
+        .update(formData)
+        .eq('id', editingApt.id)
+        .select(`
+          *,
+          appointment_type:appointment_types(*),
+          observations:appointment_observations(*),
+          questions:appointment_questions(*),
+          documents:appointment_documents(*),
+          followups:appointment_followups(*)
+        `)
+        .single();
 
-    if (!error && data) {
-      setAppointments([...appointments, data as any]);
-      setSelectedAppointment(data as any);
-      setView('detail');
-      setFormData({
-        child_name: '',
-        appointment_type_id: '',
-        appointment_date: '',
-        provider_name: '',
-        location: '',
-        notes: ''
-      });
+      if (!error && data) {
+        updateAppointmentInList(data as any);
+        setSelectedAppointment(data as any);
+        setEditingApt(null);
+        setFormData({ child_name: '', appointment_type_id: '', appointment_date: '', provider_name: '', location: '', notes: '' });
+        setView('detail');
+      }
+    } else {
+      // Create new appointment
+      const { data, error } = await supabase
+        .from('appointments')
+        .insert({ user_id: userId, ...formData })
+        .select(`
+          *,
+          appointment_type:appointment_types(*),
+          observations:appointment_observations(*),
+          questions:appointment_questions(*),
+          documents:appointment_documents(*),
+          followups:appointment_followups(*)
+        `)
+        .single();
+
+      if (!error && data) {
+        setAppointments([...appointments, data as any]);
+        setSelectedAppointment(data as any);
+        setView('detail');
+        setFormData({ child_name: '', appointment_type_id: '', appointment_date: '', provider_name: '', location: '', notes: '' });
+      }
+    }
+  };
+
+  const handleEditAppointment = (apt: Appointment) => {
+    setEditingApt(apt);
+    setFormData({
+      child_name: apt.child_name,
+      appointment_type_id: apt.appointment_type?.id || '',
+      appointment_date: apt.appointment_date,
+      provider_name: apt.provider_name || '',
+      location: apt.location || '',
+      notes: apt.notes || ''
+    });
+    setView('create');
+  };
+
+  const handleDeleteAppointment = async (aptId: string) => {
+    if (!confirm('Delete this appointment and all its data?')) return;
+    const { error } = await supabase.from('appointments').delete().eq('id', aptId);
+    if (!error) {
+      setAppointments(appointments.filter(a => a.id !== aptId));
+      setView('list');
     }
   };
 
@@ -337,7 +375,7 @@ export default function AppointmentPrep({ userId, onBack }: AppointmentPrepProps
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-teal-50 p-6">
         <div className="max-w-3xl mx-auto">
           <button
-            onClick={() => setView('list')}
+            onClick={() => { setView(editingApt ? 'detail' : 'list'); setEditingApt(null); }}
             className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6 transition-colors"
           >
             <ChevronLeft className="w-5 h-5" />
@@ -346,7 +384,7 @@ export default function AppointmentPrep({ userId, onBack }: AppointmentPrepProps
 
           <div className="bg-white rounded-xl shadow-lg p-8">
             <h2 className="text-2xl font-bold text-gray-900 mb-6">
-              {t('Create New Appointment', 'Crear Nueva Cita')}
+              {editingApt ? t('Edit Appointment', 'Editar Cita') : t('Create New Appointment', 'Crear Nueva Cita')}
             </h2>
 
             <form onSubmit={handleCreateAppointment} className="space-y-6">
@@ -437,7 +475,7 @@ export default function AppointmentPrep({ userId, onBack }: AppointmentPrepProps
                 className="w-full bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
               >
                 <Save className="w-5 h-5" />
-                {t('Create Appointment', 'Crear Cita')}
+                {editingApt ? t('Update Appointment', 'Actualizar Cita') : t('Create Appointment', 'Crear Cita')}
               </button>
             </form>
           </div>
@@ -457,6 +495,8 @@ export default function AppointmentPrep({ userId, onBack }: AppointmentPrepProps
         onAddFollowup={handleAddFollowup}
         onDeleteItem={handleDeleteItem}
         onGenerateSummary={handleGenerateSummary}
+        onEditAppointment={handleEditAppointment}
+        onDeleteAppointment={handleDeleteAppointment}
       />
     );
   }
@@ -588,7 +628,9 @@ function AppointmentDetail({
   onAddDocument,
   onAddFollowup,
   onDeleteItem,
-  onGenerateSummary
+  onGenerateSummary,
+  onEditAppointment,
+  onDeleteAppointment
 }: {
   appointment: Appointment;
   onBack: () => void;
@@ -598,10 +640,11 @@ function AppointmentDetail({
   onAddFollowup: (f: Followup) => void;
   onDeleteItem: (table: string, id: string, field: keyof Appointment) => void;
   onGenerateSummary: () => void;
+  onEditAppointment: (apt: Appointment) => void;
+  onDeleteAppointment: (id: string) => void;
 }) {
   const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState<'overview' | 'observations' | 'questions' | 'documents' | 'followup'>('overview');
-  const [showAddForm, setShowAddForm] = useState(false);
 
   const date = new Date(appointment.appointment_date);
 
@@ -616,13 +659,29 @@ function AppointmentDetail({
             <ChevronLeft className="w-5 h-5" />
             {t('Back to Appointments', 'Volver a Citas')}
           </button>
-          <button
-            onClick={onGenerateSummary}
-            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-          >
-            <Download className="w-5 h-5" />
-            {t('Download Summary', 'Descargar Resumen')}
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => onEditAppointment(appointment)}
+              className="flex items-center gap-2 px-4 py-2 border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors"
+            >
+              <Edit2 className="w-4 h-4" />
+              {t('Edit', 'Editar')}
+            </button>
+            <button
+              onClick={() => onDeleteAppointment(appointment.id)}
+              className="flex items-center gap-2 px-4 py-2 border border-red-500 text-red-500 rounded-lg hover:bg-red-50 transition-colors"
+            >
+              <Trash2 className="w-4 h-4" />
+              {t('Delete', 'Eliminar')}
+            </button>
+            <button
+              onClick={onGenerateSummary}
+              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+            >
+              <Download className="w-5 h-5" />
+              {t('Download Summary', 'Descargar Resumen')}
+            </button>
+          </div>
         </div>
 
         <div className="bg-white rounded-xl shadow-lg p-8 mb-6">
@@ -719,28 +778,28 @@ function AppointmentDetail({
               <ObservationsTab
                 observations={appointment.observations}
                 onAdd={onAddObservation}
-                onDelete={(id) => onDeleteItem('appointment_observations', id, 'observations')}
+                onDelete={(id: string) => onDeleteItem('appointment_observations', id, 'observations')}
               />
             )}
             {activeTab === 'questions' && (
               <QuestionsTab
                 questions={appointment.questions}
                 onAdd={onAddQuestion}
-                onDelete={(id) => onDeleteItem('appointment_questions', id, 'questions')}
+                onDelete={(id: string) => onDeleteItem('appointment_questions', id, 'questions')}
               />
             )}
             {activeTab === 'documents' && (
               <DocumentsTab
                 documents={appointment.documents}
                 onAdd={onAddDocument}
-                onDelete={(id) => onDeleteItem('appointment_documents', id, 'documents')}
+                onDelete={(id: string) => onDeleteItem('appointment_documents', id, 'documents')}
               />
             )}
             {activeTab === 'followup' && (
               <FollowupTab
                 followups={appointment.followups}
                 onAdd={onAddFollowup}
-                onDelete={(id) => onDeleteItem('appointment_followups', id, 'followups')}
+                onDelete={(id: string) => onDeleteItem('appointment_followups', id, 'followups')}
               />
             )}
           </div>
