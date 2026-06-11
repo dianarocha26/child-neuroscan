@@ -368,7 +368,11 @@ export function LandingPage({ onConditionSelect, onViewDashboard, onViewResource
               <div className="relative w-full max-w-md mx-auto animate-float">
                 <div className="absolute inset-0 bg-gradient-to-br from-primary-400 to-cyan-400 rounded-full blur-3xl opacity-20 animate-pulse"></div>
                 <div className="relative animate-scale-in">
-                  <HeroIllustration />
+                  <img
+                    src="/mascot.png"
+                    alt="ChildNeuroScan Mascot"
+                    className="w-full max-w-sm mx-auto drop-shadow-2xl"
+                  />
                 </div>
               </div>
             </div>
