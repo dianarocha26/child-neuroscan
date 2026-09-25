@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, MapPin, Phone, Mail, Globe, Star, Heart, Bookmark, CheckCircle, Filter, X, ExternalLink } from 'lucide-react';
+import { Search, MapPin, Phone, Mail, Globe, Star, Heart, Bookmark, CheckCircle, Filter, X, ExternalLink, ArrowLeft } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useLanguage } from '../contexts/LanguageContext';
 import { logger } from '../lib/logger';
@@ -210,6 +210,15 @@ export default function ResourceFinder({ userId, initialCondition, onBack }: Res
   return (
     <div className="max-w-7xl mx-auto p-6">
       <div className="mb-8">
+        {onBack && (
+          <button
+            onClick={onBack}
+            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4 transition-colors"
+          >
+            <ArrowLeft className="w-5 h-5" />
+            {t('Back', 'Volver')}
+          </button>
+        )}
         <h1 className="text-3xl font-bold text-gray-900 mb-2">
           {t('Therapy Resource Finder', 'Buscador de Recursos Terapéuticos')}
         </h1>

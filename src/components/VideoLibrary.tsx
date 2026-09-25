@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Play, Search, Filter, Clock, CheckCircle, BookmarkPlus, X, Tag, Users } from 'lucide-react';
+import { Play, Search, Filter, Clock, CheckCircle, BookmarkPlus, X, Tag, Users, ArrowLeft } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useLanguage } from '../contexts/LanguageContext';
 import { logger } from '../lib/logger';
@@ -35,9 +35,10 @@ interface VideoCategory {
 
 interface VideoLibraryProps {
   userId?: string;
+  onBack?: () => void;
 }
 
-export default function VideoLibrary({ userId }: VideoLibraryProps) {
+export default function VideoLibrary({ userId, onBack }: VideoLibraryProps) {
   const { t } = useLanguage();
   const [videos, setVideos] = useState<Video[]>([]);
   const [categories, setCategories] = useState<VideoCategory[]>([]);
@@ -297,6 +298,15 @@ export default function VideoLibrary({ userId }: VideoLibraryProps) {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-6">
       <div className="max-w-7xl mx-auto">
         <div className="mb-8">
+          {onBack && (
+            <button
+              onClick={onBack}
+              className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4 transition-colors"
+            >
+              <ArrowLeft className="w-5 h-5" />
+              {t('Back', 'Volver')}
+            </button>
+          )}
           <h1 className="text-4xl font-bold text-gray-900 mb-2">
             {t('Video Library', 'Biblioteca de Videos')}
           </h1>

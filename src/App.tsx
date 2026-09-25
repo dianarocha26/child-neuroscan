@@ -5,6 +5,8 @@ import { ThemeSwitch } from './components/ThemeSwitch';
 import { GlobalSearch } from './components/GlobalSearch';
 import { Login } from './components/Login';
 import { SignUp } from './components/SignUp';
+import { ForgotPassword } from './components/ForgotPassword';
+import { ResetPassword } from './components/ResetPassword';
 import { AccountPrompt } from './components/AccountPrompt';
 import { LandingPage } from './components/LandingPage';
 import { AgeInput } from './components/AgeInput';
@@ -15,6 +17,7 @@ import LoadingSpinner from './components/LoadingSpinner';
 import { OfflineIndicator } from './components/OfflineIndicator';
 import { SkipLink } from './components/SkipLink';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { logger } from './lib/logger';
 
 const ProgressDashboard = lazy(() => import('./components/ProgressDashboard'));
 const ReportGenerator = lazy(() => import('./components/ReportGenerator'));
@@ -37,10 +40,10 @@ const ScreenWrapper = lazy(() => import('./components/ScreenWrapper'));
 import { calculateScreeningScore, saveScreeningResult, getQuestionsForCondition } from './lib/database';
 import type { Condition, Question, RiskLevel, DomainScore } from './types/database';
 
-type Screen = 'login' | 'signup' | 'landing' | 'age-input' | 'questionnaire' | 'results' | 'dashboard' | 'report' | 'resources' | 'community' | 'videos' | 'appointments' | 'photos' | 'goals' | 'medications' | 'behavior' | 'crisis' | 'rewards' | 'reminders' | 'schedule' | 'sensory' | 'analytics' | 'reports';
+type Screen = 'login' | 'signup' | 'forgot-password' | 'landing' | 'age-input' | 'questionnaire' | 'results' | 'dashboard' | 'report' | 'resources' | 'community' | 'videos' | 'appointments' | 'photos' | 'goals' | 'medications' | 'behavior' | 'crisis' | 'rewards' | 'reminders' | 'schedule' | 'sensory' | 'analytics' | 'reports';
 
 function AppContent() {
-  const { user, loading } = useAuth();
+  const { user, loading, passwordRecovery, clearPasswordRecovery } = useAuth();
   const [currentScreen, setCurrentScreen] = useState<Screen>('landing');
   const [selectedCondition, setSelectedCondition] = useState<Condition | null>(null);
   const [childAgeMonths, setChildAgeMonths] = useState<number>(0);
@@ -292,25 +295,29 @@ function AppContent() {
     if (pendingSaveAction === 'results' && selectedCondition) {
       const guestData = localStorage.getItem('guestScreeningData');
       if (guestData && user) {
-        const parsed = JSON.parse(guestData);
+        try {
+          const parsed = JSON.parse(guestData);
 
-        const result = await saveScreeningResult(
-          parsed.condition.id,
-          parsed.childAgeMonths,
-          'en',
-          parsed.responses,
-          parsed.scoring.totalScore,
-          parsed.scoring.riskLevel,
-          parsed.scoring.hasRedFlags,
-          parsed.scoring.domainScores,
-          parsed.childName
-        );
+          const result = await saveScreeningResult(
+            parsed.condition.id,
+            parsed.childAgeMonths,
+            'en',
+            parsed.responses,
+            parsed.scoring.totalScore,
+            parsed.scoring.riskLevel,
+            parsed.scoring.hasRedFlags,
+            parsed.scoring.domainScores,
+            parsed.childName
+          );
 
-        if (result) {
-          setCurrentSessionId(result.id);
+          if (result) {
+            setCurrentSessionId(result.id);
+          }
+
+          localStorage.removeItem('guestScreeningData');
+        } catch (err) {
+          logger.error('Failed to save guest screening after login', err);
         }
-
-        localStorage.removeItem('guestScreeningData');
       }
     } else if (pendingSaveAction === 'dashboard') {
       setCurrentScreen('dashboard');
@@ -335,7 +342,19 @@ function AppContent() {
     );
   }
 
-  const showMobileNav = user && !['login', 'signup'].includes(currentScreen);
+  if (passwordRecovery) {
+    return (
+      <ResetPassword
+        onComplete={() => {
+          clearPasswordRecovery();
+          setCurrentScreen('landing');
+        }}
+      />
+    );
+  }
+
+  const isAuthScreen = ['login', 'signup', 'forgot-password'].includes(currentScreen);
+  const showMobileNav = user && !isAuthScreen;
 
   return (
     <>
@@ -364,7 +383,7 @@ function AppContent() {
         }}
       />
 
-      {user && currentScreen !== 'login' && currentScreen !== 'signup' && (
+      {user && !isAuthScreen && (
         <button
           onClick={() => setIsSearchOpen(true)}
           className="fixed top-4 right-20 z-40 p-3 bg-white dark:bg-gray-800 rounded-full shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-110 active:scale-95 border border-gray-200 dark:border-gray-700"
@@ -375,7 +394,7 @@ function AppContent() {
         </button>
       )}
 
-      {currentScreen !== 'login' && currentScreen !== 'signup' && (
+      {!isAuthScreen && (
         <div className="fixed top-4 right-4 z-40">
           <ThemeSwitch />
         </div>
@@ -384,11 +403,16 @@ function AppContent() {
       {currentScreen === 'login' && (
         <Login
           onSwitchToSignUp={() => setCurrentScreen('signup')}
+          onForgotPassword={() => setCurrentScreen('forgot-password')}
           onLoginSuccess={() => {
             handleAuthSuccess();
             setCurrentScreen('landing');
           }}
         />
+      )}
+
+      {currentScreen === 'forgot-password' && (
+        <ForgotPassword onBackToLogin={() => setCurrentScreen('login')} />
       )}
 
       {currentScreen === 'signup' && (
@@ -514,6 +538,7 @@ function AppContent() {
         <Suspense fallback={<LoadingSpinner />}>
           <VideoLibrary
             userId={user?.id}
+            onBack={() => setCurrentScreen('landing')}
           />
         </Suspense>
       )}
