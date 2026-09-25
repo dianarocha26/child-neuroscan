@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+
+      # Blocking: a broken production build fails the check.
+      # No secrets needed: Vite inlines VITE_SUPABASE_* at build time, but a
+      # missing value does not fail the build (src/lib/supabase.ts throws at
+      # app startup instead), so CI only checks that the bundle compiles.
+      - name: Build
+        run: npm run build
+
+      # Blocking: unit tests for src/lib (screening score, dates, export
+      # escaping, validation). Supabase is mocked, so no secrets are needed.
+      - name: Test
+        run: npm test
+
+      # Non-blocking for now: the codebase still has existing type and lint
+      # errors. Remove `continue-on-error` from both steps once they are fixed
+      # (phase 3) so regressions start failing CI.
+      - name: Typecheck
+        run: npm run typecheck
+        continue-on-error: true
+
+      - name: Lint
+        run: npm run lint
+        continue-on-error: true
+
+      # Deploys are handled by the Vercel Git integration, not by this workflow.

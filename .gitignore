@@ -21,3 +21,13 @@ dist-ssr
 *.sln
 *.sw?
 .env
+
+# Environment files (keep the template)
+.env.*
+!.env.example
+
+# Tooling / build caches
+.vercel
+supabase/.temp
+coverage
+*.tsbuildinfo
