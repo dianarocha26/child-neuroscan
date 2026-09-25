@@ -4,7 +4,74 @@ export interface ExportData {
   type: 'assessment' | 'progress' | 'medication' | 'goals' | 'behavior' | 'comprehensive';
   title: string;
   date: string;
-  data: any;
+  data: unknown;
+}
+
+export interface ReportContent {
+  childInfo?: {
+    name?: string;
+    age?: string | number;
+    dateOfBirth?: string;
+    gender?: string;
+  };
+  assessment?: {
+    score?: number;
+    riskLevel?: string;
+    domains?: Array<{ name: string; score: number; maxScore?: number }>;
+    concerns?: string[];
+  };
+  recommendations?: string[];
+  summary?: Array<{ label: string; value: string | number }>;
+  behaviors?: Array<{
+    date: string;
+    type: string;
+    severity?: number | string;
+    durationMinutes?: number | string;
+    triggers?: string;
+    notes?: string;
+  }>;
+  medications?: Array<{
+    name: string;
+    dosage: string;
+    frequency?: string;
+    startDate?: string;
+  }>;
+  medicationLogs?: Array<{
+    date: string;
+    medication: string;
+    dosage: string;
+    status: string;
+    notes?: string;
+  }>;
+  goals?: Array<{
+    title: string;
+    description?: string;
+    status?: string;
+    progress?: number;
+  }>;
+  appointments?: Array<{
+    date: string;
+    provider?: string;
+    location?: string;
+    completed: boolean;
+    notes?: string;
+  }>;
+  notes?: string;
+}
+
+export function escapeHtml(value: unknown): string {
+  if (value === null || value === undefined) return '';
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+// Prevent spreadsheet formula injection (CSV/Excel) for user-controlled strings.
+export function neutralizeSpreadsheetValue(value: string): string {
+  return /^[=+\-@\t\r]/.test(value) ? `'${value}` : value;
 }
 
 export function exportToJSON(data: ExportData, filename?: string): void {
@@ -20,14 +87,14 @@ export function exportToJSON(data: ExportData, filename?: string): void {
   URL.revokeObjectURL(url);
 }
 
-export function exportToCSV(data: any[], headers: string[], filename: string): void {
+export function exportToCSV(data: Array<Record<string, unknown>>, headers: string[], filename: string): void {
   const csvContent = [
     headers.join(','),
     ...data.map(row => headers.map(header => {
       const value = row[header];
       if (value === null || value === undefined) return '';
-      const stringValue = String(value);
-      if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')) {
+      const stringValue = typeof value === 'string' ? neutralizeSpreadsheetValue(value) : String(value);
+      if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n') || stringValue.includes('\r')) {
         return `"${stringValue.replace(/"/g, '""')}"`;
       }
       return stringValue;
@@ -54,7 +121,7 @@ export function generateHTMLReport(data: ExportData): string {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${title}</title>
+  <title>${escapeHtml(title)}</title>
   <style>
     * {
       margin: 0;
@@ -202,19 +269,19 @@ export function generateHTMLReport(data: ExportData): string {
 </head>
 <body>
   <div class="header">
-    <h1>${title}</h1>
+    <h1>${escapeHtml(title)}</h1>
     <div class="meta">
-      Generated on: ${new Date(date).toLocaleDateString('en-US', {
+      Generated on: ${escapeHtml(new Date(date).toLocaleDateString('en-US', {
         year: 'numeric',
         month: 'long',
         day: 'numeric',
         hour: '2-digit',
         minute: '2-digit'
-      })}
+      }))}
     </div>
   </div>
 
-  ${renderContent(content)}
+  ${renderContent(content as ReportContent | string)}
 
   <div class="footer">
     <p><strong>Important Disclaimer:</strong> This report is for informational purposes only and does not constitute medical advice.</p>
@@ -226,8 +293,9 @@ export function generateHTMLReport(data: ExportData): string {
   `.trim();
 }
 
-function renderContent(content: any): string {
-  if (typeof content === 'string') return `<div class="section">${content}</div>`;
+function renderContent(content: ReportContent | string): string {
+  if (typeof content === 'string') return `<div class="section">${escapeHtml(content)}</div>`;
+  if (!content) return '<div class="section"><p>No data available</p></div>';
 
   let html = '';
 
@@ -236,10 +304,10 @@ function renderContent(content: any): string {
       <div class="section">
         <h2>Child Information</h2>
         <div class="info-grid">
-          ${content.childInfo.name ? `<div class="info-item"><div class="label">Name</div><div class="value">${content.childInfo.name}</div></div>` : ''}
-          ${content.childInfo.age ? `<div class="info-item"><div class="label">Age</div><div class="value">${content.childInfo.age}</div></div>` : ''}
-          ${content.childInfo.dateOfBirth ? `<div class="info-item"><div class="label">Date of Birth</div><div class="value">${content.childInfo.dateOfBirth}</div></div>` : ''}
-          ${content.childInfo.gender ? `<div class="info-item"><div class="label">Gender</div><div class="value">${content.childInfo.gender}</div></div>` : ''}
+          ${content.childInfo.name ? `<div class="info-item"><div class="label">Name</div><div class="value">${escapeHtml(content.childInfo.name)}</div></div>` : ''}
+          ${content.childInfo.age ? `<div class="info-item"><div class="label">Age</div><div class="value">${escapeHtml(content.childInfo.age)}</div></div>` : ''}
+          ${content.childInfo.dateOfBirth ? `<div class="info-item"><div class="label">Date of Birth</div><div class="value">${escapeHtml(content.childInfo.dateOfBirth)}</div></div>` : ''}
+          ${content.childInfo.gender ? `<div class="info-item"><div class="label">Gender</div><div class="value">${escapeHtml(content.childInfo.gender)}</div></div>` : ''}
         </div>
       </div>
     `;
@@ -252,28 +320,72 @@ function renderContent(content: any): string {
         ${content.assessment.score !== undefined ? `
           <div class="score-card">
             <div class="label">Total Score</div>
-            <div class="score">${content.assessment.score}</div>
-            <div class="label">Risk Level: ${content.assessment.riskLevel || 'Not specified'}</div>
+            <div class="score">${escapeHtml(content.assessment.score)}</div>
+            <div class="label">Risk Level: ${escapeHtml(content.assessment.riskLevel || 'Not specified')}</div>
           </div>
         ` : ''}
-        ${content.assessment.domains ? renderDomains(content.assessment.domains) : ''}
-        ${content.assessment.concerns ? renderConcerns(content.assessment.concerns) : ''}
+        ${Array.isArray(content.assessment.domains) ? renderDomains(content.assessment.domains) : ''}
+        ${Array.isArray(content.assessment.concerns) ? renderConcerns(content.assessment.concerns) : ''}
       </div>
     `;
   }
 
-  if (content.recommendations) {
+  if (Array.isArray(content.summary) && content.summary.length > 0) {
+    html += `
+      <div class="section">
+        <h2>Summary</h2>
+        <div class="info-grid">
+          ${content.summary.map(item => `<div class="info-item"><div class="label">${escapeHtml(item.label)}</div><div class="value">${escapeHtml(item.value)}</div></div>`).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  if (Array.isArray(content.recommendations)) {
     html += `
       <div class="section">
         <h2>Recommendations</h2>
         <ul>
-          ${content.recommendations.map((rec: string) => `<li>${rec}</li>`).join('')}
+          ${content.recommendations.map(rec => `<li>${escapeHtml(rec)}</li>`).join('')}
         </ul>
       </div>
     `;
   }
 
-  if (content.medications) {
+  if (Array.isArray(content.behaviors)) {
+    html += `
+      <div class="section">
+        <h2>Behavioral Observations</h2>
+        ${content.behaviors.length === 0 ? '<p>No behaviors logged during this period.</p>' : `
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Behavior</th>
+              <th>Severity</th>
+              <th>Duration (min)</th>
+              <th>Triggers</th>
+              <th>Notes</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${content.behaviors.map(entry => `
+              <tr>
+                <td>${escapeHtml(entry.date)}</td>
+                <td>${escapeHtml(entry.type)}</td>
+                <td>${escapeHtml(entry.severity)}</td>
+                <td>${escapeHtml(entry.durationMinutes)}</td>
+                <td>${escapeHtml(entry.triggers)}</td>
+                <td>${escapeHtml(entry.notes)}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>`}
+      </div>
+    `;
+  }
+
+  if (Array.isArray(content.medications)) {
     html += `
       <div class="section">
         <h2>Current Medications</h2>
@@ -287,12 +399,12 @@ function renderContent(content: any): string {
             </tr>
           </thead>
           <tbody>
-            ${content.medications.map((med: any) => `
+            ${content.medications.map(med => `
               <tr>
-                <td>${med.name}</td>
-                <td>${med.dosage}</td>
-                <td>${med.frequency}</td>
-                <td>${med.startDate}</td>
+                <td>${escapeHtml(med.name)}</td>
+                <td>${escapeHtml(med.dosage)}</td>
+                <td>${escapeHtml(med.frequency)}</td>
+                <td>${escapeHtml(med.startDate)}</td>
               </tr>
             `).join('')}
           </tbody>
@@ -301,22 +413,88 @@ function renderContent(content: any): string {
     `;
   }
 
-  if (content.goals) {
+  if (Array.isArray(content.medicationLogs)) {
+    html += `
+      <div class="section">
+        <h2>Medication Log</h2>
+        ${content.medicationLogs.length === 0 ? '<p>No medication logs during this period.</p>' : `
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Medication</th>
+              <th>Dosage</th>
+              <th>Status</th>
+              <th>Notes</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${content.medicationLogs.map(log => `
+              <tr>
+                <td>${escapeHtml(log.date)}</td>
+                <td>${escapeHtml(log.medication)}</td>
+                <td>${escapeHtml(log.dosage)}</td>
+                <td>${escapeHtml(log.status)}</td>
+                <td>${escapeHtml(log.notes)}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>`}
+      </div>
+    `;
+  }
+
+  if (Array.isArray(content.goals)) {
     html += `
       <div class="section">
         <h2>Goals & Progress</h2>
-        ${content.goals.map((goal: any) => `
+        ${content.goals.length === 0 ? '<p>No goals recorded.</p>' : ''}
+        ${content.goals.map(goal => {
+          const progress = Math.min(100, Math.max(0, Math.round(Number(goal.progress) || 0)));
+          return `
           <div class="info-item" style="margin-bottom: 15px;">
-            <div class="label">${goal.title}</div>
-            <div class="value">${goal.description || ''}</div>
+            <div class="label">${escapeHtml(goal.title)}${goal.status ? ` (${escapeHtml(goal.status)})` : ''}</div>
+            <div class="value">${escapeHtml(goal.description)}</div>
             <div style="margin-top: 8px;">
               <div style="background: #e5e7eb; height: 8px; border-radius: 4px; overflow: hidden;">
-                <div style="background: #0891b2; height: 100%; width: ${goal.progress || 0}%;"></div>
+                <div style="background: #0891b2; height: 100%; width: ${progress}%;"></div>
               </div>
-              <div style="text-align: right; font-size: 12px; margin-top: 4px;">${goal.progress || 0}% Complete</div>
+              <div style="text-align: right; font-size: 12px; margin-top: 4px;">${progress}% Complete</div>
             </div>
           </div>
-        `).join('')}
+        `;
+        }).join('')}
+      </div>
+    `;
+  }
+
+  if (Array.isArray(content.appointments)) {
+    html += `
+      <div class="section">
+        <h2>Appointments</h2>
+        ${content.appointments.length === 0 ? '<p>No appointments during this period.</p>' : `
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Provider</th>
+              <th>Location</th>
+              <th>Completed</th>
+              <th>Notes</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${content.appointments.map(appt => `
+              <tr>
+                <td>${escapeHtml(appt.date)}</td>
+                <td>${escapeHtml(appt.provider)}</td>
+                <td>${escapeHtml(appt.location)}</td>
+                <td>${appt.completed ? 'Yes' : 'No'}</td>
+                <td>${escapeHtml(appt.notes)}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>`}
       </div>
     `;
   }
@@ -325,7 +503,7 @@ function renderContent(content: any): string {
     html += `
       <div class="section">
         <h2>Additional Notes</h2>
-        <p>${content.notes}</p>
+        <p>${escapeHtml(content.notes)}</p>
       </div>
     `;
   }
@@ -333,13 +511,13 @@ function renderContent(content: any): string {
   return html || '<div class="section"><p>No data available</p></div>';
 }
 
-function renderDomains(domains: any[]): string {
+function renderDomains(domains: Array<{ name: string; score: number; maxScore?: number }>): string {
   return `
     <div class="info-grid">
       ${domains.map(domain => `
         <div class="info-item">
-          <div class="label">${domain.name}</div>
-          <div class="value">Score: ${domain.score}${domain.maxScore ? `/${domain.maxScore}` : ''}</div>
+          <div class="label">${escapeHtml(domain.name)}</div>
+          <div class="value">Score: ${escapeHtml(domain.score)}${domain.maxScore ? `/${escapeHtml(domain.maxScore)}` : ''}</div>
         </div>
       `).join('')}
     </div>
@@ -354,22 +532,31 @@ function renderConcerns(concerns: string[]): string {
     <div class="alert warning">
       <div class="alert-title">Areas of Concern</div>
       <ul style="margin-top: 10px;">
-        ${concerns.map(concern => `<li>${concern}</li>`).join('')}
+        ${concerns.map(concern => `<li>${escapeHtml(concern)}</li>`).join('')}
       </ul>
     </div>
   `;
 }
 
-export function printReport(htmlContent: string): void {
+function openPrintWindow(htmlContent: string): void {
   const printWindow = window.open('', '_blank');
-  if (printWindow) {
-    printWindow.document.write(htmlContent);
-    printWindow.document.close();
-    printWindow.focus();
-    setTimeout(() => {
-      printWindow.print();
-    }, 250);
+  if (!printWindow) {
+    logger.warn('Unable to open print window (popup blocked?)');
+    return;
   }
+  // Sever the link back to this window so the new document cannot navigate or script the app.
+  printWindow.opener = null;
+  printWindow.document.open();
+  printWindow.document.write(htmlContent);
+  printWindow.document.close();
+  printWindow.focus();
+  setTimeout(() => {
+    printWindow.print();
+  }, 250);
+}
+
+export function printReport(htmlContent: string): void {
+  openPrintWindow(htmlContent);
 }
 
 export function downloadHTMLReport(htmlContent: string, filename: string): void {
@@ -384,13 +571,14 @@ export function downloadHTMLReport(htmlContent: string, filename: string): void 
   URL.revokeObjectURL(url);
 }
 
-export function exportToExcel(data: any[], headers: string[], filename: string): void {
+export function exportToExcel(data: Array<Record<string, unknown>>, headers: string[], filename: string): void {
   const csvContent = [
     headers.join('\t'),
     ...data.map(row => headers.map(header => {
       const value = row[header];
       if (value === null || value === undefined) return '';
-      return String(value);
+      const stringValue = String(value).replace(/[\t\r\n]+/g, ' ');
+      return typeof value === 'string' ? neutralizeSpreadsheetValue(stringValue) : stringValue;
     }).join('\t'))
   ].join('\n');
 
@@ -406,15 +594,7 @@ export function exportToExcel(data: any[], headers: string[], filename: string):
 }
 
 export function exportToPDF(htmlContent: string): void {
-  const printWindow = window.open('', '_blank');
-  if (printWindow) {
-    printWindow.document.write(htmlContent);
-    printWindow.document.close();
-    printWindow.focus();
-    setTimeout(() => {
-      printWindow.print();
-    }, 250);
-  }
+  openPrintWindow(htmlContent);
 }
 
 export function shareReport(data: ExportData): void {
@@ -440,10 +620,11 @@ export function exportMultipleFormats(data: ExportData, formats: Array<'json' | 
       case 'json':
         exportToJSON(data);
         break;
-      case 'html':
+      case 'html': {
         const htmlContent = generateHTMLReport(data);
         downloadHTMLReport(htmlContent, `${data.type}-${data.date}.html`);
         break;
+      }
       default:
         logger.warn(`Format ${format} not fully implemented yet`);
     }

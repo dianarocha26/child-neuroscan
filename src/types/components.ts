@@ -19,9 +19,7 @@ export interface BehaviorEntry {
   entry_date: string;
   entry_time?: string;
   behavior_type?: string;
-  behavior_description?: string;
   severity?: number;
-  intensity?: string;
   duration_minutes?: number;
   location?: string;
   triggers?: string[] | string;
@@ -36,37 +34,50 @@ export interface BehaviorEntry {
 export interface MedicationLog {
   id: string;
   user_id: string;
-  log_date: string;
-  medication_name?: string;
-  dosage_amount?: string;
-  status?: string;
-  taken?: boolean;
+  medication_id: string;
+  taken_at: string;
+  scheduled_time?: string;
+  status: 'taken' | 'missed' | 'skipped';
   notes?: string;
-  created_at?: string;
+  side_effects_observed?: string;
+  behavioral_changes?: string;
+  logged_at?: string;
+  medications?: {
+    name: string;
+    dosage: string;
+  } | null;
 }
 
 export interface Goal {
   id: string;
   user_id: string;
+  child_name?: string;
   title: string;
-  status: string;
-  progress_percent?: number;
-  category?: string;
   description?: string;
-  target_date?: string;
+  category?: string;
+  target_value?: number;
+  current_value?: number;
+  unit?: string;
+  target_date?: string | null;
+  status: 'not_started' | 'in_progress' | 'achieved' | 'archived';
+  priority?: string;
+  notes?: string;
   created_at?: string;
+  completed_at?: string | null;
 }
 
 export interface Appointment {
   id: string;
   user_id: string;
+  child_name?: string;
+  appointment_type_id?: string | null;
   appointment_date: string;
-  appointment_time?: string;
-  appointment_type?: string;
   provider_name?: string;
-  status?: string;
+  location?: string;
   notes?: string;
+  completed: boolean;
   created_at?: string;
+  updated_at?: string;
 }
 
 export interface ReportData {
