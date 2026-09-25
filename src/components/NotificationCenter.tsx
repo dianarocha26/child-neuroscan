@@ -1,666 +1,270 @@
 import React, { useState, useEffect } from 'react';
-import { Camera, Upload, X, Filter, Search, Calendar, Tag } from 'lucide-react';
-import { useLanguage } from '../contexts/LanguageContext';
-import { useLoadingState } from '../hooks/useLoadingState';
+import { Bell, Plus, Edit2, Trash2, X, Check, RotateCcw, Calendar, Clock, Pill, Stethoscope, Activity, Target, Tag } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { useAuth } from '../contexts/AuthContext';
+import { useLoadingState } from '../hooks/useLoadingState';
 import { logger } from '../lib/logger';
 
-interface PhotoEntry {
+type ReminderType = 'medication' | 'appointment' | 'therapy' | 'goal' | 'other';
+
+interface Reminder {
   id: string;
-  child_name: string;
+  user_id: string;
+  reminder_type: ReminderType;
   title: string;
-  description: string;
-  photo_url: string;
-  media_type: 'photo' | 'video';
-  milestone_type: string;
-  age_at_capture: string;
-  linked_condition: string;
-  tags: string[];
-  created_at: string;
+  description: string | null;
+  child_name: string | null;
+  reminder_date: string;
+  reminder_time: string;
+  is_active: boolean;
+  created_at?: string;
 }
 
-export default function PhotoJournal() {
-  const { t } = useLanguage();
-  const [entries, setEntries] = useState<PhotoEntry[]>([]);
-  const [filteredEntries, setFilteredEntries] = useState<PhotoEntry[]>([]);
+const REMINDER_TYPES: { value: ReminderType; label: string; icon: typeof Pill; color: string }[] = [
+  { value: 'medication', label: 'Medication', icon: Pill, color: 'bg-purple-100 text-purple-700' },
+  { value: 'appointment', label: 'Appointment', icon: Stethoscope, color: 'bg-blue-100 text-blue-700' },
+  { value: 'therapy', label: 'Therapy', icon: Activity, color: 'bg-green-100 text-green-700' },
+  { value: 'goal', label: 'Goal', icon: Target, color: 'bg-orange-100 text-orange-700' },
+  { value: 'other', label: 'Other', icon: Tag, color: 'bg-gray-100 text-gray-700' },
+];
+
+const typeInfo = (type: string) => REMINDER_TYPES.find(t => t.value === type) || REMINDER_TYPES[4];
+
+const today = () => new Date().toISOString().split('T')[0];
+
+export default function NotificationCenter() {
+  const { user } = useAuth();
+  const [reminders, setReminders] = useState<Reminder[]>([]);
   const { loading, setLoading } = useLoadingState();
-  const [showUploadForm, setShowUploadForm] = useState(false);
-  const [selectedEntry, setSelectedEntry] = useState<PhotoEntry | null>(null);
-  const [editingEntry, setEditingEntry] = useState<PhotoEntry | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterCondition, setFilterCondition] = useState('');
-  const [uploading, setUploading] = useState(false);
+  const [filter, setFilter] = useState<ReminderType | 'all'>('all');
+  const [showDone, setShowDone] = useState(false);
 
-  const [formData, setFormData] = useState({
-    child_name: '',
-    title: '',
-    description: '',
-    milestone_type: '',
-    age_at_capture: '',
-    linked_condition: '',
-    tags: ''
-  });
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string>('');
+  const [showForm, setShowForm] = useState(false);
+  const [editing, setEditing] = useState<Reminder | null>(null);
+  const emptyForm = { reminder_type: 'medication' as ReminderType, title: '', description: '', child_name: '', reminder_date: today(), reminder_time: '09:00' };
+  const [form, setForm] = useState(emptyForm);
 
-  useEffect(() => {
-    loadEntries();
-  }, []);
+  useEffect(() => { loadData(); }, [user]);
 
-  useEffect(() => {
-    filterEntries();
-  }, [entries, searchTerm, filterCondition]);
-
-  useEffect(() => {
-    return () => {
-      if (previewUrl) {
-        URL.revokeObjectURL(previewUrl);
-      }
-    };
-  }, [previewUrl]);
-
-  const loadEntries = async () => {
+  const loadData = async () => {
+    if (!user) return;
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
       const { data, error } = await supabase
-        .from('photo_journal_entries')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
-
+        .from('reminders').select('*').eq('user_id', user.id)
+        .order('reminder_date', { ascending: true })
+        .order('reminder_time', { ascending: true });
       if (error) throw error;
-      setEntries(data || []);
+      setReminders(data || []);
     } catch (error) {
-      logger.error('Failed to load photo journal entries', error);
+      logger.error('Error loading reminders:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const filterEntries = () => {
-    let filtered = [...entries];
-
-    if (searchTerm) {
-      filtered = filtered.filter(entry =>
-        entry.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        entry.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        entry.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()))
-      );
-    }
-
-    if (filterCondition) {
-      filtered = filtered.filter(entry => entry.linked_condition === filterCondition);
-    }
-
-    setFilteredEntries(filtered);
-  };
-
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const maxSize = 50 * 1024 * 1024; // 50MB
-      if (file.size > maxSize) {
-        alert('File size must be less than 50MB');
-        return;
-      }
-
-      const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'video/mp4', 'video/webm', 'video/quicktime'];
-      if (!validTypes.includes(file.type)) {
-        alert('Please select a valid image or video file');
-        return;
-      }
-
-      setSelectedFile(file);
-      if (previewUrl) {
-        URL.revokeObjectURL(previewUrl);
-      }
-      const url = URL.createObjectURL(file);
-      setPreviewUrl(url);
-    }
-  };
-
-  const handleUpload = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedFile) return;
-
-    setUploading(true);
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
-
-      const fileExt = selectedFile.name.split('.').pop();
-      const fileName = `${user.id}/${Date.now()}.${fileExt}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from('photo-journal')
-        .upload(fileName, selectedFile);
-
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('photo-journal')
-        .getPublicUrl(fileName);
-
-      const tagsArray = formData.tags.split(',').map(t => t.trim()).filter(t => t);
-      const mediaType = selectedFile.type.startsWith('video/') ? 'video' : 'photo';
-
-      const { error: insertError } = await supabase
-        .from('photo_journal_entries')
-        .insert({
-          user_id: user.id,
-          child_name: formData.child_name,
-          title: formData.title,
-          description: formData.description,
-          photo_url: publicUrl,
-          media_type: mediaType,
-          milestone_type: formData.milestone_type,
-          age_at_capture: formData.age_at_capture,
-          linked_condition: formData.linked_condition,
-          tags: tagsArray
-        });
-
-      if (insertError) throw insertError;
-
-      setShowUploadForm(false);
-      setFormData({
-        child_name: '',
-        title: '',
-        description: '',
-        milestone_type: '',
-        age_at_capture: '',
-        linked_condition: '',
-        tags: ''
-      });
-      setSelectedFile(null);
-      setPreviewUrl('');
-      loadEntries();
-    } catch (error) {
-      logger.error('Error uploading photo/video', error);
-      alert('Failed to upload photo. Please try again.');
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  const handleDelete = async (entry: PhotoEntry) => {
-    if (!confirm('Are you sure you want to delete this entry?')) return;
-
-    try {
-      const fileName = entry.photo_url.split('/').pop();
-      if (fileName) {
-        const { data: { user } } = await supabase.auth.getUser();
-        await supabase.storage
-          .from('photo-journal')
-          .remove([`${user?.id}/${fileName}`]);
-      }
-
-      const { error } = await supabase
-        .from('photo_journal_entries')
-        .delete()
-        .eq('id', entry.id);
-
-      if (error) throw error;
-      loadEntries();
-      setSelectedEntry(null);
-    } catch (error) {
-      logger.error('Error deleting photo journal entry', error);
-      alert('Failed to delete entry. Please try again.');
-    }
-  };
-
-  const handleEdit = async (entry: PhotoEntry) => {
-    setFormData({
-      child_name: entry.child_name,
-      title: entry.title,
-      description: entry.description,
-      milestone_type: entry.milestone_type,
-      age_at_capture: entry.age_at_capture,
-      linked_condition: entry.linked_condition,
-      tags: entry.tags.join(', ')
+  const openNew = () => { setEditing(null); setForm({ ...emptyForm, reminder_date: today() }); setShowForm(true); };
+  const openEdit = (r: Reminder) => {
+    setEditing(r);
+    setForm({
+      reminder_type: r.reminder_type,
+      title: r.title,
+      description: r.description || '',
+      child_name: r.child_name || '',
+      reminder_date: r.reminder_date,
+      reminder_time: r.reminder_time.slice(0, 5),
     });
-    setEditingEntry(entry);
-    setSelectedEntry(null);
-    setShowUploadForm(true);
+    setShowForm(true);
   };
+  const closeForm = () => { setShowForm(false); setEditing(null); };
 
-  const handleUpdate = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editingEntry) return;
-
-    setUploading(true);
+    if (!user) return;
     try {
-      const tagsArray = formData.tags.split(',').map(t => t.trim()).filter(t => t);
-
-      const { error } = await supabase
-        .from('photo_journal_entries')
-        .update({
-          child_name: formData.child_name,
-          title: formData.title,
-          description: formData.description,
-          milestone_type: formData.milestone_type,
-          age_at_capture: formData.age_at_capture,
-          linked_condition: formData.linked_condition,
-          tags: tagsArray
-        })
-        .eq('id', editingEntry.id);
-
-      if (error) throw error;
-
-      setShowUploadForm(false);
-      setFormData({
-        child_name: '',
-        title: '',
-        description: '',
-        milestone_type: '',
-        age_at_capture: '',
-        linked_condition: '',
-        tags: ''
-      });
-      setSelectedEntry(null);
-      loadEntries();
-    } catch (error) {
-      logger.error('Error updating photo journal entry', error);
-      alert('Failed to update entry. Please try again.');
-    } finally {
-      setUploading(false);
-    }
+      const payload = {
+        reminder_type: form.reminder_type,
+        title: form.title,
+        description: form.description || null,
+        child_name: form.child_name || null,
+        reminder_date: form.reminder_date,
+        reminder_time: form.reminder_time,
+        updated_at: new Date().toISOString(),
+      };
+      if (editing) {
+        const { error } = await supabase.from('reminders').update(payload).eq('id', editing.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from('reminders').insert({ user_id: user.id, ...payload, is_active: true });
+        if (error) throw error;
+      }
+      closeForm(); loadData();
+    } catch (error) { logger.error('Error saving reminder:', error); alert('Failed to save reminder'); }
   };
 
-  const conditions = Array.from(new Set(entries.map(e => e.linked_condition).filter(c => c)));
+  const handleToggleDone = async (r: Reminder) => {
+    try {
+      const { error } = await supabase.from('reminders')
+        .update({ is_active: !r.is_active, updated_at: new Date().toISOString() }).eq('id', r.id);
+      if (error) throw error;
+      setReminders(prev => prev.map(x => (x.id === r.id ? { ...x, is_active: !r.is_active } : x)));
+    } catch (error) { logger.error('Error updating reminder:', error); alert('Failed to update reminder'); }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Delete this reminder?')) return;
+    try {
+      const { error } = await supabase.from('reminders').delete().eq('id', id);
+      if (error) throw error;
+      setReminders(prev => prev.filter(r => r.id !== id));
+    } catch (error) { logger.error('Error deleting reminder:', error); alert('Failed to delete reminder'); }
+  };
+
+  const formatDate = (d: string) =>
+    new Date(`${d}T00:00:00`).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+  const formatTime = (t: string) => {
+    const [h, m] = t.split(':').map(Number);
+    return new Date(2000, 0, 1, h, m).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+  };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-gray-600">Loading...</div>
+      <div className="flex justify-center items-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600"></div>
       </div>
     );
   }
 
-  return (
-    <div className="max-w-7xl mx-auto">
-      <div className="mb-8">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h2 className="text-3xl font-bold text-gray-900 mb-2">Photo Journal</h2>
-            <p className="text-gray-600">Document your child's progress with photos and videos</p>
-          </div>
-          <button
-            onClick={() => setShowUploadForm(true)}
-            className="flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition"
-          >
-            <Upload className="w-5 h-5" />
-            Add Entry
-          </button>
-        </div>
+  const byType = reminders.filter(r => filter === 'all' || r.reminder_type === filter);
+  const upcoming = byType.filter(r => r.is_active);
+  const done = byType.filter(r => !r.is_active);
+  const isOverdue = (r: Reminder) => r.reminder_date < today();
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-            <input
-              type="text"
-              placeholder="Search by title, description, or tags..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
+  const renderReminder = (r: Reminder) => {
+    const info = typeInfo(r.reminder_type);
+    const Icon = info.icon;
+    return (
+      <div key={r.id} className={`bg-white rounded-xl shadow p-4 border ${r.is_active && isOverdue(r) ? 'border-red-200' : 'border-gray-100'} ${!r.is_active ? 'opacity-60' : ''}`}>
+        <div className="flex items-start gap-4">
+          <div className={`p-2 rounded-lg ${info.color}`}><Icon className="w-5 h-5" /></div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h3 className={`font-semibold text-gray-900 ${!r.is_active ? 'line-through' : ''}`}>{r.title}</h3>
+              <span className={`text-xs px-2 py-0.5 rounded-full ${info.color}`}>{info.label}</span>
+              {r.is_active && isOverdue(r) && <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-700">Overdue</span>}
+            </div>
+            {r.child_name && <p className="text-sm text-gray-600">{r.child_name}</p>}
+            {r.description && <p className="text-sm text-gray-600 mt-1">{r.description}</p>}
+            <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
+              <span className="flex items-center gap-1"><Calendar className="w-4 h-4" />{formatDate(r.reminder_date)}</span>
+              <span className="flex items-center gap-1"><Clock className="w-4 h-4" />{formatTime(r.reminder_time)}</span>
+            </div>
           </div>
-          <select
-            value={filterCondition}
-            onChange={(e) => setFilterCondition(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          >
-            <option value="">All Conditions</option>
-            {conditions.map(condition => (
-              <option key={condition} value={condition}>{condition}</option>
-            ))}
-          </select>
-          <div className="text-sm text-gray-600 flex items-center justify-end">
-            {filteredEntries.length} {filteredEntries.length === 1 ? 'entry' : 'entries'}
+          <div className="flex gap-1">
+            <button onClick={() => handleToggleDone(r)}
+              className={`p-1.5 rounded transition ${r.is_active ? 'text-gray-400 hover:text-green-600 hover:bg-green-50' : 'text-gray-400 hover:text-teal-600 hover:bg-teal-50'}`}
+              title={r.is_active ? 'Mark done' : 'Mark not done'}>
+              {r.is_active ? <Check className="w-4 h-4" /> : <RotateCcw className="w-4 h-4" />}
+            </button>
+            <button onClick={() => openEdit(r)} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition" title="Edit reminder"><Edit2 className="w-4 h-4" /></button>
+            <button onClick={() => handleDelete(r.id)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition" title="Delete reminder"><Trash2 className="w-4 h-4" /></button>
           </div>
         </div>
       </div>
+    );
+  };
 
-      {showUploadForm && (
+  return (
+    <div className="max-w-4xl mx-auto">
+      <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center gap-3">
+          <Bell className="w-8 h-8 text-teal-600" />
+          <h1 className="text-3xl font-bold text-gray-900">Reminders</h1>
+        </div>
+        <button onClick={openNew} className="flex items-center gap-2 bg-teal-600 text-white px-6 py-3 rounded-lg hover:bg-teal-700 transition">
+          <Plus className="w-5 h-5" /> New Reminder
+        </button>
+      </div>
+
+      <div className="flex gap-2 flex-wrap mb-6">
+        {[{ value: 'all' as const, label: 'All' }, ...REMINDER_TYPES].map(t => (
+          <button key={t.value} onClick={() => setFilter(t.value)}
+            className={`px-4 py-2 rounded-full text-sm font-medium transition ${filter === t.value ? 'bg-teal-600 text-white' : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50'}`}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {showForm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-2xl font-bold text-gray-900">
-                {editingEntry ? 'Edit Entry' : 'Add Photo/Video Entry'}
-              </h3>
-              <button onClick={() => {
-                setShowUploadForm(false);
-                setSelectedEntry(null);
-                setFormData({
-                  child_name: '',
-                  title: '',
-                  description: '',
-                  milestone_type: '',
-                  age_at_capture: '',
-                  linked_condition: '',
-                  tags: ''
-                });
-                setSelectedFile(null);
-                setPreviewUrl('');
-              }} className="text-gray-500 hover:text-gray-700">
-                <X className="w-6 h-6" />
-              </button>
+          <div className="bg-white rounded-xl p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold">{editing ? 'Edit Reminder' : 'New Reminder'}</h2>
+              <button onClick={closeForm} className="text-gray-500 hover:text-gray-700"><X className="w-6 h-6" /></button>
             </div>
-
-            <form onSubmit={editingEntry ? handleUpdate : handleUpload} className="space-y-4">
-              {!editingEntry && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Photo or Video *
-                  </label>
-                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                    {previewUrl ? (
-                      <div className="relative">
-                        {selectedFile?.type.startsWith('video/') ? (
-                          <video src={previewUrl} controls className="max-h-64 mx-auto rounded" />
-                        ) : (
-                          <img src={previewUrl} alt="Preview" className="max-h-64 mx-auto rounded" />
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSelectedFile(null);
-                            setPreviewUrl('');
-                          }}
-                          className="absolute top-2 right-2 bg-red-500 text-white p-2 rounded-full hover:bg-red-600"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
-                      </div>
-                    ) : (
-                      <label className="cursor-pointer">
-                        <Camera className="w-12 h-12 mx-auto text-gray-400 mb-2" />
-                        <span className="text-blue-600 hover:text-blue-700">Choose file</span>
-                        <input
-                          type="file"
-                          accept="image/*,video/*"
-                          onChange={handleFileSelect}
-                          className="hidden"
-                          required
-                        />
-                      </label>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Child's Name *
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.child_name}
-                    onChange={(e) => setFormData({ ...formData, child_name: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Age at Time *
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="e.g., 3 years 2 months"
-                    value={formData.age_at_capture}
-                    onChange={(e) => setFormData({ ...formData, age_at_capture: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    required
-                  />
-                </div>
-              </div>
-
+            <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Title *
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g., First time using fork independently"
-                  value={formData.title}
-                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  required
-                />
+                <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+                <select value={form.reminder_type} onChange={(e) => setForm({ ...form, reminder_type: e.target.value as ReminderType })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500">
+                  {REMINDER_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                </select>
               </div>
-
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Description
-                </label>
-                <textarea
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  rows={3}
-                />
+                <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+                <input type="text" required value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500"
+                  placeholder="e.g., Give evening medication" />
               </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Child Name (optional)</label>
+                <input type="text" value={form.child_name} onChange={(e) => setForm({ ...form, child_name: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500" />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Milestone Type
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="e.g., Motor Skills, Social"
-                    value={formData.milestone_type}
-                    onChange={(e) => setFormData({ ...formData, milestone_type: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  />
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
+                  <input type="date" required value={form.reminder_date} onChange={(e) => setForm({ ...form, reminder_date: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Related Condition
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="e.g., Autism, ADHD"
-                    value={formData.linked_condition}
-                    onChange={(e) => setFormData({ ...formData, linked_condition: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  />
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Time</label>
+                  <input type="time" required value={form.reminder_time} onChange={(e) => setForm({ ...form, reminder_time: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500" />
                 </div>
               </div>
-
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Tags (comma-separated)
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g., eating, independence, progress"
-                  value={formData.tags}
-                  onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                />
+                <label className="block text-sm font-medium text-gray-700 mb-1">Notes (optional)</label>
+                <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={3}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500" />
               </div>
-
-              <div className="flex gap-3 pt-4">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowUploadForm(false);
-                    setSelectedEntry(null);
-                    setFormData({
-                      child_name: '',
-                      title: '',
-                      description: '',
-                      milestone_type: '',
-                      age_at_capture: '',
-                      linked_condition: '',
-                      tags: ''
-                    });
-                    setSelectedFile(null);
-                    setPreviewUrl('');
-                  }}
-                  className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
-                >
-                  Cancel
+              <div className="flex gap-3">
+                <button type="submit" className="flex-1 bg-teal-600 text-white py-2 rounded-lg hover:bg-teal-700 transition">
+                  {editing ? 'Update Reminder' : 'Add Reminder'}
                 </button>
-                <button
-                  type="submit"
-                  disabled={uploading}
-                  className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:bg-gray-400"
-                >
-                  {uploading ? (editingEntry ? 'Updating...' : 'Uploading...') : (editingEntry ? 'Update Entry' : 'Add Entry')}
-                </button>
+                <button type="button" onClick={closeForm}
+                  className="flex-1 bg-gray-200 text-gray-700 py-2 rounded-lg hover:bg-gray-300 transition">Cancel</button>
               </div>
             </form>
           </div>
         </div>
       )}
 
-      {selectedEntry && (
-        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50" onClick={() => setSelectedEntry(null)}>
-          <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            <div className="relative">
-              <button
-                onClick={() => setSelectedEntry(null)}
-                className="absolute top-4 right-4 bg-white rounded-full p-2 shadow-lg hover:bg-gray-100 z-10"
-              >
-                <X className="w-6 h-6" />
-              </button>
-              {selectedEntry.media_type === 'video' ? (
-                <video src={selectedEntry.photo_url} controls className="w-full max-h-96 object-contain bg-black" />
-              ) : (
-                <img src={selectedEntry.photo_url} alt={selectedEntry.title} className="w-full max-h-96 object-contain bg-black" />
-              )}
-            </div>
-            <div className="p-6">
-              <div className="mb-4">
-                <h3 className="text-2xl font-bold text-gray-900 mb-2">{selectedEntry.title}</h3>
-                <div className="flex flex-wrap gap-2 text-sm text-gray-600">
-                  <span className="flex items-center gap-1">
-                    <Calendar className="w-4 h-4" />
-                    {new Date(selectedEntry.created_at).toLocaleDateString()}
-                  </span>
-                  <span>•</span>
-                  <span>{selectedEntry.child_name}</span>
-                  <span>•</span>
-                  <span>Age: {selectedEntry.age_at_capture}</span>
-                </div>
-              </div>
-
-              {selectedEntry.description && (
-                <p className="text-gray-700 mb-4">{selectedEntry.description}</p>
-              )}
-
-              <div className="grid grid-cols-2 gap-4 mb-4 text-sm">
-                {selectedEntry.milestone_type && (
-                  <div>
-                    <span className="font-semibold text-gray-700">Milestone: </span>
-                    <span className="text-gray-600">{selectedEntry.milestone_type}</span>
-                  </div>
-                )}
-                {selectedEntry.linked_condition && (
-                  <div>
-                    <span className="font-semibold text-gray-700">Condition: </span>
-                    <span className="text-gray-600">{selectedEntry.linked_condition}</span>
-                  </div>
-                )}
-              </div>
-
-              {selectedEntry.tags.length > 0 && (
-                <div className="mb-4">
-                  <div className="flex flex-wrap gap-2">
-                    {selectedEntry.tags.map((tag, idx) => (
-                      <span key={idx} className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
-                        <Tag className="w-3 h-3" />
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              <div className="flex gap-3">
-                <button
-                  onClick={() => handleEdit(selectedEntry)}
-                  className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-                >
-                  Edit Entry
-                </button>
-                <button
-                  onClick={() => handleDelete(selectedEntry)}
-                  className="flex-1 px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
-                >
-                  Delete Entry
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {filteredEntries.length === 0 ? (
-        <div className="text-center py-16">
-          <Camera className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-          <h3 className="text-xl font-semibold text-gray-700 mb-2">No Entries Yet</h3>
-          <p className="text-gray-600 mb-6">Start documenting your child's milestones and progress</p>
-          <button
-            onClick={() => setShowUploadForm(true)}
-            className="inline-flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition"
-          >
-            <Upload className="w-5 h-5" />
-            Add First Entry
-          </button>
+      {upcoming.length === 0 ? (
+        <div className="text-center py-12 bg-white rounded-xl shadow">
+          <Bell className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+          <p className="text-gray-600 font-medium">No upcoming reminders</p>
+          <p className="text-sm text-gray-500 mt-1">Add medication times, appointments, and therapy sessions so nothing slips.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredEntries.map(entry => (
-            <div
-              key={entry.id}
-              onClick={() => setSelectedEntry(entry)}
-              className="bg-white rounded-lg shadow-md overflow-hidden cursor-pointer hover:shadow-xl transition group"
-            >
-              <div className="relative aspect-video bg-gray-100">
-                {entry.media_type === 'video' ? (
-                  <video src={entry.photo_url} className="w-full h-full object-cover" />
-                ) : (
-                  <img src={entry.photo_url} alt={entry.title} className="w-full h-full object-cover group-hover:scale-105 transition" />
-                )}
-                {entry.media_type === 'video' && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-20">
-                    <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center">
-                      <div className="w-0 h-0 border-l-8 border-l-blue-600 border-y-6 border-y-transparent ml-1"></div>
-                    </div>
-                  </div>
-                )}
-              </div>
-              <div className="p-4">
-                <h3 className="font-semibold text-gray-900 mb-1 truncate">{entry.title}</h3>
-                <div className="text-sm text-gray-600 mb-2">
-                  <div>{entry.child_name} • {entry.age_at_capture}</div>
-                  <div className="text-xs text-gray-500">
-                    {new Date(entry.created_at).toLocaleDateString()}
-                  </div>
-                </div>
-                {entry.tags.length > 0 && (
-                  <div className="flex flex-wrap gap-1">
-                    {entry.tags.slice(0, 3).map((tag, idx) => (
-                      <span key={idx} className="px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs">
-                        {tag}
-                      </span>
-                    ))}
-                    {entry.tags.length > 3 && (
-                      <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs">
-                        +{entry.tags.length - 3}
-                      </span>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-          ))}
+        <div className="space-y-3">{upcoming.map(renderReminder)}</div>
+      )}
+
+      {done.length > 0 && (
+        <div className="mt-8">
+          <button onClick={() => setShowDone(!showDone)} className="text-sm font-medium text-gray-600 hover:text-gray-900 mb-3">
+            {showDone ? 'Hide' : 'Show'} completed ({done.length})
+          </button>
+          {showDone && <div className="space-y-3">{done.map(renderReminder)}</div>}
         </div>
       )}
     </div>
