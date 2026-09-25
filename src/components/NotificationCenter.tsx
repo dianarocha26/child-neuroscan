@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useLoadingState } from '../hooks/useLoadingState';
 import { logger } from '../lib/logger';
+import { PageHeader } from './PageHeader';
 
 type ReminderType = 'medication' | 'appointment' | 'therapy' | 'goal' | 'other';
 
@@ -144,7 +145,7 @@ export default function NotificationCenter() {
     const Icon = info.icon;
     return (
       <div key={r.id} className={`bg-white rounded-xl shadow p-4 border ${r.is_active && isOverdue(r) ? 'border-red-200' : 'border-gray-100'} ${!r.is_active ? 'opacity-60' : ''}`}>
-        <div className="flex items-start gap-4">
+        <div className="flex items-start gap-3">
           <div className={`p-2 rounded-lg ${info.color}`}><Icon className="w-5 h-5" /></div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
@@ -154,19 +155,19 @@ export default function NotificationCenter() {
             </div>
             {r.child_name && <p className="text-sm text-gray-600">{r.child_name}</p>}
             {r.description && <p className="text-sm text-gray-600 mt-1">{r.description}</p>}
-            <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
-              <span className="flex items-center gap-1"><Calendar className="w-4 h-4" />{formatDate(r.reminder_date)}</span>
-              <span className="flex items-center gap-1"><Clock className="w-4 h-4" />{formatTime(r.reminder_time)}</span>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-sm text-gray-500">
+              <span className="flex items-center gap-1 whitespace-nowrap"><Calendar className="w-4 h-4 flex-shrink-0" aria-hidden="true" />{formatDate(r.reminder_date)}</span>
+              <span className="flex items-center gap-1 whitespace-nowrap"><Clock className="w-4 h-4 flex-shrink-0" aria-hidden="true" />{formatTime(r.reminder_time)}</span>
             </div>
           </div>
-          <div className="flex gap-1">
+          <div className="flex flex-col sm:flex-row gap-0.5 sm:gap-1 -my-1 flex-shrink-0">
             <button onClick={() => handleToggleDone(r)}
-              className={`p-1.5 rounded transition ${r.is_active ? 'text-gray-400 hover:text-green-600 hover:bg-green-50' : 'text-gray-400 hover:text-teal-600 hover:bg-teal-50'}`}
-              title={r.is_active ? 'Mark done' : 'Mark not done'}>
+              className={`p-2.5 rounded transition ${r.is_active ? 'text-gray-400 hover:text-green-600 hover:bg-green-50' : 'text-gray-400 hover:text-teal-600 hover:bg-teal-50'}`}
+              title={r.is_active ? 'Mark done' : 'Mark not done'} aria-label={r.is_active ? 'Mark done' : 'Mark not done'}>
               {r.is_active ? <Check className="w-4 h-4" /> : <RotateCcw className="w-4 h-4" />}
             </button>
-            <button onClick={() => openEdit(r)} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition" title="Edit reminder"><Edit2 className="w-4 h-4" /></button>
-            <button onClick={() => handleDelete(r.id)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition" title="Delete reminder"><Trash2 className="w-4 h-4" /></button>
+            <button onClick={() => openEdit(r)} className="p-2.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition" title="Edit reminder" aria-label="Edit reminder"><Edit2 className="w-4 h-4" /></button>
+            <button onClick={() => handleDelete(r.id)} className="p-2.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition" title="Delete reminder" aria-label="Delete reminder"><Trash2 className="w-4 h-4" /></button>
           </div>
         </div>
       </div>
@@ -175,15 +176,13 @@ export default function NotificationCenter() {
 
   return (
     <div className="max-w-4xl mx-auto">
-      <div className="flex items-center justify-between mb-8">
-        <div className="flex items-center gap-3">
-          <Bell className="w-8 h-8 text-teal-600" />
-          <h1 className="text-3xl font-bold text-gray-900">Reminders</h1>
-        </div>
-        <button onClick={openNew} className="flex items-center gap-2 bg-teal-600 text-white px-6 py-3 rounded-lg hover:bg-teal-700 transition">
-          <Plus className="w-5 h-5" /> New Reminder
-        </button>
-      </div>
+      <PageHeader
+        icon={Bell}
+        tone="teal"
+        title="Reminders"
+        subtitle="Medications, appointments and therapy in one list"
+        action={{ label: 'New Reminder', icon: Plus, onClick: openNew }}
+      />
 
       <div className="flex gap-2 flex-wrap mb-6">
         {[{ value: 'all' as const, label: 'All' }, ...REMINDER_TYPES].map(t => (
@@ -195,11 +194,11 @@ export default function NotificationCenter() {
       </div>
 
       {showForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto">
+        <div className="modal-overlay">
+          <div className="modal-panel max-w-lg">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold">{editing ? 'Edit Reminder' : 'New Reminder'}</h2>
-              <button onClick={closeForm} className="text-gray-500 hover:text-gray-700"><X className="w-6 h-6" /></button>
+              <h2 className="text-xl sm:text-2xl font-bold">{editing ? 'Edit Reminder' : 'New Reminder'}</h2>
+              <button onClick={closeForm} type="button" aria-label="Close" className="p-2 -m-2 flex-shrink-0 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100"><X className="w-6 h-6" /></button>
             </div>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
@@ -220,7 +219,7 @@ export default function NotificationCenter() {
                 <input type="text" value={form.child_name} onChange={(e) => setForm({ ...form, child_name: e.target.value })}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500" />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
                   <input type="date" required value={form.reminder_date} onChange={(e) => setForm({ ...form, reminder_date: e.target.value })}
@@ -238,11 +237,11 @@ export default function NotificationCenter() {
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500" />
               </div>
               <div className="flex gap-3">
-                <button type="submit" className="flex-1 bg-teal-600 text-white py-2 rounded-lg hover:bg-teal-700 transition">
+                <button type="submit" className="flex-1 bg-teal-600 text-white py-2.5 rounded-lg hover:bg-teal-700 transition">
                   {editing ? 'Update Reminder' : 'Add Reminder'}
                 </button>
                 <button type="button" onClick={closeForm}
-                  className="flex-1 bg-gray-200 text-gray-700 py-2 rounded-lg hover:bg-gray-300 transition">Cancel</button>
+                  className="flex-1 bg-gray-200 text-gray-700 py-2.5 rounded-lg hover:bg-gray-300 transition">Cancel</button>
               </div>
             </form>
           </div>

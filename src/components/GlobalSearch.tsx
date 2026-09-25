@@ -1,12 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
-import { Search, X, FileText, Target, Pill, Camera, Calendar, TrendingUp, Users, Video } from 'lucide-react';
+import { Search, X, FileText, Target, Pill, Camera, Calendar, TrendingUp, Users, Video, type LucideIcon } from 'lucide-react';
 
 interface SearchResult {
   id: string;
   title: string;
   description: string;
   category: string;
-  icon: any;
+  icon: LucideIcon;
   action: () => void;
 }
 
@@ -117,7 +117,8 @@ export function GlobalSearch({ isOpen, onClose, onNavigate }: GlobalSearchProps)
     if (isOpen) {
       inputRef.current?.focus();
       setQuery('');
-      setResults([]);
+      // Start with suggestions rather than an empty "No results" state
+      setResults(allSearchableItems.slice(0, 8));
       setSelectedIndex(0);
     }
   }, [isOpen]);
@@ -156,7 +157,7 @@ export function GlobalSearch({ isOpen, onClose, onNavigate }: GlobalSearchProps)
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 backdrop-blur-sm pt-20 px-4"
+      className="fixed inset-0 z-[60] flex items-start justify-center bg-black/50 backdrop-blur-sm pt-4 sm:pt-20 px-3 sm:px-4"
       role="dialog"
       aria-modal="true"
       aria-label="Search dialog"
@@ -170,21 +171,21 @@ export function GlobalSearch({ isOpen, onClose, onNavigate }: GlobalSearchProps)
             value={query}
             onChange={e => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Search for features, tools, or help..."
-            className="flex-1 bg-transparent border-none outline-none text-lg text-gray-900 dark:text-white placeholder-gray-400"
+            placeholder="Search tools and help"
+            className="flex-1 min-w-0 bg-transparent border-none outline-none text-lg text-gray-900 dark:text-white placeholder-gray-400"
             aria-label="Search input"
             autoComplete="off"
           />
           <button
             onClick={onClose}
-            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition focus:ring-2 focus:ring-blue-500 focus:outline-none"
+            className="p-2.5 -mr-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition focus:ring-2 focus:ring-blue-500 focus:outline-none"
             aria-label="Close search"
           >
             <X className="w-5 h-5 text-gray-500" aria-hidden="true" />
           </button>
         </div>
 
-        <div className="max-h-96 overflow-y-auto">
+        <div className="max-h-[calc(100dvh-9rem)] sm:max-h-96 overflow-y-auto overscroll-contain">
           {results.length === 0 ? (
             <div className="p-8 text-center text-gray-500 dark:text-gray-400">
               <Search className="w-12 h-12 mx-auto mb-3 opacity-50" />
@@ -223,7 +224,7 @@ export function GlobalSearch({ isOpen, onClose, onNavigate }: GlobalSearchProps)
           )}
         </div>
 
-        <div className="p-3 bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 text-xs text-gray-600 dark:text-gray-400 flex items-center justify-between">
+        <div className="hidden sm:flex p-3 bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 text-xs text-gray-600 dark:text-gray-400 items-center justify-between">
           <div className="flex gap-4">
             <span><kbd className="px-2 py-1 bg-white dark:bg-gray-800 rounded border border-gray-300 dark:border-gray-600">↑↓</kbd> Navigate</span>
             <span><kbd className="px-2 py-1 bg-white dark:bg-gray-800 rounded border border-gray-300 dark:border-gray-600">Enter</kbd> Select</span>

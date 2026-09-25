@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Plus, Clock, Check, CreditCard as Edit2, Trash2, ArrowUp, ArrowDown, Save, X, Settings } from 'lucide-react';
+import { Calendar, Plus, Clock, Check, Edit2, Trash2, ArrowUp, ArrowDown, Save, X, Settings } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useLoadingState } from '../hooks/useLoadingState';
 import { logger } from '../lib/logger';
 import type { VisualSchedule, Activity, ActivityTemplate } from '../types/components';
+import { PageHeader } from './PageHeader';
 
 export default function VisualSchedule() {
   const { user } = useAuth();
@@ -361,23 +362,21 @@ export default function VisualSchedule() {
 
   return (
     <div className="max-w-7xl mx-auto">
-      <div className="flex items-center justify-between mb-8">
-        <div className="flex items-center gap-3">
-          <Calendar className="w-8 h-8 text-blue-600" />
-          <h1 className="text-3xl font-bold text-gray-900">Visual Schedules</h1>
-        </div>
-        <button
-          onClick={() => {
+      <PageHeader
+        icon={Calendar}
+        tone="blue"
+        title="Visual Schedules"
+        subtitle="Picture routines your child can follow step by step"
+        action={{
+          label: 'New Schedule',
+          icon: Plus,
+          onClick: () => {
             setEditingScheduleId(null);
             setScheduleForm({ child_name: '', schedule_name: '', schedule_type: 'daily' });
             setShowScheduleForm(true);
-          }}
-          className="flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition"
-        >
-          <Plus className="w-5 h-5" />
-          New Schedule
-        </button>
-      </div>
+          },
+        }}
+      />
 
       {showScheduleForm && (
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
@@ -424,7 +423,7 @@ export default function VisualSchedule() {
             </div>
 
             <div className="flex gap-3">
-              <button type="submit" className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition">
+              <button type="submit" className="flex-1 bg-blue-600 text-white py-2.5 rounded-lg hover:bg-blue-700 transition">
                 {editingScheduleId ? 'Save Changes' : 'Create Schedule'}
               </button>
               <button
@@ -433,7 +432,7 @@ export default function VisualSchedule() {
                   setShowScheduleForm(false);
                   setEditingScheduleId(null);
                 }}
-                className="flex-1 bg-gray-200 text-gray-700 py-2 rounded-lg hover:bg-gray-300 transition"
+                className="flex-1 bg-gray-200 text-gray-700 py-2.5 rounded-lg hover:bg-gray-300 transition"
               >
                 Cancel
               </button>
@@ -445,7 +444,7 @@ export default function VisualSchedule() {
       {schedules.length > 0 && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-1">
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
               <h3 className="font-bold text-gray-900 mb-4">Your Schedules</h3>
               <div className="space-y-2">
                 {schedules.map((schedule) => (
@@ -468,15 +467,15 @@ export default function VisualSchedule() {
                       <div className="flex gap-1 px-3 pb-3">
                         <button
                           onClick={() => handleEditSchedule(schedule)}
-                          className="flex-1 flex items-center justify-center gap-1 text-xs bg-white border border-blue-300 text-blue-700 py-1.5 rounded hover:bg-blue-50 transition"
+                          className="flex-1 flex items-center justify-center gap-1.5 h-9 text-sm font-medium bg-white border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 transition"
                         >
-                          <Edit2 className="w-3 h-3" /> Edit
+                          <Edit2 className="w-4 h-4" aria-hidden="true" /> Edit
                         </button>
                         <button
                           onClick={() => handleDeleteSchedule(schedule.id)}
-                          className="flex-1 flex items-center justify-center gap-1 text-xs bg-white border border-red-300 text-red-700 py-1.5 rounded hover:bg-red-50 transition"
+                          className="flex-1 flex items-center justify-center gap-1.5 h-9 text-sm font-medium bg-white border border-red-200 text-red-700 rounded-lg hover:bg-red-50 transition"
                         >
-                          <Trash2 className="w-3 h-3" /> Delete
+                          <Trash2 className="w-4 h-4" aria-hidden="true" /> Delete
                         </button>
                       </div>
                     )}
@@ -512,10 +511,10 @@ export default function VisualSchedule() {
 
           <div className="lg:col-span-2">
             {currentSchedule && (
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
                 <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
                   <div>
-                    <h2 className="text-2xl font-bold text-gray-900">{currentSchedule.schedule_name}</h2>
+                    <h2 className="text-xl sm:text-2xl font-bold text-gray-900">{currentSchedule.schedule_name}</h2>
                     <p className="text-gray-600">{currentSchedule.child_name}</p>
                   </div>
                   <div className="flex flex-wrap items-center gap-3">
@@ -609,13 +608,13 @@ export default function VisualSchedule() {
                         />
                       </div>
                       <div className="flex gap-2">
-                        <button type="submit" className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition">
+                        <button type="submit" className="flex-1 bg-blue-600 text-white py-2.5 rounded-lg hover:bg-blue-700 transition">
                           {editingActivity ? 'Save Changes' : 'Add Activity'}
                         </button>
                         <button
                           type="button"
                           onClick={handleCancelEdit}
-                          className="flex-1 bg-gray-200 text-gray-700 py-2 rounded-lg hover:bg-gray-300 transition"
+                          className="flex-1 bg-gray-200 text-gray-700 py-2.5 rounded-lg hover:bg-gray-300 transition"
                         >
                           Cancel
                         </button>
@@ -630,34 +629,38 @@ export default function VisualSchedule() {
                     return (
                       <div
                         key={activity.id}
-                        className={`flex items-center gap-3 p-4 rounded-lg border-2 transition ${
+                        className={`flex items-center gap-2 sm:gap-3 p-2.5 sm:p-4 rounded-lg border-2 transition ${
                           activity.is_completed
                             ? 'bg-green-50 border-green-200'
                             : 'bg-gray-50 border-gray-200 hover:border-blue-300'
                         }`}
                       >
-                        <div className="flex flex-col gap-1 flex-shrink-0">
+                        <div className="flex flex-col flex-shrink-0 -my-1">
                           <button
                             onClick={() => moveActivity(activity, 'up')}
                             disabled={index === 0}
-                            className="p-0.5 text-gray-400 hover:text-blue-600 disabled:opacity-30 disabled:cursor-not-allowed"
+                            className="p-1.5 rounded text-gray-500 hover:text-blue-600 hover:bg-blue-50 disabled:opacity-30 disabled:cursor-not-allowed"
                             title="Move up"
+                            aria-label="Move up"
                           >
                             <ArrowUp className="w-4 h-4" />
                           </button>
                           <button
                             onClick={() => moveActivity(activity, 'down')}
                             disabled={index === currentActivities.length - 1}
-                            className="p-0.5 text-gray-400 hover:text-blue-600 disabled:opacity-30 disabled:cursor-not-allowed"
+                            className="p-1.5 rounded text-gray-500 hover:text-blue-600 hover:bg-blue-50 disabled:opacity-30 disabled:cursor-not-allowed"
                             title="Move down"
+                            aria-label="Move down"
                           >
                             <ArrowDown className="w-4 h-4" />
                           </button>
                         </div>
 
                         <button
+                          type="button"
                           onClick={() => toggleActivityCompletion(activity.id, activity.is_completed)}
-                          className={`flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center transition ${
+                          aria-label={`Mark done: ${activity.activity_name}`}
+                          className={`flex-shrink-0 w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center transition ${
                             activity.is_completed
                               ? 'bg-green-600 text-white'
                               : 'bg-white border-2 border-gray-300 hover:border-blue-500'
@@ -671,7 +674,7 @@ export default function VisualSchedule() {
                         </button>
 
                         <div
-                          className="w-10 h-10 rounded flex-shrink-0"
+                          className="w-7 h-7 sm:w-10 sm:h-10 rounded flex-shrink-0"
                           style={{ backgroundColor: activity.icon_color }}
                         />
 
@@ -717,7 +720,7 @@ export default function VisualSchedule() {
                               {activity.activity_description && (
                                 <p className="text-sm text-gray-600">{activity.activity_description}</p>
                               )}
-                              <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
+                              <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-1 text-xs text-gray-500">
                                 {activity.start_time && (
                                   <span className="flex items-center gap-1">
                                     <Clock className="w-3 h-3" />
@@ -727,13 +730,13 @@ export default function VisualSchedule() {
                                 {activity.duration_minutes && (
                                   <span>{activity.duration_minutes} min</span>
                                 )}
-                                <span className="text-blue-600 italic">click to edit</span>
+                                <span className="hidden sm:inline text-blue-600 italic">click to edit</span>
                               </div>
                             </button>
                           )}
                         </div>
 
-                        <div className="flex items-center gap-1 flex-shrink-0">
+                        <div className="flex flex-col sm:flex-row items-center gap-1 flex-shrink-0">
                           {isQuickEditing ? (
                             <>
                               <button

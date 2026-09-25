@@ -30,7 +30,7 @@ export default function Toast({ message, type, onClose, duration = 3000 }: Toast
 
   return (
     <div
-      className={`fixed top-4 right-4 z-50 flex items-center gap-3 px-4 py-3 rounded-lg border shadow-lg ${bgColors[type]} animate-slide-in`}
+      className={`fixed top-4 right-4 z-[60] flex items-center gap-3 px-4 py-3 rounded-lg border shadow-lg ${bgColors[type]} animate-slide-in`}
       role="alert"
       aria-live="polite"
     >

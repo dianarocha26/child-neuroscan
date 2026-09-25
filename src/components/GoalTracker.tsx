@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Target, Plus, Calendar, Edit2, Trash2, X } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { logger } from '../lib/logger';
+import { PageHeader } from './PageHeader';
 
 interface Goal {
   id: string;
@@ -145,10 +146,10 @@ export default function GoalTracker() {
       setEditingGoal(null);
       resetGoalForm();
       loadGoals();
-    } catch (error: any) {
+    } catch (error: unknown) {
       logger.error('Error saving goal', error);
       console.error('Full error:', JSON.stringify(error, null, 2));
-      alert('Failed to save goal: ' + (error?.message || JSON.stringify(error)));
+      alert('Failed to save goal: ' + ((error as { message?: string } | null)?.message || JSON.stringify(error)));
     }
   };
 
@@ -172,7 +173,7 @@ export default function GoalTracker() {
       if (logError) throw logError;
 
       const newStatus = progressForm.value >= selectedGoal.target_value ? 'achieved' : 'in_progress';
-      const updateData: any = {
+      const updateData: Record<string, unknown> = {
         current_value: progressForm.value,
         status: newStatus
       };
@@ -295,23 +296,21 @@ export default function GoalTracker() {
   return (
     <div className="max-w-7xl mx-auto">
       <div className="mb-8">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h2 className="text-3xl font-bold text-gray-900 mb-2">Goal Tracker</h2>
-            <p className="text-gray-600">Set and track therapy goals for your child</p>
-          </div>
-          <button
-            onClick={() => {
+        <PageHeader
+          icon={Target}
+          tone="blue"
+          title="Goal Tracker"
+          subtitle="Set and track therapy goals for your child"
+          action={{
+            label: 'New Goal',
+            icon: Plus,
+            onClick: () => {
               setEditingGoal(null);
               resetGoalForm();
               setActiveModal("form");
-            }}
-            className="flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition"
-          >
-            <Plus className="w-5 h-5" />
-            New Goal
-          </button>
-        </div>
+            },
+          }}
+        />
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           <select
@@ -344,13 +343,13 @@ export default function GoalTracker() {
       </div>
 
       {activeModal === "form" && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6">
+        <div className="modal-overlay">
+          <div className="modal-panel max-w-2xl">
             <div className="flex justify-between items-center mb-6">
-              <h3 className="text-2xl font-bold text-gray-900">
+              <h3 className="text-xl sm:text-2xl font-bold text-gray-900">
                 {editingGoal ? 'Edit Goal' : 'Create New Goal'}
               </h3>
-              <button onClick={() => setActiveModal("none")} className="text-gray-500 hover:text-gray-700">
+              <button onClick={() => setActiveModal("none")} type="button" aria-label="Close" className="p-2 -m-2 flex-shrink-0 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100">
                 <X className="w-6 h-6" />
               </button>
             </div>
@@ -491,13 +490,13 @@ export default function GoalTracker() {
                 <button
                   type="button"
                   onClick={() => setActiveModal("none")}
-                  className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
+                  className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                  className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
                 >
                   {editingGoal ? 'Update Goal' : 'Create Goal'}
                 </button>
@@ -508,19 +507,19 @@ export default function GoalTracker() {
       )}
 
       {selectedGoal && activeModal === "detail" && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto p-6">
+        <div className="modal-overlay">
+          <div className="modal-panel max-w-3xl">
             <div className="flex justify-between items-start mb-6">
               <div className="flex-1">
                 <div className="flex items-center gap-3 mb-2">
-                  <h3 className="text-2xl font-bold text-gray-900">{selectedGoal.title}</h3>
+                  <h3 className="text-xl sm:text-2xl font-bold text-gray-900">{selectedGoal.title}</h3>
                   <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(selectedGoal.status)}`}>
                     {selectedGoal.status.replace('_', ' ')}
                   </span>
                 </div>
                 <div className="text-gray-600">{selectedGoal.child_name} • {selectedGoal.category}</div>
               </div>
-              <button onClick={() => { setSelectedGoal(null); setActiveModal("none"); }} className="text-gray-500 hover:text-gray-700">
+              <button onClick={() => { setSelectedGoal(null); setActiveModal("none"); }} type="button" aria-label="Close" className="p-2 -m-2 flex-shrink-0 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100">
                 <X className="w-6 h-6" />
               </button>
             </div>
@@ -642,17 +641,17 @@ export default function GoalTracker() {
               </div>
             </div>
 
-            <div className="flex gap-3">
+            <div className="flex flex-wrap gap-2 sm:gap-3">
               <button
                 onClick={() => openEditGoal(selectedGoal)}
-                className="flex-1 flex items-center justify-center gap-2 px-6 py-3 border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition"
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-3 border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition"
               >
                 <Edit2 className="w-4 h-4" />
                 Edit Goal
               </button>
               <button
                 onClick={() => handleDeleteGoal(selectedGoal.id)}
-                className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
               >
                 <Trash2 className="w-4 h-4" />
                 Delete
@@ -684,7 +683,7 @@ export default function GoalTracker() {
             <div
               key={goal.id}
               onClick={() => { setSelectedGoal(goal); setActiveModal("detail"); }}
-              className="bg-white rounded-lg shadow-md p-6 cursor-pointer hover:shadow-xl transition"
+              className="bg-white rounded-lg shadow-md p-4 sm:p-6 cursor-pointer hover:shadow-xl transition"
             >
               <div className="flex justify-between items-start mb-3">
                 <div className="flex-1">

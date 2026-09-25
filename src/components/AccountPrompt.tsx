@@ -1,4 +1,3 @@
-import React from 'react';
 import { UserPlus, Lock, TrendingUp, Shield, X } from 'lucide-react';
 
 interface AccountPromptProps {
@@ -27,13 +26,14 @@ export function AccountPrompt({ onCreateAccount, onLogin, onClose, context = 'sa
   const message = messages[context];
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-8 relative animate-fade-in">
+    <div className="modal-overlay" role="dialog" aria-modal="true">
+      <div className="modal-panel max-w-lg sm:p-8 animate-fade-in">
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition"
+          className="absolute top-2 right-2 p-2.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition"
+          aria-label="Close"
         >
-          <X className="w-6 h-6" />
+          <X className="w-6 h-6" aria-hidden="true" />
         </button>
 
         <div className="text-center mb-6">

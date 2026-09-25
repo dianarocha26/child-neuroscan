@@ -6,6 +6,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { useLoadingState } from '../hooks/useLoadingState';
 import { logger } from '../lib/logger';
 import type { CrisisPlan, CrisisContact, CalmingStrategy } from '../types/components';
+import { PageHeader } from './PageHeader';
 
 export default function CrisisPlanComponent() {
   const { user } = useAuth();
@@ -227,14 +228,14 @@ export default function CrisisPlanComponent() {
     } catch (error) { logger.error('Error deleting strategy:', error); alert('Failed to delete strategy'); }
   };
 
-  const addArrayField = (setter: any, field: string, currentArray: string[]) => {
-    setter((prev: any) => ({ ...prev, [field]: [...currentArray, ''] }));
+  const addArrayField = <T extends object>(setter: React.Dispatch<React.SetStateAction<T>>, field: string, currentArray: string[]) => {
+    setter((prev) => ({ ...prev, [field]: [...currentArray, ''] }));
   };
 
-  const updateArrayField = (setter: any, field: string, index: number, value: string, currentArray: string[]) => {
+  const updateArrayField = <T extends object>(setter: React.Dispatch<React.SetStateAction<T>>, field: string, index: number, value: string, currentArray: string[]) => {
     const newArray = [...currentArray];
     newArray[index] = value;
-    setter((prev: any) => ({ ...prev, [field]: newArray }));
+    setter((prev) => ({ ...prev, [field]: newArray }));
   };
 
   if (loading) {
@@ -247,16 +248,16 @@ export default function CrisisPlanComponent() {
 
   return (
     <div className="max-w-7xl mx-auto">
-      <div className="flex items-center justify-between mb-8">
-        <div className="flex items-center gap-3">
-          <AlertTriangle className="w-8 h-8 text-red-600" />
-          <h1 className="text-3xl font-bold text-gray-900">Crisis Plan</h1>
-        </div>
-      </div>
+      <PageHeader
+        icon={AlertTriangle}
+        tone="red"
+        title="Crisis Plan"
+        subtitle="Warning signs, calming steps and who to call, ready when you need them"
+      />
 
-      <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-8">
+      <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-6 sm:mb-8">
         <div className="flex items-start">
-          <Shield className="w-6 h-6 text-red-600 mr-3 mt-0.5" />
+          <Shield className="w-6 h-6 text-red-600 mr-3 mt-0.5 flex-shrink-0" aria-hidden="true" />
           <div>
             <h3 className="text-lg font-semibold text-red-900 mb-1">{t('Emergency Resources', 'Recursos de emergencia')}</h3>
             <p className="text-red-800 mb-2">
@@ -296,12 +297,12 @@ export default function CrisisPlanComponent() {
         </div>
       </div>
 
-      <div className="flex gap-2 mb-6 border-b border-gray-200">
+      <div className="flex gap-1 sm:gap-2 mb-6 border-b border-gray-200 overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
         {(['plan', 'contacts', 'strategies'] as const).map(tab => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`px-6 py-3 font-semibold transition ${activeTab === tab ? 'border-b-2 border-red-600 text-red-600' : 'text-gray-600 hover:text-gray-900'}`}
+            className={`px-3 sm:px-6 py-3 font-semibold whitespace-nowrap transition ${activeTab === tab ? 'border-b-2 border-red-600 text-red-600' : 'text-gray-600 hover:text-gray-900'}`}
           >
             {tab === 'plan' ? 'Crisis Plans' : tab === 'contacts' ? 'Emergency Contacts' : 'Calming Strategies'}
           </button>
@@ -312,17 +313,17 @@ export default function CrisisPlanComponent() {
       {activeTab === 'plan' && (
         <div>
           <div className="mb-6 flex justify-end">
-            <button onClick={openNewPlan} className="flex items-center gap-2 bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition">
+            <button onClick={openNewPlan} className="flex items-center gap-2 bg-red-600 text-white px-4 py-2.5 sm:px-6 sm:py-3 whitespace-nowrap rounded-lg hover:bg-red-700 transition">
               <Plus className="w-5 h-5" /> Create Crisis Plan
             </button>
           </div>
 
           {showPlanForm && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-              <div className="bg-white rounded-xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-2xl font-bold">{editingPlan ? 'Edit Crisis Plan' : 'New Crisis Plan'}</h2>
-                  <button onClick={() => { setShowPlanForm(false); setEditingPlan(null); }} className="text-gray-500 hover:text-gray-700"><X className="w-6 h-6" /></button>
+            <div className="modal-overlay">
+              <div className="modal-panel max-w-2xl">
+                <div className="flex items-start justify-between gap-2 mb-6">
+                  <h2 className="text-xl sm:text-2xl font-bold">{editingPlan ? 'Edit Crisis Plan' : 'New Crisis Plan'}</h2>
+                  <button onClick={() => { setShowPlanForm(false); setEditingPlan(null); }} type="button" aria-label="Close" className="p-2 -m-2 flex-shrink-0 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100"><X className="w-6 h-6" /></button>
                 </div>
                 <form onSubmit={handlePlanSubmit} className="space-y-6">
                   <div>
@@ -398,11 +399,11 @@ export default function CrisisPlanComponent() {
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500" rows={3} />
                   </div>
                   <div className="flex gap-3">
-                    <button type="submit" className="flex-1 bg-red-600 text-white py-2 rounded-lg hover:bg-red-700 transition">
+                    <button type="submit" className="flex-1 bg-red-600 text-white py-2.5 rounded-lg hover:bg-red-700 transition">
                       {editingPlan ? 'Update Crisis Plan' : 'Save Crisis Plan'}
                     </button>
                     <button type="button" onClick={() => { setShowPlanForm(false); setEditingPlan(null); }}
-                      className="flex-1 bg-gray-200 text-gray-700 py-2 rounded-lg hover:bg-gray-300 transition">Cancel</button>
+                      className="flex-1 bg-gray-200 text-gray-700 py-2.5 rounded-lg hover:bg-gray-300 transition">Cancel</button>
                   </div>
                 </form>
               </div>
@@ -411,14 +412,14 @@ export default function CrisisPlanComponent() {
 
           <div className="space-y-6">
             {crisisPlans.map((plan) => (
-              <div key={plan.id} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-2xl font-bold text-gray-900">{plan.child_name}'s Crisis Plan</h2>
+              <div key={plan.id} className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
+                <div className="flex items-start justify-between gap-2 mb-6">
+                  <h2 className="text-xl sm:text-2xl font-bold text-gray-900">{plan.child_name}'s Crisis Plan</h2>
                   <div className="flex gap-2">
-                    <button onClick={() => openEditPlan(plan)} className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition" title="Edit">
+                    <button onClick={() => openEditPlan(plan)} className="p-2.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition" title="Edit">
                       <Edit2 className="w-4 h-4" />
                     </button>
-                    <button onClick={() => handleDeletePlan(plan.id)} className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition" title="Delete">
+                    <button onClick={() => handleDeletePlan(plan.id)} className="p-2.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition" title="Delete">
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
@@ -477,17 +478,17 @@ export default function CrisisPlanComponent() {
       {activeTab === 'contacts' && (
         <div>
           <div className="mb-6 flex justify-end">
-            <button onClick={openNewContact} className="flex items-center gap-2 bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition">
+            <button onClick={openNewContact} className="flex items-center gap-2 bg-red-600 text-white px-4 py-2.5 sm:px-6 sm:py-3 whitespace-nowrap rounded-lg hover:bg-red-700 transition">
               <Plus className="w-5 h-5" /> Add Contact
             </button>
           </div>
 
           {showContactForm && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-              <div className="bg-white rounded-xl p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto">
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-2xl font-bold">{editingContact ? 'Edit Contact' : 'New Emergency Contact'}</h2>
-                  <button onClick={() => { setShowContactForm(false); setEditingContact(null); }} className="text-gray-500 hover:text-gray-700"><X className="w-6 h-6" /></button>
+            <div className="modal-overlay">
+              <div className="modal-panel max-w-lg">
+                <div className="flex items-start justify-between gap-2 mb-6">
+                  <h2 className="text-xl sm:text-2xl font-bold">{editingContact ? 'Edit Contact' : 'New Emergency Contact'}</h2>
+                  <button onClick={() => { setShowContactForm(false); setEditingContact(null); }} type="button" aria-label="Close" className="p-2 -m-2 flex-shrink-0 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100"><X className="w-6 h-6" /></button>
                 </div>
                 <form onSubmit={handleContactSubmit} className="space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -533,11 +534,11 @@ export default function CrisisPlanComponent() {
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500" rows={2} />
                   </div>
                   <div className="flex gap-3">
-                    <button type="submit" className="flex-1 bg-red-600 text-white py-2 rounded-lg hover:bg-red-700 transition">
+                    <button type="submit" className="flex-1 bg-red-600 text-white py-2.5 rounded-lg hover:bg-red-700 transition">
                       {editingContact ? 'Update Contact' : 'Save Contact'}
                     </button>
                     <button type="button" onClick={() => { setShowContactForm(false); setEditingContact(null); }}
-                      className="flex-1 bg-gray-200 text-gray-700 py-2 rounded-lg hover:bg-gray-300 transition">Cancel</button>
+                      className="flex-1 bg-gray-200 text-gray-700 py-2.5 rounded-lg hover:bg-gray-300 transition">Cancel</button>
                   </div>
                 </form>
               </div>
@@ -546,7 +547,7 @@ export default function CrisisPlanComponent() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {contacts.map((contact) => (
-              <div key={contact.id} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+              <div key={contact.id} className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
                 <div className="flex items-start justify-between mb-4">
                   <div>
                     <h3 className="text-xl font-bold text-gray-900">{contact.contact_name}</h3>
@@ -583,20 +584,20 @@ export default function CrisisPlanComponent() {
       {activeTab === 'strategies' && (
         <div>
           <div className="mb-6 flex justify-end">
-            <button onClick={openNewStrategy} className="flex items-center gap-2 bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition">
+            <button onClick={openNewStrategy} className="flex items-center gap-2 bg-red-600 text-white px-4 py-2.5 sm:px-6 sm:py-3 whitespace-nowrap rounded-lg hover:bg-red-700 transition">
               <Plus className="w-5 h-5" /> Add Strategy
             </button>
           </div>
 
           {showStrategyForm && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-              <div className="bg-white rounded-xl p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto">
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-2xl font-bold">{editingStrategy ? 'Edit Strategy' : 'New Calming Strategy'}</h2>
-                  <button onClick={() => { setShowStrategyForm(false); setEditingStrategy(null); }} className="text-gray-500 hover:text-gray-700"><X className="w-6 h-6" /></button>
+            <div className="modal-overlay">
+              <div className="modal-panel max-w-lg">
+                <div className="flex items-start justify-between gap-2 mb-6">
+                  <h2 className="text-xl sm:text-2xl font-bold">{editingStrategy ? 'Edit Strategy' : 'New Calming Strategy'}</h2>
+                  <button onClick={() => { setShowStrategyForm(false); setEditingStrategy(null); }} type="button" aria-label="Close" className="p-2 -m-2 flex-shrink-0 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100"><X className="w-6 h-6" /></button>
                 </div>
                 <form onSubmit={handleStrategySubmit} className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Child Name</label>
                       <input type="text" required value={strategyForm.child_name}
@@ -647,7 +648,7 @@ export default function CrisisPlanComponent() {
                     <button type="button" onClick={() => addArrayField(setStrategyForm, 'materials_needed', strategyForm.materials_needed)}
                       className="text-red-600 hover:text-red-700 text-sm font-semibold">{t('+ Add Item', '+ Agregar elemento')}</button>
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Effectiveness (1-5)</label>
                       <input type="number" min="1" max="5" value={strategyForm.effectiveness_rating}
@@ -662,11 +663,11 @@ export default function CrisisPlanComponent() {
                     </div>
                   </div>
                   <div className="flex gap-3">
-                    <button type="submit" className="flex-1 bg-red-600 text-white py-2 rounded-lg hover:bg-red-700 transition">
+                    <button type="submit" className="flex-1 bg-red-600 text-white py-2.5 rounded-lg hover:bg-red-700 transition">
                       {editingStrategy ? 'Update Strategy' : 'Save Strategy'}
                     </button>
                     <button type="button" onClick={() => { setShowStrategyForm(false); setEditingStrategy(null); }}
-                      className="flex-1 bg-gray-200 text-gray-700 py-2 rounded-lg hover:bg-gray-300 transition">Cancel</button>
+                      className="flex-1 bg-gray-200 text-gray-700 py-2.5 rounded-lg hover:bg-gray-300 transition">Cancel</button>
                   </div>
                 </form>
               </div>
@@ -675,7 +676,7 @@ export default function CrisisPlanComponent() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {strategies.map((strategy) => (
-              <div key={strategy.id} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+              <div key={strategy.id} className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
                 <div className="flex items-start justify-between mb-4">
                   <div>
                     <h3 className="text-xl font-bold text-gray-900">{strategy.strategy_name}</h3>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Calendar, Plus, ChevronLeft, FileText, Save, Trash2, Edit2,
+  Calendar, Plus, ArrowLeft, FileText, Save, Trash2, Edit2,
   AlertCircle, CheckCircle2, Clock, MapPin, User,
   ClipboardList, MessageSquare, FolderOpen, ListTodo,
   Download, X
@@ -9,6 +9,7 @@ import { supabase } from '../lib/supabase';
 import { useLanguage } from '../contexts/LanguageContext';
 import { logger } from '../lib/logger';
 import { localToday, toLocalDateString, toDateTimeLocalInput, fromDateTimeLocalInput } from '../lib/dates';
+import { PageHeader } from './PageHeader';
 
 interface AppointmentType {
   id: string;
@@ -328,7 +329,7 @@ export default function AppointmentPrep({ userId, onBack }: AppointmentPrepProps
     if (selectedAppointment) {
       const updated = {
         ...selectedAppointment,
-        [field]: (selectedAppointment[field] as any[]).filter((item: any) => item.id !== id)
+        [field]: (selectedAppointment[field] as { id?: string }[]).filter((item) => item.id !== id)
       };
       setSelectedAppointment(updated);
       updateAppointmentInList(updated);
@@ -412,7 +413,7 @@ export default function AppointmentPrep({ userId, onBack }: AppointmentPrepProps
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-[50vh] flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
       </div>
     );
@@ -420,18 +421,18 @@ export default function AppointmentPrep({ userId, onBack }: AppointmentPrepProps
 
   if (view === 'create') {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-teal-50 p-6">
-        <div className="max-w-3xl mx-auto">
+      <div className="min-h-[calc(100vh-3.5rem)] bg-gray-50">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 pt-2 sm:pt-4 pb-8">
           <button
             onClick={() => { setView(editingApt ? 'detail' : 'list'); setEditingApt(null); }}
-            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6 transition-colors"
+            className="no-print inline-flex items-center gap-1.5 -ml-2 px-2 min-h-[44px] rounded-lg text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors mb-2 sm:mb-4"
           >
-            <ChevronLeft className="w-5 h-5" />
+            <ArrowLeft className="w-4 h-4" aria-hidden="true" />
             {t('Back to Appointments', 'Volver a Citas')}
           </button>
 
-          <div className="bg-white rounded-xl shadow-lg p-8">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">
+          <div className="bg-white rounded-xl shadow-lg p-5 sm:p-8">
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-6">
               {editingApt ? t('Edit Appointment', 'Editar Cita') : t('Create New Appointment', 'Crear Nueva Cita')}
             </h2>
 
@@ -550,37 +551,27 @@ export default function AppointmentPrep({ userId, onBack }: AppointmentPrepProps
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-teal-50 p-6">
-      <div className="max-w-6xl mx-auto">
-        <div className="flex items-center justify-between mb-8">
-          <button
-            onClick={onBack}
-            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
-          >
-            <ChevronLeft className="w-5 h-5" />
-            {t('Back', 'Volver')}
-          </button>
-          <button
-            onClick={() => setView('create')}
-            className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
-          >
-            <Plus className="w-5 h-5" />
-            {t('New Appointment', 'Nueva Cita')}
-          </button>
-        </div>
+    <div className="min-h-[calc(100vh-3.5rem)] bg-gray-50">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-2 sm:pt-4 pb-8">
+        <button
+          onClick={onBack}
+          className="no-print inline-flex items-center gap-1.5 -ml-2 mb-2 sm:mb-4 px-2 min-h-[44px] rounded-lg text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors"
+        >
+          <ArrowLeft className="w-4 h-4" aria-hidden="true" />
+          {t('Back to Home', 'Volver al inicio')}
+        </button>
 
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">
-            {t('Appointment Preparation', 'Preparación de Citas')}
-          </h1>
-          <p className="text-lg text-gray-600">
-            {t('Organize your observations, questions, and documents for doctor visits',
-               'Organice sus observaciones, preguntas y documentos para visitas médicas')}
-          </p>
-        </div>
+        <PageHeader
+          icon={Calendar}
+          tone="blue"
+          title={t('Appointments', 'Citas')}
+          subtitle={t('Organize observations, questions, and documents for doctor visits',
+             'Organice observaciones, preguntas y documentos para visitas médicas')}
+          action={{ label: t('New Appointment', 'Nueva Cita'), icon: Plus, onClick: () => setView('create') }}
+        />
 
         {appointments.length === 0 ? (
-          <div className="bg-white rounded-xl shadow-lg p-12 text-center">
+          <div className="bg-white rounded-xl shadow-lg p-6 sm:p-12 text-center">
             <Calendar className="w-16 h-16 text-gray-400 mx-auto mb-4" />
             <h3 className="text-xl font-semibold text-gray-900 mb-2">
               {t('No appointments yet', 'Aún no hay citas')}
@@ -628,7 +619,7 @@ function AppointmentCard({ appointment, onClick }: { appointment: Appointment; o
       className="bg-white rounded-xl shadow-md hover:shadow-xl transition-shadow cursor-pointer overflow-hidden"
     >
       <div className={`h-2 ${isUpcoming ? 'bg-blue-600' : isPast ? 'bg-gray-400' : 'bg-green-600'}`}></div>
-      <div className="p-6">
+      <div className="p-5 sm:p-6">
         <div className="flex items-start justify-between mb-4">
           <div>
             <h3 className="text-lg font-semibold text-gray-900 mb-1">
@@ -698,17 +689,17 @@ function AppointmentDetail({
   const date = new Date(appointment.appointment_date);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-teal-50 p-6">
-      <div className="max-w-6xl mx-auto">
-        <div className="flex items-center justify-between mb-6">
+    <div className="min-h-[calc(100vh-3.5rem)] bg-gray-50">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-2 sm:pt-4 pb-8">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
           <button
             onClick={onBack}
-            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
+            className="no-print inline-flex items-center gap-1.5 -ml-2 px-2 min-h-[44px] rounded-lg text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors"
           >
-            <ChevronLeft className="w-5 h-5" />
+            <ArrowLeft className="w-4 h-4" aria-hidden="true" />
             {t('Back to Appointments', 'Volver a Citas')}
           </button>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
             <button
               onClick={() => onEditAppointment(appointment)}
               className="flex items-center gap-2 px-4 py-2 border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors"
@@ -733,13 +724,13 @@ function AppointmentDetail({
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-lg p-8 mb-6">
-          <div className="flex items-start justify-between mb-6">
+        <div className="bg-white rounded-xl shadow-lg p-5 sm:p-8 mb-6">
+          <div className="flex flex-wrap items-start justify-between gap-3 mb-6">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
                 {appointment.appointment_type?.name ?? t('Appointment', 'Cita')}
               </h1>
-              <p className="text-lg text-gray-600">{appointment.child_name}</p>
+              <p className="sm:text-lg text-gray-600">{appointment.child_name}</p>
             </div>
             {appointment.completed && (
               <span className="px-4 py-2 bg-green-100 text-green-700 rounded-full text-sm font-medium">
@@ -819,7 +810,7 @@ function AppointmentDetail({
             </div>
           </div>
 
-          <div className="p-8">
+          <div className="p-4 sm:p-8">
             {activeTab === 'overview' && (
               <OverviewTab appointment={appointment} />
             )}
@@ -858,11 +849,19 @@ function AppointmentDetail({
   );
 }
 
-function TabButton({ active, onClick, icon, label, count }: any) {
+interface TabButtonProps {
+  active: boolean;
+  onClick: () => void;
+  icon: React.ReactNode;
+  label: string;
+  count?: number;
+}
+
+function TabButton({ active, onClick, icon, label, count }: TabButtonProps) {
   return (
     <button
       onClick={onClick}
-      className={`flex items-center gap-2 px-6 py-4 font-medium transition-colors whitespace-nowrap ${
+      className={`flex items-center gap-2 px-4 sm:px-6 py-4 font-medium transition-colors whitespace-nowrap ${
         active
           ? 'text-blue-600 border-b-2 border-blue-600'
           : 'text-gray-600 hover:text-gray-900'
@@ -936,7 +935,13 @@ function OverviewTab({ appointment }: { appointment: Appointment }) {
   );
 }
 
-function StatCard({ icon, label, value }: any) {
+interface StatCardProps {
+  icon: React.ReactNode;
+  label: string;
+  value: number;
+}
+
+function StatCard({ icon, label, value }: StatCardProps) {
   return (
     <div className="p-4 bg-gray-50 rounded-lg">
       <div className="flex items-center gap-2 mb-2">
@@ -948,7 +953,13 @@ function StatCard({ icon, label, value }: any) {
   );
 }
 
-function ObservationsTab({ observations, onAdd, onDelete }: any) {
+interface ObservationsTabProps {
+  observations: Observation[];
+  onAdd: (item: Observation) => Promise<boolean>;
+  onDelete: (id: string) => void;
+}
+
+function ObservationsTab({ observations, onAdd, onDelete }: ObservationsTabProps) {
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState<Observation>({
     category: 'behavior',
@@ -991,7 +1002,7 @@ function ObservationsTab({ observations, onAdd, onDelete }: any) {
 
       {showForm && (
         <form onSubmit={handleSubmit} className="bg-gray-50 p-6 rounded-lg space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
               <select
@@ -1027,7 +1038,7 @@ function ObservationsTab({ observations, onAdd, onDelete }: any) {
               required
             />
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Frequency</label>
               <select
@@ -1102,7 +1113,13 @@ function ObservationsTab({ observations, onAdd, onDelete }: any) {
   );
 }
 
-function QuestionsTab({ questions, onAdd, onDelete }: any) {
+interface QuestionsTabProps {
+  questions: Question[];
+  onAdd: (item: Question) => Promise<boolean>;
+  onDelete: (id: string) => void;
+}
+
+function QuestionsTab({ questions, onAdd, onDelete }: QuestionsTabProps) {
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState<Question>({
     question: '',
@@ -1217,7 +1234,13 @@ function QuestionsTab({ questions, onAdd, onDelete }: any) {
   );
 }
 
-function DocumentsTab({ documents, onAdd, onDelete }: any) {
+interface DocumentsTabProps {
+  documents: Document[];
+  onAdd: (item: Document) => Promise<boolean>;
+  onDelete: (id: string) => void;
+}
+
+function DocumentsTab({ documents, onAdd, onDelete }: DocumentsTabProps) {
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState<Document>({
     document_type: 'medical_records',
@@ -1333,7 +1356,13 @@ function DocumentsTab({ documents, onAdd, onDelete }: any) {
   );
 }
 
-function FollowupTab({ followups, onAdd, onDelete }: any) {
+interface FollowupTabProps {
+  followups: Followup[];
+  onAdd: (item: Followup) => Promise<boolean>;
+  onDelete: (id: string) => void;
+}
+
+function FollowupTab({ followups, onAdd, onDelete }: FollowupTabProps) {
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState<Followup>({
     followup_item: '',

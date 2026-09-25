@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { TrendingUp, Calendar, FileText, ArrowLeft, Brain, AlertTriangle, CheckCircle } from 'lucide-react';
 import { getUserScreeningResults } from '../lib/database';
 import { useLanguage } from '../contexts/LanguageContext';
 import { logger } from '../lib/logger';
 import { ErrorState } from './ErrorState';
 import type { Condition, ScreeningResultWithCondition, RiskLevel } from '../types/database';
+import { PageHeader } from './PageHeader';
 
 interface ProgressDashboardProps {
   userId: string;
@@ -49,11 +50,11 @@ export default function ProgressDashboard({ userId, onGenerateReport, onBack }: 
   const getRiskColor = (risk: RiskLevel) => {
     switch (risk) {
       case 'low':
-        return 'text-green-600 bg-green-50 border-green-200';
+        return 'text-green-700 bg-green-50 border-green-200';
       case 'moderate':
-        return 'text-amber-600 bg-amber-50 border-amber-200';
+        return 'text-amber-700 bg-amber-50 border-amber-200';
       case 'high':
-        return 'text-red-600 bg-red-50 border-red-200';
+        return 'text-red-700 bg-red-50 border-red-200';
       default:
         return 'text-gray-600 bg-gray-50 border-gray-200';
     }
@@ -95,7 +96,7 @@ export default function ProgressDashboard({ userId, onGenerateReport, onBack }: 
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center min-h-[50vh]">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
       </div>
     );
@@ -106,29 +107,26 @@ export default function ProgressDashboard({ userId, onGenerateReport, onBack }: 
   }
 
   return (
-    <div className="max-w-6xl mx-auto p-6">
-      <div className="mb-8">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-2 sm:pt-4 pb-8">
+      <div className="mb-6 sm:mb-8">
         {onBack && (
           <button
             onClick={onBack}
-            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4"
+            className="no-print inline-flex items-center gap-1.5 -ml-2 mb-2 sm:mb-4 px-2 min-h-[44px] rounded-lg text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors"
           >
-            <ArrowLeft className="w-5 h-5" />
+            <ArrowLeft className="w-4 h-4" aria-hidden="true" />
             Back to Home
           </button>
         )}
 
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Progress Dashboard</h1>
-            <p className="text-gray-600">Track your child's screening history and development over time</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <TrendingUp className="w-8 h-8 text-blue-600" />
-          </div>
-        </div>
+        <PageHeader
+          icon={TrendingUp}
+          tone="blue"
+          title="Progress"
+          subtitle="Your child's screening history and development over time"
+        />
 
-        <div className="flex gap-2 overflow-x-auto pb-2">
+        <div className="flex gap-2 overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0">
           <button
             onClick={() => setSelectedCondition('all')}
             className={`px-4 py-2 rounded-lg whitespace-nowrap transition-colors ${
@@ -165,8 +163,8 @@ export default function ProgressDashboard({ userId, onGenerateReport, onBack }: 
         <div className="space-y-8">
           {Object.entries(childGroups).map(([childName, childResults]) => {
             return (
-              <div key={childName} className="bg-white rounded-xl shadow-lg p-6">
-                <h2 className="text-2xl font-bold text-gray-900 mb-6">{childName}</h2>
+              <div key={childName} className="bg-white rounded-xl shadow-lg p-4 sm:p-6">
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 sm:mb-6">{childName}</h2>
 
                 <div className="grid gap-4">
                   {childResults.map(result => {
@@ -179,38 +177,30 @@ export default function ProgressDashboard({ userId, onGenerateReport, onBack }: 
                     return (
                       <div
                         key={result.id}
-                        className="border border-gray-200 rounded-lg p-5 hover:shadow-md transition-shadow"
+                        className="border border-gray-200 rounded-lg p-4 sm:p-5 hover:shadow-md transition-shadow"
                       >
-                        <div className="flex items-start justify-between mb-4">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-3 mb-2">
-                              <span className="inline-block px-3 py-1.5 bg-teal-100 text-teal-700 rounded-full text-sm font-medium">
-                                {language === 'es' ? result.condition.name_es : result.condition.name_en}
-                              </span>
-                              <span className="text-gray-500 text-sm">
-                                Age: {Math.floor(result.child_age_months / 12)}y {result.child_age_months % 12}m
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-2 text-gray-600 text-sm">
-                              <Calendar className="w-4 h-4" />
-                              <span>{formatDate(result.created_at)}</span>
-                            </div>
+                        <div className="mb-4">
+                          <div className="flex items-start justify-between gap-3">
+                            <h4 className="font-semibold text-gray-900 leading-snug">
+                              {language === 'es' ? result.condition.name_es : result.condition.name_en}
+                            </h4>
+                            <span className={`inline-flex items-center gap-1.5 flex-shrink-0 whitespace-nowrap px-2.5 py-1 rounded-full border text-sm font-semibold ${getRiskColor(result.risk_level)}`}>
+                              <RiskIcon className="w-4 h-4" aria-hidden="true" />
+                              <span className="capitalize">{result.risk_level}</span> risk
+                            </span>
                           </div>
-
-                          <div className="flex items-center gap-3">
+                          <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-gray-600">
+                            <span>Age {Math.floor(result.child_age_months / 12)}y {result.child_age_months % 12}m</span>
+                            <span className="flex items-center gap-1 whitespace-nowrap">
+                              <Calendar className="w-4 h-4" aria-hidden="true" />
+                              {formatDate(result.created_at)}
+                            </span>
                             {result.has_red_flags && (
-                              <div className="flex items-center gap-1 bg-red-100 text-red-700 px-3 py-1 rounded-full text-xs font-medium">
-                                <AlertTriangle className="w-3 h-3" />
+                              <span className="inline-flex items-center gap-1 bg-red-100 text-red-700 px-2 py-0.5 rounded-full text-xs font-medium">
+                                <AlertTriangle className="w-3 h-3" aria-hidden="true" />
                                 Urgent
-                              </div>
+                              </span>
                             )}
-                            <div className={`flex items-center gap-2 px-4 py-2 rounded-lg border ${getRiskColor(result.risk_level)}`}>
-                              <RiskIcon className="w-5 h-5" />
-                              <div className="text-right">
-                                <div className="text-xs uppercase font-medium opacity-75">Risk</div>
-                                <div className="font-bold capitalize">{result.risk_level}</div>
-                              </div>
-                            </div>
                           </div>
                         </div>
 
@@ -236,7 +226,7 @@ export default function ProgressDashboard({ userId, onGenerateReport, onBack }: 
                           <div className="mb-4">
                             <div className="text-sm font-medium text-gray-700 mb-2">Domain Breakdown</div>
                             <div className="grid grid-cols-2 gap-2">
-                              {Object.values(result.domain_scores).slice(0, 4).map((domain: any) => (
+                              {Object.values(result.domain_scores).slice(0, 4).map((domain) => (
                                 <div key={domain.domain_id} className="bg-white border border-gray-200 rounded p-2">
                                   <div className="text-xs text-gray-600 capitalize mb-1">
                                     {domain.domain_code.replace('_', ' ')}
@@ -270,22 +260,22 @@ export default function ProgressDashboard({ userId, onGenerateReport, onBack }: 
                       <TrendingUp className="w-5 h-5" />
                       Progress Summary
                     </h3>
-                    <div className="grid grid-cols-3 gap-4 text-center">
+                    <div className="grid grid-cols-3 gap-2 sm:gap-4 text-center">
                       <div>
-                        <div className="text-3xl font-bold text-teal-700">{childResults.length}</div>
-                        <div className="text-sm text-teal-600 font-medium">Total Screenings</div>
+                        <div className="text-2xl sm:text-3xl font-bold text-teal-700">{childResults.length}</div>
+                        <div className="text-xs sm:text-sm text-teal-600 font-medium">Total Screenings</div>
                       </div>
                       <div>
-                        <div className="text-3xl font-bold text-teal-700 capitalize">
+                        <div className="text-2xl sm:text-3xl font-bold text-teal-700 capitalize">
                           {childResults[0].risk_level}
                         </div>
-                        <div className="text-sm text-teal-600 font-medium">Latest Risk</div>
+                        <div className="text-xs sm:text-sm text-teal-600 font-medium">Latest Risk</div>
                       </div>
                       <div>
-                        <div className="text-3xl font-bold text-teal-700">
+                        <div className="text-2xl sm:text-3xl font-bold text-teal-700">
                           {Math.round((Date.now() - new Date(childResults[childResults.length - 1].created_at).getTime()) / (1000 * 60 * 60 * 24))}
                         </div>
-                        <div className="text-sm text-teal-600 font-medium">Days Tracking</div>
+                        <div className="text-xs sm:text-sm text-teal-600 font-medium">Days Tracking</div>
                       </div>
                     </div>
                   </div>

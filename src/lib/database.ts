@@ -64,7 +64,7 @@ export async function getQuestionsForCondition(conditionId: string): Promise<Que
 }
 
 export async function calculateScreeningScore(
-  conditionId: string,
+  _conditionId: string,
   responses: Record<string, boolean>,
   questions: Question[],
   childAgeMonths: number

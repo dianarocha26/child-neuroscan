@@ -147,15 +147,15 @@ export function Results({
     }
     acc[categoryId].recommendations.push(rec);
     return acc;
-  }, {} as Record<string, { category: any; recommendations: Recommendation[] }>);
+  }, {} as Record<string, { category: Recommendation['category']; recommendations: Recommendation[] }>);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-teal-50 via-white to-blue-50 px-4 py-8">
+    <div className="min-h-[calc(100vh-3.5rem)] bg-gradient-to-br from-teal-50 via-white to-blue-50 px-4 py-4 sm:py-8">
       <div className="max-w-4xl mx-auto">
         <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
-          <div className="bg-teal-600 px-8 py-6">
+          <div className="bg-teal-600 px-5 py-5 sm:px-8 sm:py-6">
             <div className="flex items-center gap-3 text-white">
-              <Brain className="w-8 h-8" />
+              <Brain className="w-8 h-8 flex-shrink-0" aria-hidden="true" />
               <div>
                 <h1 className="text-2xl font-bold">{translations.results[language]}</h1>
                 <p className="text-teal-100">
@@ -165,12 +165,12 @@ export function Results({
             </div>
           </div>
 
-          <div className="p-8 space-y-6">
-            <div className={`${config.bg} ${config.border} border-2 rounded-xl p-6`}>
-              <div className="flex items-start gap-4">
+          <div className="p-4 sm:p-8 space-y-6">
+            <div className={`${config.bg} ${config.border} border-2 rounded-xl p-4 sm:p-6`}>
+              <div className="flex items-start gap-3 sm:gap-4">
                 <Icon className={`w-8 h-8 ${config.text} flex-shrink-0`} />
                 <div className="flex-1">
-                  <h2 className={`text-2xl font-bold ${config.text} mb-2`}>
+                  <h2 className={`text-xl sm:text-2xl font-bold ${config.text} mb-2`}>
                     {language === 'es' ? config.title.es : config.title.en}
                   </h2>
                   <p className={`${config.text} leading-relaxed mb-3`}>
@@ -193,7 +193,7 @@ export function Results({
             </div>
 
             {hasRedFlags && (
-              <div className="bg-red-50 border-2 border-red-200 rounded-xl p-6">
+              <div className="bg-red-50 border-2 border-red-200 rounded-xl p-4 sm:p-6">
                 <div className="flex items-start gap-3">
                   <AlertTriangle className="w-6 h-6 text-red-600 flex-shrink-0" />
                   <div>
@@ -212,7 +212,7 @@ export function Results({
             )}
 
             {topDomains.length > 0 && (
-              <div className="bg-gray-50 rounded-xl p-6">
+              <div className="bg-gray-50 rounded-xl p-4 sm:p-6">
                 <h3 className="text-lg font-bold text-gray-900 mb-4">
                   {translations.functionalDomains[language]}
                 </h3>
@@ -268,8 +268,8 @@ export function Results({
             )}
 
             {!loading && recommendations.length > 0 && (
-              <div className="bg-gradient-to-br from-blue-50 to-teal-50 rounded-xl p-6">
-                <h3 className="text-2xl font-bold text-gray-900 mb-2">
+              <div className="bg-gradient-to-br from-blue-50 to-teal-50 rounded-xl p-4 sm:p-6">
+                <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">
                   {t('Personalized Recommendations', 'Recomendaciones Personalizadas')}
                 </h3>
                 <p className="text-gray-700 mb-6">
@@ -284,10 +284,10 @@ export function Results({
                     <div key={category?.id || 'other'} className="bg-white rounded-lg overflow-hidden shadow-sm">
                       <button
                         onClick={() => toggleCategory(category?.id || 'other')}
-                        className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
+                        className="w-full px-4 sm:px-6 py-4 flex items-center justify-between gap-2 hover:bg-gray-50 transition-colors"
                       >
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-teal-100 rounded-lg flex items-center justify-center">
+                          <div className="w-10 h-10 flex-shrink-0 bg-teal-100 rounded-lg flex items-center justify-center">
                             <Brain className="w-5 h-5 text-teal-600" />
                           </div>
                           <div className="text-left">
@@ -307,16 +307,16 @@ export function Results({
                       </button>
 
                       {expandedCategories.has(category?.id || 'other') && (
-                        <div className="px-6 pb-6 space-y-4">
+                        <div className="px-4 pb-4 sm:px-6 sm:pb-6 space-y-4">
                           {catRecs.map((rec) => (
                             <div key={rec.id} className="border-l-4 border-teal-500 pl-4 py-2">
-                              <div className="flex items-start gap-2 mb-2">
+                              <div className="flex flex-col items-start gap-1.5 mb-2">
                                 {rec.priority === 1 && (
-                                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 whitespace-nowrap">
                                     {t('High Priority', 'Alta Prioridad')}
                                   </span>
                                 )}
-                                <h5 className="font-semibold text-gray-900 flex-1">
+                                <h5 className="font-semibold text-gray-900">
                                   {language === 'es' ? rec.title_es : rec.title_en}
                                 </h5>
                               </div>
@@ -333,7 +333,7 @@ export function Results({
               </div>
             )}
 
-            <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-6">
+            <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 sm:p-6">
               <h3 className="font-bold text-yellow-900 mb-2">
                 {translations.disclaimer[language]}
               </h3>
@@ -343,7 +343,7 @@ export function Results({
             </div>
 
             {isGuest && (
-              <div className="bg-gradient-to-r from-teal-50 to-blue-50 rounded-xl p-6 border-2 border-teal-200">
+              <div className="bg-gradient-to-r from-teal-50 to-blue-50 rounded-xl p-4 sm:p-6 border-2 border-teal-200">
                 <div className="flex items-start gap-4">
                   <Save className="w-6 h-6 text-teal-600 flex-shrink-0 mt-1" />
                   <div className="flex-1">
@@ -367,11 +367,11 @@ export function Results({
               </div>
             )}
 
-            <div className="flex gap-3">
+            <div className="flex flex-col sm:flex-row gap-3">
               {onViewDashboard && !isGuest && (
                 <button
                   onClick={onViewDashboard}
-                  className="flex-1 flex items-center justify-center gap-2 px-6 py-4 bg-blue-600 text-white rounded-xl font-semibold text-lg hover:bg-blue-700 transition-colors"
+                  className="flex-1 flex items-center justify-center gap-2 px-6 py-3.5 sm:py-4 bg-blue-600 text-white rounded-xl font-semibold sm:text-lg hover:bg-blue-700 transition-colors"
                 >
                   <TrendingUp className="w-5 h-5" />
                   {t('View Progress', 'Ver Progreso')}
@@ -379,7 +379,7 @@ export function Results({
               )}
               <button
                 onClick={onStartNew}
-                className={`${onViewDashboard && !isGuest ? 'flex-1' : 'w-full'} flex items-center justify-center gap-2 px-6 py-4 bg-teal-600 text-white rounded-xl font-semibold text-lg hover:bg-teal-700 transition-colors`}
+                className={`${onViewDashboard && !isGuest ? 'flex-1' : 'w-full'} flex items-center justify-center gap-2 px-6 py-3.5 sm:py-4 bg-teal-600 text-white rounded-xl font-semibold sm:text-lg hover:bg-teal-700 transition-colors`}
               >
                 <Home className="w-5 h-5" />
                 {translations.startNewScreening[language]}

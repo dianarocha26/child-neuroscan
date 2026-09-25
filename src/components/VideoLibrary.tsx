@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { Play, Search, Filter, Clock, CheckCircle, BookmarkPlus, X, Tag, Users, ArrowLeft } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Play, Search, Filter, Clock, CheckCircle, Tag, ArrowLeft } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useLanguage } from '../contexts/LanguageContext';
 import { logger } from '../lib/logger';
+import { PageHeader } from './PageHeader';
 
 interface Video {
   id: string;
@@ -208,13 +209,13 @@ export default function VideoLibrary({ userId, onBack }: VideoLibraryProps) {
 
   if (selectedVideo) {
     return (
-      <div className="min-h-screen bg-gray-50 p-6">
-        <div className="max-w-6xl mx-auto">
+      <div className="min-h-[calc(100vh-3.5rem)] bg-gray-50">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-2 sm:pt-4 pb-8">
           <button
             onClick={() => setSelectedVideo(null)}
-            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6 transition-colors"
+            className="no-print inline-flex items-center gap-1.5 -ml-2 px-2 min-h-[44px] rounded-lg text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors mb-2 sm:mb-4"
           >
-            <X className="w-5 h-5" />
+            <ArrowLeft className="w-4 h-4" aria-hidden="true" />
             {t('Back to Library', 'Volver a la Biblioteca')}
           </button>
 
@@ -228,13 +229,13 @@ export default function VideoLibrary({ userId, onBack }: VideoLibraryProps) {
               ></iframe>
             </div>
 
-            <div className="p-8">
-              <div className="flex items-start justify-between gap-4 mb-4">
-                <div className="flex-1">
-                  <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            <div className="p-4 sm:p-8">
+              <div className="flex flex-wrap items-start justify-between gap-4 mb-4">
+                <div className="flex-1 min-w-[12rem]">
+                  <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
                     {selectedVideo.title}
                   </h1>
-                  <div className="flex items-center gap-4 text-sm text-gray-600">
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-600">
                     <span className="flex items-center gap-1">
                       <Clock className="w-4 h-4" />
                       {formatDuration(selectedVideo.duration)}
@@ -295,25 +296,25 @@ export default function VideoLibrary({ userId, onBack }: VideoLibraryProps) {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-6">
-      <div className="max-w-7xl mx-auto">
-        <div className="mb-8">
+    <div className="min-h-[calc(100vh-3.5rem)] bg-gray-50">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-2 sm:pt-4 pb-8">
+        <div>
           {onBack && (
             <button
               onClick={onBack}
-              className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4 transition-colors"
+              className="no-print inline-flex items-center gap-1.5 -ml-2 mb-2 sm:mb-4 px-2 min-h-[44px] rounded-lg text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors"
             >
-              <ArrowLeft className="w-5 h-5" />
-              {t('Back', 'Volver')}
+              <ArrowLeft className="w-4 h-4" aria-hidden="true" />
+              {t('Back to Home', 'Volver al inicio')}
             </button>
           )}
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">
-            {t('Video Library', 'Biblioteca de Videos')}
-          </h1>
-          <p className="text-lg text-gray-600">
-            {t('Educational videos, therapy techniques, and parent resources',
+          <PageHeader
+            icon={Play}
+            tone="purple"
+            title={t('Video Library', 'Biblioteca de Videos')}
+            subtitle={t('Educational videos, therapy techniques, and parent resources',
                'Videos educativos, técnicas de terapia y recursos para padres')}
-          </p>
+          />
         </div>
 
         <div className="mb-6 space-y-4">
@@ -338,7 +339,7 @@ export default function VideoLibrary({ userId, onBack }: VideoLibraryProps) {
           </div>
 
           {showFilters && (
-            <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm space-y-4">
+            <div className="bg-white p-4 sm:p-6 rounded-lg border border-gray-200 shadow-sm space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -431,11 +432,18 @@ export default function VideoLibrary({ userId, onBack }: VideoLibraryProps) {
                 onClick={() => handleVideoClick(video)}
               >
                 <div className="relative aspect-video bg-gray-200">
-                  <img
-                    src={video.thumbnail_url}
-                    alt={video.title}
-                    className="w-full h-full object-cover"
-                  />
+                  {video.thumbnail_url ? (
+                    <img
+                      src={video.thumbnail_url}
+                      alt=""
+                      loading="lazy"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-100 to-purple-100" aria-hidden="true">
+                      <Play className="w-10 h-10 text-blue-400" />
+                    </div>
+                  )}
                   <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all flex items-center justify-center">
                     <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity transform scale-90 group-hover:scale-100">
                       <Play className="w-8 h-8 text-blue-600 ml-1" />

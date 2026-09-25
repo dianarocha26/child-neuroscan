@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { Search, MapPin, Phone, Mail, Globe, Star, Heart, Bookmark, CheckCircle, Filter, X, ExternalLink, ArrowLeft } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Search, MapPin, Phone, Mail, Globe, Star, Heart, Bookmark, CheckCircle, Filter, ExternalLink, ArrowLeft } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useLanguage } from '../contexts/LanguageContext';
 import { logger } from '../lib/logger';
+import { PageHeader } from './PageHeader';
 
 interface TherapyResource {
   id: string;
@@ -208,29 +209,29 @@ export default function ResourceFinder({ userId, initialCondition, onBack }: Res
   };
 
   return (
-    <div className="max-w-7xl mx-auto p-6">
-      <div className="mb-8">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-2 sm:pt-4 pb-8">
+      <div>
         {onBack && (
           <button
             onClick={onBack}
-            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4 transition-colors"
+            className="no-print inline-flex items-center gap-1.5 -ml-2 mb-2 sm:mb-4 px-2 min-h-[44px] rounded-lg text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors"
           >
-            <ArrowLeft className="w-5 h-5" />
-            {t('Back', 'Volver')}
+            <ArrowLeft className="w-4 h-4" aria-hidden="true" />
+            {t('Back to Home', 'Volver al inicio')}
           </button>
         )}
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">
-          {t('Therapy Resource Finder', 'Buscador de Recursos Terapéuticos')}
-        </h1>
-        <p className="text-gray-600">
-          {t('Find therapists, clinics, and support services for your child',
+        <PageHeader
+          icon={MapPin}
+          tone="teal"
+          title={t('Therapy Resources', 'Recursos Terapéuticos')}
+          subtitle={t('Find therapists, clinics, and support services for your child',
              'Encuentre terapeutas, clínicas y servicios de apoyo para su hijo')}
-        </p>
+        />
       </div>
 
       <div className="mb-6 space-y-4">
-        <div className="flex gap-3">
-          <div className="flex-1 relative">
+        <div className="flex flex-wrap gap-2 sm:gap-3">
+          <div className="w-full sm:w-auto sm:flex-1 relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
             <input
               type="text"
@@ -242,7 +243,7 @@ export default function ResourceFinder({ userId, initialCondition, onBack }: Res
           </div>
           <button
             onClick={() => setShowFilters(!showFilters)}
-            className={`px-4 py-3 rounded-lg font-medium transition-colors flex items-center gap-2 ${
+            className={`flex-1 sm:flex-none justify-center px-4 py-3 rounded-lg font-medium transition-colors flex items-center gap-2 ${
               showFilters ? 'bg-teal-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
           >
@@ -251,7 +252,7 @@ export default function ResourceFinder({ userId, initialCondition, onBack }: Res
           </button>
           <button
             onClick={() => setShowSavedOnly(!showSavedOnly)}
-            className={`px-4 py-3 rounded-lg font-medium transition-colors flex items-center gap-2 ${
+            className={`flex-1 sm:flex-none justify-center px-4 py-3 rounded-lg font-medium transition-colors flex items-center gap-2 ${
               showSavedOnly ? 'bg-pink-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
           >
@@ -366,7 +367,7 @@ export default function ResourceFinder({ userId, initialCondition, onBack }: Res
             return (
               <div
                 key={resource.id}
-                className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow"
+                className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6 hover:shadow-md transition-shadow"
               >
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex-1">
@@ -459,7 +460,7 @@ export default function ResourceFinder({ userId, initialCondition, onBack }: Res
                     </div>
                   )}
 
-                  {resource.website && (
+                  {resource.website && /^https?:\/\//i.test(resource.website) && (
                     <div className="flex items-center gap-2 text-gray-600">
                       <Globe className="w-4 h-4" />
                       <a

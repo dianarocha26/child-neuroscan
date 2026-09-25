@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Camera, Upload, X, Filter, Search, Calendar, Tag } from 'lucide-react';
-import { useLanguage } from '../contexts/LanguageContext';
+import { Camera, Upload, X, Search, Calendar, Tag } from 'lucide-react';
 import { useLoadingState } from '../hooks/useLoadingState';
 import { supabase } from '../lib/supabase';
 import { logger } from '../lib/logger';
+import { PageHeader } from './PageHeader';
 
 interface PhotoEntry {
   id: string;
@@ -21,7 +21,6 @@ interface PhotoEntry {
 }
 
 export default function PhotoJournal() {
-  const { t } = useLanguage();
   const [entries, setEntries] = useState<PhotoEntry[]>([]);
   const [filteredEntries, setFilteredEntries] = useState<PhotoEntry[]>([]);
   const { loading, setLoading } = useLoadingState();
@@ -308,19 +307,13 @@ export default function PhotoJournal() {
   return (
     <div className="max-w-7xl mx-auto">
       <div className="mb-8">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h2 className="text-3xl font-bold text-gray-900 mb-2">Photo Journal</h2>
-            <p className="text-gray-600">Document your child's progress with photos and videos</p>
-          </div>
-          <button
-            onClick={openAddForm}
-            className="flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition"
-          >
-            <Upload className="w-5 h-5" />
-            Add Entry
-          </button>
-        </div>
+        <PageHeader
+          icon={Camera}
+          tone="blue"
+          title="Photo Journal"
+          subtitle="Document your child's progress with photos and videos"
+          action={{ label: 'Add Entry', icon: Upload, onClick: openAddForm }}
+        />
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           <div className="relative">
@@ -350,13 +343,13 @@ export default function PhotoJournal() {
       </div>
 
       {showUploadForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6">
+        <div className="modal-overlay">
+          <div className="modal-panel max-w-2xl">
             <div className="flex justify-between items-center mb-6">
-              <h3 className="text-2xl font-bold text-gray-900">
+              <h3 className="text-xl sm:text-2xl font-bold text-gray-900">
                 {editingEntry ? 'Edit Entry' : 'Add Photo/Video Entry'}
               </h3>
-              <button onClick={closeForm} className="text-gray-500 hover:text-gray-700">
+              <button onClick={closeForm} type="button" aria-label="Close" className="p-2 -m-2 flex-shrink-0 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100">
                 <X className="w-6 h-6" />
               </button>
             </div>
@@ -367,7 +360,7 @@ export default function PhotoJournal() {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Photo or Video *
                   </label>
-                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 sm:p-6 text-center">
                     {previewUrl ? (
                       <div className="relative">
                         {selectedFile?.type.startsWith('video/') ? (
@@ -382,19 +375,22 @@ export default function PhotoJournal() {
                             setPreviewUrl('');
                           }}
                           className="absolute top-2 right-2 bg-red-500 text-white p-2 rounded-full hover:bg-red-600"
+                          aria-label="Remove file"
                         >
                           <X className="w-4 h-4" />
                         </button>
                       </div>
                     ) : (
-                      <label className="cursor-pointer">
-                        <Camera className="w-12 h-12 mx-auto text-gray-400 mb-2" />
+                      <label className="relative block cursor-pointer py-2 rounded-lg focus-within:ring-2 focus-within:ring-blue-500">
+                        <Camera className="w-12 h-12 mx-auto text-gray-400 mb-2" aria-hidden="true" />
                         <span className="text-blue-600 hover:text-blue-700">Choose file</span>
+                        {/* Visually hidden but still focusable, so the browser can
+                            point at it when "required" validation fails */}
                         <input
                           type="file"
                           accept="image/*,video/*"
                           onChange={handleFileSelect}
-                          className="hidden"
+                          className="sr-only"
                           required
                         />
                       </label>
@@ -501,14 +497,14 @@ export default function PhotoJournal() {
                 <button
                   type="button"
                   onClick={closeForm}
-                  className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
+                  className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={uploading}
-                  className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:bg-gray-400"
+                  className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:bg-gray-400"
                 >
                   {uploading ? (editingEntry ? 'Updating...' : 'Uploading...') : (editingEntry ? 'Update Entry' : 'Add Entry')}
                 </button>
@@ -519,12 +515,13 @@ export default function PhotoJournal() {
       )}
 
       {selectedEntry && (
-        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50" onClick={() => setSelectedEntry(null)}>
-          <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-overlay bg-black/75" onClick={() => setSelectedEntry(null)}>
+          <div className="modal-panel max-w-4xl p-0 sm:p-0" onClick={(e) => e.stopPropagation()}>
             <div className="relative">
               <button
                 onClick={() => setSelectedEntry(null)}
-                className="absolute top-4 right-4 bg-white rounded-full p-2 shadow-lg hover:bg-gray-100 z-10"
+                className="absolute top-3 right-3 bg-white rounded-full p-2.5 shadow-lg hover:bg-gray-100 z-10"
+                aria-label="Close"
               >
                 <X className="w-6 h-6" />
               </button>
@@ -534,9 +531,9 @@ export default function PhotoJournal() {
                 <img src={selectedEntry.display_url} alt={selectedEntry.title} className="w-full max-h-96 object-contain bg-black" />
               )}
             </div>
-            <div className="p-6">
+            <div className="p-4 sm:p-6 pb-[max(1rem,env(safe-area-inset-bottom))]">
               <div className="mb-4">
-                <h3 className="text-2xl font-bold text-gray-900 mb-2">{selectedEntry.title}</h3>
+                <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">{selectedEntry.title}</h3>
                 <div className="flex flex-wrap gap-2 text-sm text-gray-600">
                   <span className="flex items-center gap-1">
                     <Calendar className="w-4 h-4" />
@@ -584,13 +581,13 @@ export default function PhotoJournal() {
               <div className="flex gap-3">
                 <button
                   onClick={() => handleEdit(selectedEntry)}
-                  className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                  className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
                 >
                   Edit Entry
                 </button>
                 <button
                   onClick={() => handleDelete(selectedEntry)}
-                  className="flex-1 px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
+                  className="flex-1 px-4 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
                 >
                   Delete Entry
                 </button>

@@ -8,6 +8,7 @@ import { logger } from '../lib/logger';
 import { SuccessIllustration, LoadingIllustration, EmptyStateIllustration } from './FriendlyIllustrations';
 import { exportToJSON, exportToCSV, generateHTMLReport, printReport, downloadHTMLReport, type ExportData, type ReportContent } from '../lib/exportUtils';
 import type { ReportTemplate, GeneratedReport, ReportData, BehaviorEntry, MedicationLog, Goal, Appointment } from '../types/components';
+import { PageHeader } from './PageHeader';
 
 // Matches the behavior type saved by BehaviorDiary; every other type counts as challenging.
 const POSITIVE_BEHAVIOR_TYPE = 'Positive Behavior';
@@ -406,19 +407,18 @@ export default function ComprehensiveReportGenerator() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center min-h-[50vh]">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 py-8 px-4">
-      <div className="absolute inset-0 bg-grid-pattern opacity-5 pointer-events-none"></div>
+    <div>
 
       {showSuccess && (
-        <div className="fixed top-4 right-4 z-50 animate-in">
-          <div className="bg-white rounded-2xl shadow-soft-lg border-2 border-emerald-200 p-6 max-w-sm">
+        <div className="fixed top-4 right-4 left-4 sm:left-auto z-[70] animate-in">
+          <div className="bg-white rounded-2xl shadow-soft-lg border-2 border-emerald-200 p-4 sm:p-6 sm:max-w-sm">
             <div className="flex items-start gap-4">
               <div className="w-16 h-16 flex-shrink-0">
                 <SuccessIllustration />
@@ -436,25 +436,20 @@ export default function ComprehensiveReportGenerator() {
       )}
 
       <div className="max-w-6xl mx-auto relative">
-        <div className="mb-10 animate-in">
-          <div className="inline-flex items-center justify-center mb-4 w-16 h-16 bg-gradient-to-br from-slate-500 to-slate-700 rounded-2xl shadow-glow-md">
-            <FileText className="w-9 h-9 text-white" />
-          </div>
-          <h1 className="text-5xl font-bold bg-gradient-to-r from-gray-900 via-slate-800 to-gray-900 bg-clip-text text-transparent mb-3 leading-tight">
-            {t('Report Generator', 'Generador de Informes')}
-          </h1>
-          <p className="text-xl text-gray-600 font-medium">
-            {t('Create comprehensive reports for medical, educational, and therapy purposes', 'Crea informes completos para fines médicos, educativos y terapéuticos')}
-          </p>
-        </div>
+        <PageHeader
+          icon={FileText}
+          tone="slate"
+          title={t('Reports', 'Informes')}
+          subtitle={t('Printable summaries for doctors, schools, and therapists', 'Resúmenes imprimibles para médicos, escuelas y terapeutas')}
+        />
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-in-delay-1">
-          <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-soft-lg p-8 border border-white/60">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 animate-in-delay-1">
+          <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-soft-lg p-5 sm:p-8 border border-white/60">
             <div className="flex items-center gap-3 mb-6">
-              <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-700 rounded-xl flex items-center justify-center shadow-lg">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 flex-shrink-0 bg-gradient-to-br from-blue-500 to-blue-700 rounded-xl flex items-center justify-center shadow-lg">
                 <FileText className="w-6 h-6 text-white" />
               </div>
-              <h2 className="text-2xl font-bold text-gray-900">Create New Report</h2>
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Create New Report</h2>
             </div>
 
             <div className="space-y-4">
@@ -467,10 +462,10 @@ export default function ComprehensiveReportGenerator() {
                     <button
                       key={template.id}
                       onClick={() => setSelectedTemplate(template)}
-                      className={`w-full text-left p-5 rounded-xl border-2 transition-all duration-200 ${
+                      className={`w-full text-left p-4 sm:p-5 rounded-xl border-2 transition-all duration-200 ${
                         selectedTemplate?.id === template.id
-                          ? 'border-blue-600 bg-gradient-to-br from-blue-50 to-blue-100 shadow-lg scale-105'
-                          : 'border-gray-200 hover:border-blue-300 hover:bg-blue-50/50 hover:scale-102'
+                          ? 'border-blue-600 bg-gradient-to-br from-blue-50 to-blue-100 shadow-lg'
+                          : 'border-gray-200 hover:border-blue-300 hover:bg-blue-50/50'
                       }`}
                     >
                       <p className="font-bold text-gray-900 text-lg">{template.name}</p>
@@ -495,7 +490,7 @@ export default function ComprehensiveReportGenerator() {
                     />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Start Date
@@ -568,19 +563,20 @@ export default function ComprehensiveReportGenerator() {
                   )}
               </>
             )}
+            </div>
           </div>
 
-          <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-soft-lg p-8 border border-white/60">
+          <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-soft-lg p-5 sm:p-8 border border-white/60">
             <div className="flex items-center gap-3 mb-6">
-              <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-emerald-700 rounded-xl flex items-center justify-center shadow-lg">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 flex-shrink-0 bg-gradient-to-br from-emerald-500 to-emerald-700 rounded-xl flex items-center justify-center shadow-lg">
                 <FileText className="w-6 h-6 text-white" />
               </div>
-              <h2 className="text-2xl font-bold text-gray-900">{t('Generated Reports', 'Informes Generados')}</h2>
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-900">{t('Generated Reports', 'Informes Generados')}</h2>
             </div>
 
             {generatedReports.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12">
-                <div className="w-56 h-56 mb-4">
+                <div className="w-40 h-40 sm:w-56 sm:h-56 mb-4">
                   <EmptyStateIllustration />
                 </div>
                 <p className="text-gray-600 text-center text-lg font-medium">
@@ -706,7 +702,7 @@ export default function ComprehensiveReportGenerator() {
           </div>
         </div>
 
-        <div className="mt-8 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 border-2 border-blue-100 rounded-2xl p-8 shadow-soft-lg backdrop-blur-sm">
+        <div className="mt-8 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 border-2 border-blue-100 rounded-2xl p-5 sm:p-8 shadow-soft-lg backdrop-blur-sm">
           <div className="flex items-center gap-3 mb-4">
             <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
               <FileText className="w-5 h-5 text-white" />
@@ -733,7 +729,6 @@ export default function ComprehensiveReportGenerator() {
           </div>
         </div>
       </div>
-    </div>
     </div>
   );
 }

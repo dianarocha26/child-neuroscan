@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Star, Trophy, Gift, Plus, Target, Edit2, Trash2, X, Info, ChevronDown, ChevronUp, ThumbsUp, ThumbsDown } from 'lucide-react';
+import { Star, Trophy, Plus, Target, Edit2, Trash2, X, Info, ChevronDown, ChevronUp, ThumbsUp, ThumbsDown } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useLoadingState } from '../hooks/useLoadingState';
 import { logger } from '../lib/logger';
 import type { RewardChart, RewardEntry, RewardGoal } from '../types/components';
+import { PageHeader } from './PageHeader';
 
 export default function RewardsSystem() {
   const { user } = useAuth();
@@ -174,15 +175,13 @@ export default function RewardsSystem() {
 
   return (
     <div className="max-w-7xl mx-auto">
-      <div className="flex items-center justify-between mb-8">
-        <div className="flex items-center gap-3">
-          <Trophy className="w-8 h-8 text-yellow-600" />
-          <h1 className="text-3xl font-bold text-gray-900">Rewards System</h1>
-        </div>
-        <button onClick={openNewChart} className="flex items-center gap-2 bg-yellow-600 text-white px-6 py-3 rounded-lg hover:bg-yellow-700 transition">
-          <Plus className="w-5 h-5" /> New Chart
-        </button>
-      </div>
+      <PageHeader
+        icon={Trophy}
+        tone="amber"
+        title="Rewards System"
+        subtitle="Star charts that motivate everyday goals"
+        action={{ label: 'New Chart', icon: Plus, onClick: openNewChart }}
+      />
 
       {/* Parent explainer */}
       <div className="mb-8 bg-blue-50 border border-blue-200 rounded-xl">
@@ -208,14 +207,14 @@ export default function RewardsSystem() {
 
       {/* Chart Form Modal */}
       {showChartForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl p-6 max-w-lg w-full">
+        <div className="modal-overlay">
+          <div className="modal-panel max-w-lg">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold">{editingChart ? 'Edit Chart' : 'Create Reward Chart'}</h2>
-              <button onClick={() => { setShowChartForm(false); setEditingChart(null); }} className="text-gray-500 hover:text-gray-700"><X className="w-6 h-6" /></button>
+              <h2 className="text-xl sm:text-2xl font-bold">{editingChart ? 'Edit Chart' : 'Create Reward Chart'}</h2>
+              <button onClick={() => { setShowChartForm(false); setEditingChart(null); }} type="button" aria-label="Close" className="p-2 -m-2 flex-shrink-0 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100"><X className="w-6 h-6" /></button>
             </div>
             <form onSubmit={handleChartSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Child Name</label>
                   <input type="text" required value={chartForm.child_name} onChange={(e) => setChartForm({ ...chartForm, child_name: e.target.value })}
@@ -235,11 +234,11 @@ export default function RewardsSystem() {
                   placeholder="e.g., Completing morning tasks without reminders" />
               </div>
               <div className="flex gap-3">
-                <button type="submit" className="flex-1 bg-yellow-600 text-white py-2 rounded-lg hover:bg-yellow-700 transition">
+                <button type="submit" className="flex-1 bg-amber-700 text-white py-2.5 rounded-lg font-medium hover:bg-amber-800 transition">
                   {editingChart ? 'Update Chart' : 'Create Chart'}
                 </button>
                 <button type="button" onClick={() => { setShowChartForm(false); setEditingChart(null); }}
-                  className="flex-1 bg-gray-200 text-gray-700 py-2 rounded-lg hover:bg-gray-300 transition">Cancel</button>
+                  className="flex-1 bg-gray-200 text-gray-700 py-2.5 rounded-lg hover:bg-gray-300 transition">Cancel</button>
               </div>
             </form>
           </div>
@@ -253,17 +252,17 @@ export default function RewardsSystem() {
           const chartEntries = entries[chart.id] || [];
 
           return (
-            <div key={chart.id} className="bg-gradient-to-br from-yellow-50 to-orange-50 rounded-xl shadow-lg border-2 border-yellow-200 p-6">
-              <div className="flex items-start justify-between mb-6">
-                <div className="flex-1">
-                  <h2 className="text-2xl font-bold text-gray-900">{chart.chart_name}</h2>
+            <div key={chart.id} className="bg-gradient-to-br from-yellow-50 to-orange-50 rounded-xl shadow-lg border-2 border-yellow-200 p-4 sm:p-6">
+              <div className="flex items-start justify-between gap-2 mb-6">
+                <div className="flex-1 min-w-0">
+                  <h2 className="text-xl sm:text-2xl font-bold text-gray-900">{chart.chart_name}</h2>
                   <p className="text-gray-600">{chart.child_name}</p>
                   <p className="text-sm text-gray-600 mt-1">{chart.target_behavior}</p>
                   <div className="flex items-center gap-2 mt-3">
                     <span className="text-xs text-gray-600">Is this chart working?</span>
                     <button
                       onClick={() => handleRateChart(chart, true)}
-                      className={`p-1.5 rounded transition ${chart.is_effective === true ? 'bg-green-100 text-green-700' : 'text-gray-400 hover:text-green-600 hover:bg-green-50'}`}
+                      className={`p-2 rounded transition ${chart.is_effective === true ? 'bg-green-100 text-green-700' : 'text-gray-400 hover:text-green-600 hover:bg-green-50'}`}
                       title="Working"
                       aria-pressed={chart.is_effective === true}
                     >
@@ -271,7 +270,7 @@ export default function RewardsSystem() {
                     </button>
                     <button
                       onClick={() => handleRateChart(chart, false)}
-                      className={`p-1.5 rounded transition ${chart.is_effective === false ? 'bg-red-100 text-red-700' : 'text-gray-400 hover:text-red-600 hover:bg-red-50'}`}
+                      className={`p-2 rounded transition ${chart.is_effective === false ? 'bg-red-100 text-red-700' : 'text-gray-400 hover:text-red-600 hover:bg-red-50'}`}
                       title="Not working"
                       aria-pressed={chart.is_effective === false}
                     >
@@ -279,16 +278,16 @@ export default function RewardsSystem() {
                     </button>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 ml-4">
+                <div className="flex items-start gap-1 sm:gap-2 flex-shrink-0">
                   <div className="text-center">
                     <div className="bg-yellow-600 text-white rounded-full w-14 h-14 flex items-center justify-center">
                       <span className="text-xl font-bold">{totalStars}</span>
                     </div>
                     <p className="text-xs text-gray-600 mt-1">Stars</p>
                   </div>
-                  <div className="flex flex-col gap-1">
-                    <button onClick={() => openEditChart(chart)} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition" title="Edit chart"><Edit2 className="w-4 h-4" /></button>
-                    <button onClick={() => handleDeleteChart(chart.id)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition" title="Delete chart"><Trash2 className="w-4 h-4" /></button>
+                  <div className="flex flex-col">
+                    <button onClick={() => openEditChart(chart)} className="p-2.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition" title="Edit chart"><Edit2 className="w-4 h-4" /></button>
+                    <button onClick={() => handleDeleteChart(chart.id)} className="p-2.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition" title="Delete chart"><Trash2 className="w-4 h-4" /></button>
                   </div>
                 </div>
               </div>
@@ -297,22 +296,22 @@ export default function RewardsSystem() {
               <div className="mb-6">
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="font-bold text-gray-800">Goals</h3>
-                  <button onClick={() => openNewGoal(chart.id)} className="text-yellow-600 hover:text-yellow-700 text-sm font-semibold">+ Add Goal</button>
+                  <button onClick={() => openNewGoal(chart.id)} className="text-amber-700 hover:text-amber-800 hover:bg-amber-100 text-sm font-semibold px-2 py-1.5 -mr-2 rounded-lg whitespace-nowrap">+ Add Goal</button>
                 </div>
 
                 {showGoalForm === chart.id && (
                   <form onSubmit={(e) => handleGoalSubmit(e, chart.id)} className="mb-4 space-y-3 bg-white p-4 rounded-lg">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-sm font-semibold text-gray-700">{editingGoal ? 'Edit Goal' : 'New Goal'}</span>
-                      <button type="button" onClick={() => { setShowGoalForm(null); setEditingGoal(null); }} className="text-gray-400 hover:text-gray-600"><X className="w-4 h-4" /></button>
+                      <button type="button" onClick={() => { setShowGoalForm(null); setEditingGoal(null); }} aria-label="Close" className="p-2 -m-2 rounded-lg text-gray-400 hover:text-gray-600"><X className="w-4 h-4" /></button>
                     </div>
                     <input type="text" required value={goalForm.goal_name} onChange={(e) => setGoalForm({ ...goalForm, goal_name: e.target.value })}
                       placeholder="Goal name" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 text-sm" />
                     <input type="number" required min="1" value={goalForm.stars_required} onChange={(e) => setGoalForm({ ...goalForm, stars_required: parseInt(e.target.value) })}
                       placeholder="Stars required" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 text-sm" />
                     <div className="flex gap-2">
-                      <button type="submit" className="flex-1 bg-yellow-600 text-white py-2 rounded-lg text-sm">{editingGoal ? 'Update' : 'Add'}</button>
-                      <button type="button" onClick={() => { setShowGoalForm(null); setEditingGoal(null); }} className="flex-1 bg-gray-200 text-gray-700 py-2 rounded-lg text-sm">Cancel</button>
+                      <button type="submit" className="flex-1 bg-amber-700 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-amber-800">{editingGoal ? 'Update' : 'Add'}</button>
+                      <button type="button" onClick={() => { setShowGoalForm(null); setEditingGoal(null); }} className="flex-1 bg-gray-200 text-gray-700 py-2.5 rounded-lg text-sm">Cancel</button>
                     </div>
                   </form>
                 )}
@@ -330,8 +329,8 @@ export default function RewardsSystem() {
                           </div>
                           <div className="flex items-center gap-1">
                             <span className="text-xs text-gray-600">{totalStars}/{goal.stars_required} ⭐</span>
-                            <button onClick={() => openEditGoal(goal, chart.id)} className="p-1 text-gray-400 hover:text-blue-600 rounded transition"><Edit2 className="w-3 h-3" /></button>
-                            <button onClick={() => handleDeleteGoal(goal.id)} className="p-1 text-gray-400 hover:text-red-600 rounded transition"><Trash2 className="w-3 h-3" /></button>
+                            <button onClick={() => openEditGoal(goal, chart.id)} className="p-2 text-gray-400 hover:text-blue-600 rounded transition"><Edit2 className="w-3 h-3" /></button>
+                            <button onClick={() => handleDeleteGoal(goal.id)} className="p-2 text-gray-400 hover:text-red-600 rounded transition"><Trash2 className="w-3 h-3" /></button>
                           </div>
                         </div>
                         <div className="w-full bg-gray-200 rounded-full h-2">
@@ -348,22 +347,22 @@ export default function RewardsSystem() {
               <div className="mb-6">
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="font-bold text-gray-800">Recent Stars</h3>
-                  <button onClick={() => openNewEntry(chart.id)} className="text-yellow-600 hover:text-yellow-700 text-sm font-semibold">+ Add Star</button>
+                  <button onClick={() => openNewEntry(chart.id)} className="text-amber-700 hover:text-amber-800 hover:bg-amber-100 text-sm font-semibold px-2 py-1.5 -mr-2 rounded-lg whitespace-nowrap">+ Add Star</button>
                 </div>
 
                 {showEntryForm === chart.id && (
                   <form onSubmit={(e) => handleEntrySubmit(e, chart.id)} className="mb-4 space-y-3 bg-white p-4 rounded-lg">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-sm font-semibold text-gray-700">{editingEntry ? 'Edit Star' : 'New Star'}</span>
-                      <button type="button" onClick={() => { setShowEntryForm(null); setEditingEntry(null); }} className="text-gray-400 hover:text-gray-600"><X className="w-4 h-4" /></button>
+                      <button type="button" onClick={() => { setShowEntryForm(null); setEditingEntry(null); }} aria-label="Close" className="p-2 -m-2 rounded-lg text-gray-400 hover:text-gray-600"><X className="w-4 h-4" /></button>
                     </div>
                     <input type="number" required min="1" value={entryForm.stars_earned} onChange={(e) => setEntryForm({ ...entryForm, stars_earned: parseInt(e.target.value) })}
                       placeholder="Stars earned" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 text-sm" />
                     <input type="text" value={entryForm.notes} onChange={(e) => setEntryForm({ ...entryForm, notes: e.target.value })}
                       placeholder="Notes (optional)" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 text-sm" />
                     <div className="flex gap-2">
-                      <button type="submit" className="flex-1 bg-yellow-600 text-white py-2 rounded-lg text-sm">{editingEntry ? 'Update' : 'Add'}</button>
-                      <button type="button" onClick={() => { setShowEntryForm(null); setEditingEntry(null); }} className="flex-1 bg-gray-200 text-gray-700 py-2 rounded-lg text-sm">Cancel</button>
+                      <button type="submit" className="flex-1 bg-amber-700 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-amber-800">{editingEntry ? 'Update' : 'Add'}</button>
+                      <button type="button" onClick={() => { setShowEntryForm(null); setEditingEntry(null); }} className="flex-1 bg-gray-200 text-gray-700 py-2.5 rounded-lg text-sm">Cancel</button>
                     </div>
                   </form>
                 )}
@@ -377,8 +376,8 @@ export default function RewardsSystem() {
                       </div>
                       <div className="flex items-center gap-1">
                         <span className="text-xs font-semibold text-yellow-600">+{entry.stars_earned}⭐</span>
-                        <button onClick={() => openEditEntry(entry, chart.id)} className="p-1 text-gray-400 hover:text-blue-600 rounded transition"><Edit2 className="w-3 h-3" /></button>
-                        <button onClick={() => handleDeleteEntry(entry.id)} className="p-1 text-gray-400 hover:text-red-600 rounded transition"><Trash2 className="w-3 h-3" /></button>
+                        <button onClick={() => openEditEntry(entry, chart.id)} className="p-2 text-gray-400 hover:text-blue-600 rounded transition"><Edit2 className="w-3 h-3" /></button>
+                        <button onClick={() => handleDeleteEntry(entry.id)} className="p-2 text-gray-400 hover:text-red-600 rounded transition"><Trash2 className="w-3 h-3" /></button>
                       </div>
                     </div>
                   ))}

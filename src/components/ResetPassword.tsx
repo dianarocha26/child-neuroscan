@@ -47,7 +47,7 @@ export function ResetPassword({ onComplete }: ResetPasswordProps) {
           <div className="inline-flex items-center justify-center w-16 h-16 bg-teal-100 rounded-full mb-4">
             <KeyRound className="w-8 h-8 text-teal-600" />
           </div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Choose a New Password</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Choose a New Password</h1>
           <p className="text-gray-600">At least 8 characters, with upper and lower case letters and a number</p>
         </div>
 
