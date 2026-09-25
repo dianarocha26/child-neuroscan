@@ -69,6 +69,32 @@ export default function PhotoJournal() {
     try { return decodeURIComponent(path); } catch { return path; }
   };
 
+  const resetForm = () => {
+    setEditingEntry(null);
+    setFormData({
+      child_name: '',
+      title: '',
+      description: '',
+      milestone_type: '',
+      age_at_capture: '',
+      linked_condition: '',
+      tags: ''
+    });
+    setSelectedFile(null);
+    setPreviewUrl('');
+  };
+
+  const closeForm = () => {
+    setShowUploadForm(false);
+    setSelectedEntry(null);
+    resetForm();
+  };
+
+  const openAddForm = () => {
+    resetForm();
+    setShowUploadForm(true);
+  };
+
   const loadEntries = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -179,20 +205,16 @@ export default function PhotoJournal() {
           tags: tagsArray
         });
 
-      if (insertError) throw insertError;
+      if (insertError) {
+        // Don't leave an orphaned file in storage if the row insert failed
+        const { error: cleanupError } = await supabase.storage
+          .from('photo-journal')
+          .remove([fileName]);
+        if (cleanupError) logger.error('Failed to remove orphaned upload', cleanupError);
+        throw insertError;
+      }
 
-      setShowUploadForm(false);
-      setFormData({
-        child_name: '',
-        title: '',
-        description: '',
-        milestone_type: '',
-        age_at_capture: '',
-        linked_condition: '',
-        tags: ''
-      });
-      setSelectedFile(null);
-      setPreviewUrl('');
+      closeForm();
       loadEntries();
     } catch (error) {
       logger.error('Error uploading photo/video', error);
@@ -206,9 +228,10 @@ export default function PhotoJournal() {
     if (!confirm('Are you sure you want to delete this entry?')) return;
 
     try {
-      await supabase.storage
+      const { error: storageError } = await supabase.storage
         .from('photo-journal')
         .remove([storagePath(entry.photo_url)]);
+      if (storageError) logger.error('Failed to remove photo journal file from storage', storageError);
 
       const { error } = await supabase
         .from('photo_journal_entries')
@@ -262,17 +285,7 @@ export default function PhotoJournal() {
 
       if (error) throw error;
 
-      setShowUploadForm(false);
-      setFormData({
-        child_name: '',
-        title: '',
-        description: '',
-        milestone_type: '',
-        age_at_capture: '',
-        linked_condition: '',
-        tags: ''
-      });
-      setSelectedEntry(null);
+      closeForm();
       loadEntries();
     } catch (error) {
       logger.error('Error updating photo journal entry', error);
@@ -301,7 +314,7 @@ export default function PhotoJournal() {
             <p className="text-gray-600">Document your child's progress with photos and videos</p>
           </div>
           <button
-            onClick={() => setShowUploadForm(true)}
+            onClick={openAddForm}
             className="flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition"
           >
             <Upload className="w-5 h-5" />
@@ -343,21 +356,7 @@ export default function PhotoJournal() {
               <h3 className="text-2xl font-bold text-gray-900">
                 {editingEntry ? 'Edit Entry' : 'Add Photo/Video Entry'}
               </h3>
-              <button onClick={() => {
-                setShowUploadForm(false);
-                setSelectedEntry(null);
-                setFormData({
-                  child_name: '',
-                  title: '',
-                  description: '',
-                  milestone_type: '',
-                  age_at_capture: '',
-                  linked_condition: '',
-                  tags: ''
-                });
-                setSelectedFile(null);
-                setPreviewUrl('');
-              }} className="text-gray-500 hover:text-gray-700">
+              <button onClick={closeForm} className="text-gray-500 hover:text-gray-700">
                 <X className="w-6 h-6" />
               </button>
             </div>
@@ -501,21 +500,7 @@ export default function PhotoJournal() {
               <div className="flex gap-3 pt-4">
                 <button
                   type="button"
-                  onClick={() => {
-                    setShowUploadForm(false);
-                    setSelectedEntry(null);
-                    setFormData({
-                      child_name: '',
-                      title: '',
-                      description: '',
-                      milestone_type: '',
-                      age_at_capture: '',
-                      linked_condition: '',
-                      tags: ''
-                    });
-                    setSelectedFile(null);
-                    setPreviewUrl('');
-                  }}
+                  onClick={closeForm}
                   className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
                 >
                   Cancel
@@ -621,7 +606,7 @@ export default function PhotoJournal() {
           <h3 className="text-xl font-semibold text-gray-700 mb-2">No Entries Yet</h3>
           <p className="text-gray-600 mb-6">Start documenting your child's milestones and progress</p>
           <button
-            onClick={() => setShowUploadForm(true)}
+            onClick={openAddForm}
             className="inline-flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition"
           >
             <Upload className="w-5 h-5" />

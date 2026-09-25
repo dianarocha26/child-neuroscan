@@ -7,6 +7,8 @@ import {
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useLanguage } from '../contexts/LanguageContext';
+import { logger } from '../lib/logger';
+import { localToday, toLocalDateString, toDateTimeLocalInput, fromDateTimeLocalInput } from '../lib/dates';
 
 interface AppointmentType {
   id: string;
@@ -20,7 +22,7 @@ interface AppointmentType {
 interface Appointment {
   id: string;
   child_name: string;
-  appointment_type: AppointmentType;
+  appointment_type: AppointmentType | null;
   appointment_date: string;
   provider_name: string;
   location: string;
@@ -117,11 +119,17 @@ export default function AppointmentPrep({ userId, onBack }: AppointmentPrepProps
   const handleCreateAppointment = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // datetime-local values are zone-less local times; send an explicit instant
+    const payload = {
+      ...formData,
+      appointment_date: fromDateTimeLocalInput(formData.appointment_date)
+    };
+
     if (editingApt) {
       // Update existing appointment
       const { data, error } = await supabase
         .from('appointments')
-        .update(formData)
+        .update(payload)
         .eq('id', editingApt.id)
         .select(`
           *,
@@ -133,18 +141,22 @@ export default function AppointmentPrep({ userId, onBack }: AppointmentPrepProps
         `)
         .single();
 
-      if (!error && data) {
-        updateAppointmentInList(data as any);
-        setSelectedAppointment(data as any);
-        setEditingApt(null);
-        setFormData({ child_name: '', appointment_type_id: '', appointment_date: '', provider_name: '', location: '', notes: '' });
-        setView('detail');
+      if (error || !data) {
+        logger.error('Error updating appointment:', error);
+        alert(t('Failed to update appointment. Please try again.', 'No se pudo actualizar la cita. Inténtelo de nuevo.'));
+        return;
       }
+
+      updateAppointmentInList(data as any);
+      setSelectedAppointment(data as any);
+      setEditingApt(null);
+      setFormData({ child_name: '', appointment_type_id: '', appointment_date: '', provider_name: '', location: '', notes: '' });
+      setView('detail');
     } else {
       // Create new appointment
       const { data, error } = await supabase
         .from('appointments')
-        .insert({ user_id: userId, ...formData })
+        .insert({ user_id: userId, ...payload })
         .select(`
           *,
           appointment_type:appointment_types(*),
@@ -155,12 +167,16 @@ export default function AppointmentPrep({ userId, onBack }: AppointmentPrepProps
         `)
         .single();
 
-      if (!error && data) {
-        setAppointments([...appointments, data as any]);
-        setSelectedAppointment(data as any);
-        setView('detail');
-        setFormData({ child_name: '', appointment_type_id: '', appointment_date: '', provider_name: '', location: '', notes: '' });
+      if (error || !data) {
+        logger.error('Error creating appointment:', error);
+        alert(t('Failed to create appointment. Please try again.', 'No se pudo crear la cita. Inténtelo de nuevo.'));
+        return;
       }
+
+      setAppointments([...appointments, data as any]);
+      setSelectedAppointment(data as any);
+      setView('detail');
+      setFormData({ child_name: '', appointment_type_id: '', appointment_date: '', provider_name: '', location: '', notes: '' });
     }
   };
 
@@ -169,7 +185,7 @@ export default function AppointmentPrep({ userId, onBack }: AppointmentPrepProps
     setFormData({
       child_name: apt.child_name,
       appointment_type_id: apt.appointment_type?.id || '',
-      appointment_date: apt.appointment_date,
+      appointment_date: toDateTimeLocalInput(apt.appointment_date),
       provider_name: apt.provider_name || '',
       location: apt.location || '',
       notes: apt.notes || ''
@@ -180,14 +196,17 @@ export default function AppointmentPrep({ userId, onBack }: AppointmentPrepProps
   const handleDeleteAppointment = async (aptId: string) => {
     if (!confirm('Delete this appointment and all its data?')) return;
     const { error } = await supabase.from('appointments').delete().eq('id', aptId);
-    if (!error) {
-      setAppointments(appointments.filter(a => a.id !== aptId));
-      setView('list');
+    if (error) {
+      logger.error('Error deleting appointment:', error);
+      alert(t('Failed to delete appointment. Please try again.', 'No se pudo eliminar la cita. Inténtelo de nuevo.'));
+      return;
     }
+    setAppointments(appointments.filter(a => a.id !== aptId));
+    setView('list');
   };
 
-  const handleAddObservation = async (observation: Observation) => {
-    if (!selectedAppointment) return;
+  const handleAddObservation = async (observation: Observation): Promise<boolean> => {
+    if (!selectedAppointment) return false;
 
     const { data, error } = await supabase
       .from('appointment_observations')
@@ -198,18 +217,23 @@ export default function AppointmentPrep({ userId, onBack }: AppointmentPrepProps
       .select()
       .single();
 
-    if (!error && data) {
-      const updated = {
-        ...selectedAppointment,
-        observations: [...selectedAppointment.observations, data]
-      };
-      setSelectedAppointment(updated);
-      updateAppointmentInList(updated);
+    if (error || !data) {
+      logger.error('Error adding observation:', error);
+      alert(t('Failed to add observation. Please try again.', 'No se pudo agregar la observación. Inténtelo de nuevo.'));
+      return false;
     }
+
+    const updated = {
+      ...selectedAppointment,
+      observations: [...selectedAppointment.observations, data]
+    };
+    setSelectedAppointment(updated);
+    updateAppointmentInList(updated);
+    return true;
   };
 
-  const handleAddQuestion = async (question: Question) => {
-    if (!selectedAppointment) return;
+  const handleAddQuestion = async (question: Question): Promise<boolean> => {
+    if (!selectedAppointment) return false;
 
     const { data, error } = await supabase
       .from('appointment_questions')
@@ -221,18 +245,23 @@ export default function AppointmentPrep({ userId, onBack }: AppointmentPrepProps
       .select()
       .single();
 
-    if (!error && data) {
-      const updated = {
-        ...selectedAppointment,
-        questions: [...selectedAppointment.questions, data]
-      };
-      setSelectedAppointment(updated);
-      updateAppointmentInList(updated);
+    if (error || !data) {
+      logger.error('Error adding question:', error);
+      alert(t('Failed to add question. Please try again.', 'No se pudo agregar la pregunta. Inténtelo de nuevo.'));
+      return false;
     }
+
+    const updated = {
+      ...selectedAppointment,
+      questions: [...selectedAppointment.questions, data]
+    };
+    setSelectedAppointment(updated);
+    updateAppointmentInList(updated);
+    return true;
   };
 
-  const handleAddDocument = async (doc: Document) => {
-    if (!selectedAppointment) return;
+  const handleAddDocument = async (doc: Document): Promise<boolean> => {
+    if (!selectedAppointment) return false;
 
     const { data, error } = await supabase
       .from('appointment_documents')
@@ -243,40 +272,58 @@ export default function AppointmentPrep({ userId, onBack }: AppointmentPrepProps
       .select()
       .single();
 
-    if (!error && data) {
-      const updated = {
-        ...selectedAppointment,
-        documents: [...selectedAppointment.documents, data]
-      };
-      setSelectedAppointment(updated);
-      updateAppointmentInList(updated);
+    if (error || !data) {
+      logger.error('Error adding document:', error);
+      alert(t('Failed to add document. Please try again.', 'No se pudo agregar el documento. Inténtelo de nuevo.'));
+      return false;
     }
+
+    const updated = {
+      ...selectedAppointment,
+      documents: [...selectedAppointment.documents, data]
+    };
+    setSelectedAppointment(updated);
+    updateAppointmentInList(updated);
+    return true;
   };
 
-  const handleAddFollowup = async (followup: Followup) => {
-    if (!selectedAppointment) return;
+  const handleAddFollowup = async (followup: Followup): Promise<boolean> => {
+    if (!selectedAppointment) return false;
 
     const { data, error } = await supabase
       .from('appointment_followups')
       .insert({
         appointment_id: selectedAppointment.id,
-        ...followup
+        ...followup,
+        due_date: followup.due_date || null
       })
       .select()
       .single();
 
-    if (!error && data) {
-      const updated = {
-        ...selectedAppointment,
-        followups: [...selectedAppointment.followups, data]
-      };
-      setSelectedAppointment(updated);
-      updateAppointmentInList(updated);
+    if (error || !data) {
+      logger.error('Error adding follow-up task:', error);
+      alert(t('Failed to add follow-up task. Please try again.', 'No se pudo agregar la tarea de seguimiento. Inténtelo de nuevo.'));
+      return false;
     }
+
+    const updated = {
+      ...selectedAppointment,
+      followups: [...selectedAppointment.followups, data]
+    };
+    setSelectedAppointment(updated);
+    updateAppointmentInList(updated);
+    return true;
   };
 
   const handleDeleteItem = async (table: string, id: string, field: keyof Appointment) => {
-    await supabase.from(table).delete().eq('id', id);
+    if (!confirm(t('Delete this item?', '¿Eliminar este elemento?'))) return;
+
+    const { error } = await supabase.from(table).delete().eq('id', id);
+    if (error) {
+      logger.error('Error deleting item:', error);
+      alert(t('Failed to delete item. Please try again.', 'No se pudo eliminar el elemento. Inténtelo de nuevo.'));
+      return;
+    }
 
     if (selectedAppointment) {
       const updated = {
@@ -300,7 +347,7 @@ export default function AppointmentPrep({ userId, onBack }: AppointmentPrepProps
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `appointment-prep-${selectedAppointment.child_name}-${new Date(selectedAppointment.appointment_date).toISOString().split('T')[0]}.txt`;
+    a.download = `appointment-prep-${selectedAppointment.child_name}-${toLocalDateString(new Date(selectedAppointment.appointment_date))}.txt`;
     a.click();
   };
 
@@ -309,7 +356,7 @@ export default function AppointmentPrep({ userId, onBack }: AppointmentPrepProps
     let summary = `APPOINTMENT PREPARATION SUMMARY\n`;
     summary += `${'='.repeat(50)}\n\n`;
     summary += `Child: ${apt.child_name}\n`;
-    summary += `Appointment Type: ${apt.appointment_type.name}\n`;
+    summary += `Appointment Type: ${apt.appointment_type?.name ?? 'N/A'}\n`;
     summary += `Date: ${date}\n`;
     summary += `Provider: ${apt.provider_name || 'N/A'}\n`;
     summary += `Location: ${apt.location || 'N/A'}\n\n`;
@@ -345,10 +392,11 @@ export default function AppointmentPrep({ userId, onBack }: AppointmentPrepProps
       });
     }
 
-    if (apt.appointment_type.preparation_tips.length > 0) {
+    const prepTips = apt.appointment_type?.preparation_tips ?? [];
+    if (prepTips.length > 0) {
       summary += `\nPREPARATION TIPS\n`;
       summary += `${'-'.repeat(50)}\n`;
-      apt.appointment_type.preparation_tips.forEach((tip, idx) => {
+      prepTips.forEach((tip, idx) => {
         summary += `${idx + 1}. ${tip}\n`;
       });
     }
@@ -569,6 +617,7 @@ export default function AppointmentPrep({ userId, onBack }: AppointmentPrepProps
 }
 
 function AppointmentCard({ appointment, onClick }: { appointment: Appointment; onClick: () => void }) {
+  const { t } = useLanguage();
   const date = new Date(appointment.appointment_date);
   const isUpcoming = date > new Date();
   const isPast = date < new Date();
@@ -583,7 +632,7 @@ function AppointmentCard({ appointment, onClick }: { appointment: Appointment; o
         <div className="flex items-start justify-between mb-4">
           <div>
             <h3 className="text-lg font-semibold text-gray-900 mb-1">
-              {appointment.appointment_type.name}
+              {appointment.appointment_type?.name ?? t('Appointment', 'Cita')}
             </h3>
             <p className="text-sm text-gray-600">{appointment.child_name}</p>
           </div>
@@ -634,10 +683,10 @@ function AppointmentDetail({
 }: {
   appointment: Appointment;
   onBack: () => void;
-  onAddObservation: (obs: Observation) => void;
-  onAddQuestion: (q: Question) => void;
-  onAddDocument: (doc: Document) => void;
-  onAddFollowup: (f: Followup) => void;
+  onAddObservation: (obs: Observation) => Promise<boolean>;
+  onAddQuestion: (q: Question) => Promise<boolean>;
+  onAddDocument: (doc: Document) => Promise<boolean>;
+  onAddFollowup: (f: Followup) => Promise<boolean>;
   onDeleteItem: (table: string, id: string, field: keyof Appointment) => void;
   onGenerateSummary: () => void;
   onEditAppointment: (apt: Appointment) => void;
@@ -688,7 +737,7 @@ function AppointmentDetail({
           <div className="flex items-start justify-between mb-6">
             <div>
               <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                {appointment.appointment_type.name}
+                {appointment.appointment_type?.name ?? t('Appointment', 'Cita')}
               </h1>
               <p className="text-lg text-gray-600">{appointment.child_name}</p>
             </div>
@@ -837,7 +886,7 @@ function OverviewTab({ appointment }: { appointment: Appointment }) {
     <div className="space-y-6">
       <div>
         <h3 className="text-lg font-semibold text-gray-900 mb-3">About This Appointment</h3>
-        <p className="text-gray-700">{appointment.appointment_type.description}</p>
+        <p className="text-gray-700">{appointment.appointment_type?.description}</p>
       </div>
 
       {appointment.notes && (
@@ -847,11 +896,11 @@ function OverviewTab({ appointment }: { appointment: Appointment }) {
         </div>
       )}
 
-      {appointment.appointment_type.preparation_tips.length > 0 && (
+      {(appointment.appointment_type?.preparation_tips?.length ?? 0) > 0 && (
         <div>
           <h3 className="text-lg font-semibold text-gray-900 mb-3">Preparation Tips</h3>
           <ul className="space-y-2">
-            {appointment.appointment_type.preparation_tips.map((tip, idx) => (
+            {appointment.appointment_type?.preparation_tips.map((tip, idx) => (
               <li key={idx} className="flex items-start gap-3">
                 <CheckCircle2 className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
                 <span className="text-gray-700">{tip}</span>
@@ -904,18 +953,19 @@ function ObservationsTab({ observations, onAdd, onDelete }: any) {
   const [formData, setFormData] = useState<Observation>({
     category: 'behavior',
     observation: '',
-    date_observed: new Date().toISOString().split('T')[0],
+    date_observed: localToday(),
     frequency: 'occasionally',
     concern_level: 'mild'
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onAdd(formData);
+    // Keep the form (and what was typed) if saving failed
+    if (!(await onAdd(formData))) return;
     setFormData({
       category: 'behavior',
       observation: '',
-      date_observed: new Date().toISOString().split('T')[0],
+      date_observed: localToday(),
       frequency: 'occasionally',
       concern_level: 'mild'
     });
@@ -1061,9 +1111,10 @@ function QuestionsTab({ questions, onAdd, onDelete }: any) {
     answer: ''
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onAdd(formData);
+    // Keep the form (and what was typed) if saving failed
+    if (!(await onAdd(formData))) return;
     setFormData({
       question: '',
       priority: 'medium',
@@ -1174,9 +1225,10 @@ function DocumentsTab({ documents, onAdd, onDelete }: any) {
     notes: ''
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onAdd(formData);
+    // Keep the form (and what was typed) if saving failed
+    if (!(await onAdd(formData))) return;
     setFormData({
       document_type: 'medical_records',
       document_name: '',
@@ -1289,9 +1341,10 @@ function FollowupTab({ followups, onAdd, onDelete }: any) {
     completed: false
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onAdd(formData);
+    // Keep the form (and what was typed) if saving failed
+    if (!(await onAdd(formData))) return;
     setFormData({
       followup_item: '',
       due_date: '',

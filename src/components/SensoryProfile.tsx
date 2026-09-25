@@ -31,7 +31,7 @@ export default function SensoryProfile() {
     proprioceptive_notes: ''
   });
 
-  const sensoryystems = [
+  const sensorySystems = [
     {
       key: 'visual',
       name: 'Visual',
@@ -150,7 +150,11 @@ export default function SensoryProfile() {
         proprioceptive_sensitivity: formData.proprioceptive_sensitivity,
         visual_notes: formData.visual_notes || null,
         auditory_notes: formData.auditory_notes || null,
-        tactile_notes: formData.tactile_notes || null
+        tactile_notes: formData.tactile_notes || null,
+        taste_notes: formData.taste_notes || null,
+        smell_notes: formData.smell_notes || null,
+        vestibular_notes: formData.vestibular_notes || null,
+        proprioceptive_notes: formData.proprioceptive_notes || null
       });
 
       if (error) throw error;
@@ -237,7 +241,7 @@ export default function SensoryProfile() {
             </div>
 
             <div className="space-y-6">
-              {sensoryystems.map((system) => {
+              {sensorySystems.map((system) => {
                 const Icon = system.icon;
                 const sensitivityKey = `${system.key}_sensitivity` as keyof typeof formData;
                 const notesKey = `${system.key}_notes` as keyof typeof formData;
@@ -329,7 +333,7 @@ export default function SensoryProfile() {
 
           {currentProfile && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {sensoryystems.map((system) => {
+              {sensorySystems.map((system) => {
                 const Icon = system.icon;
                 const sensitivity = currentProfile[`${system.key}_sensitivity` as keyof SensoryProfile] as string;
                 const notes = currentProfile[`${system.key}_notes` as keyof SensoryProfile] as string;
