@@ -7,9 +7,10 @@ import { validation } from '../lib/validation';
 interface LoginProps {
   onSwitchToSignUp: () => void;
   onLoginSuccess: () => void;
+  onForgotPassword: () => void;
 }
 
-export function Login({ onSwitchToSignUp, onLoginSuccess }: LoginProps) {
+export function Login({ onSwitchToSignUp, onLoginSuccess, onForgotPassword }: LoginProps) {
   const { signIn } = useAuth();
   const { t } = useLanguage();
   const [email, setEmail] = useState('');
@@ -84,9 +85,18 @@ export function Login({ onSwitchToSignUp, onLoginSuccess }: LoginProps) {
           </div>
 
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
-              Password
-            </label>
+            <div className="flex items-center justify-between mb-2">
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+                Password
+              </label>
+              <button
+                type="button"
+                onClick={onForgotPassword}
+                className="text-sm text-teal-600 hover:text-teal-700 font-medium"
+              >
+                Forgot password?
+              </button>
+            </div>
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
               <input
