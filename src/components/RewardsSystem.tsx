@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Star, Trophy, Gift, Plus, Target, Edit2, Trash2, X } from 'lucide-react';
+import { Star, Trophy, Gift, Plus, Target, Edit2, Trash2, X, Info, ChevronDown, ChevronUp, ThumbsUp, ThumbsDown } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useLoadingState } from '../hooks/useLoadingState';
@@ -19,6 +19,7 @@ export default function RewardsSystem() {
   const [editingEntry, setEditingEntry] = useState<RewardEntry | null>(null);
   const [showGoalForm, setShowGoalForm] = useState<string | null>(null);
   const [editingGoal, setEditingGoal] = useState<RewardGoal | null>(null);
+  const [showHowItWorks, setShowHowItWorks] = useState(false);
 
   const emptyChartForm = { child_name: '', chart_name: '', chart_type: 'star_chart', target_behavior: '', points_per_star: 1 };
   const emptyEntryForm = { stars_earned: 1, notes: '' };
@@ -85,6 +86,16 @@ export default function RewardsSystem() {
       if (error) throw error;
       loadData();
     } catch (error) { logger.error('Error deleting chart:', error); alert('Failed to delete chart'); }
+  };
+
+  const handleRateChart = async (chart: RewardChart, isEffective: boolean) => {
+    // Clicking the active rating again clears it
+    const value = chart.is_effective === isEffective ? null : isEffective;
+    try {
+      const { error } = await supabase.from('reward_charts').update({ is_effective: value }).eq('id', chart.id);
+      if (error) throw error;
+      setCharts(prev => prev.map(c => (c.id === chart.id ? { ...c, is_effective: value } : c)));
+    } catch (error) { logger.error('Error rating chart:', error); alert('Failed to save rating'); }
   };
 
   // --- Entry handlers ---
@@ -173,6 +184,28 @@ export default function RewardsSystem() {
         </button>
       </div>
 
+      {/* Parent explainer */}
+      <div className="mb-8 bg-blue-50 border border-blue-200 rounded-xl">
+        <button
+          onClick={() => setShowHowItWorks(!showHowItWorks)}
+          className="w-full flex items-center justify-between p-4 text-left"
+          aria-expanded={showHowItWorks}
+        >
+          <span className="flex items-center gap-2 font-semibold text-blue-900">
+            <Info className="w-5 h-5" /> How this works
+          </span>
+          {showHowItWorks ? <ChevronUp className="w-5 h-5 text-blue-900" /> : <ChevronDown className="w-5 h-5 text-blue-900" />}
+        </button>
+        {showHowItWorks && (
+          <div className="px-4 pb-4 text-sm text-blue-900 space-y-2">
+            <p><strong>1. Create a chart</strong> for one specific behavior you want to encourage (e.g., "Brushing teeth without reminders").</p>
+            <p><strong>2. Set goals</strong> — rewards your child earns after collecting a number of stars (e.g., 10 stars = trip to the park).</p>
+            <p><strong>3. Add stars</strong> right after your child shows the behavior. Immediate, consistent praise works best.</p>
+            <p><strong>4. Check in weekly.</strong> Use the thumbs up / down on each chart to note whether it's helping. If a chart isn't working after 2–3 weeks, try a smaller goal, a different reward, or a simpler behavior.</p>
+          </div>
+        )}
+      </div>
+
       {/* Chart Form Modal */}
       {showChartForm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
@@ -226,6 +259,25 @@ export default function RewardsSystem() {
                   <h2 className="text-2xl font-bold text-gray-900">{chart.chart_name}</h2>
                   <p className="text-gray-600">{chart.child_name}</p>
                   <p className="text-sm text-gray-600 mt-1">{chart.target_behavior}</p>
+                  <div className="flex items-center gap-2 mt-3">
+                    <span className="text-xs text-gray-600">Is this chart working?</span>
+                    <button
+                      onClick={() => handleRateChart(chart, true)}
+                      className={`p-1.5 rounded transition ${chart.is_effective === true ? 'bg-green-100 text-green-700' : 'text-gray-400 hover:text-green-600 hover:bg-green-50'}`}
+                      title="Working"
+                      aria-pressed={chart.is_effective === true}
+                    >
+                      <ThumbsUp className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => handleRateChart(chart, false)}
+                      className={`p-1.5 rounded transition ${chart.is_effective === false ? 'bg-red-100 text-red-700' : 'text-gray-400 hover:text-red-600 hover:bg-red-50'}`}
+                      title="Not working"
+                      aria-pressed={chart.is_effective === false}
+                    >
+                      <ThumbsDown className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
                 <div className="flex items-center gap-2 ml-4">
                   <div className="text-center">

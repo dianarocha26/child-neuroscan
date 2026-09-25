@@ -242,6 +242,7 @@ export interface RewardChart {
   chart_type: string;
   target_behavior: string;
   points_per_star: number;
+  is_effective?: boolean | null;
   created_at?: string;
 }
 
