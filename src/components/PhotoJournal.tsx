@@ -64,7 +64,9 @@ export default function PhotoJournal() {
   const storagePath = (photoUrl: string) => {
     const marker = '/photo-journal/';
     const i = photoUrl.indexOf(marker);
-    return i === -1 ? photoUrl : decodeURIComponent(photoUrl.slice(i + marker.length).split('?')[0]);
+    if (i === -1) return photoUrl;
+    const path = photoUrl.slice(i + marker.length).split('?')[0];
+    try { return decodeURIComponent(path); } catch { return path; }
   };
 
   const loadEntries = async () => {

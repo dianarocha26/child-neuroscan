@@ -31,6 +31,22 @@
 -- ---------------------------------------------------------------------------
 -- 1. Community posts / comments / likes
 -- ---------------------------------------------------------------------------
+-- Drop EVERY existing policy on these tables (not just the names from the
+-- original migration) so a policy added/renamed in the dashboard cannot
+-- stay behind and OR-in public access.
+DO $$
+DECLARE r record;
+BEGIN
+  FOR r IN
+    SELECT policyname, tablename FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename IN ('community_posts','community_comments','community_likes',
+                        'user_profiles','user_saved_resources')
+  LOOP
+    EXECUTE format('DROP POLICY %I ON public.%I', r.policyname, r.tablename);
+  END LOOP;
+END $$;
+
 DROP POLICY IF EXISTS "Posts are publicly readable" ON community_posts;
 DROP POLICY IF EXISTS "Authenticated users can create posts" ON community_posts;
 DROP POLICY IF EXISTS "Users can update own posts" ON community_posts;
@@ -64,11 +80,17 @@ CREATE POLICY "Users can delete own posts"
 
 CREATE POLICY "Signed-in users can read comments"
   ON community_comments FOR SELECT TO authenticated
-  USING (true);
+  USING (EXISTS (SELECT 1 FROM community_posts p WHERE p.id = post_id));
 
 CREATE POLICY "Users can create own comments"
   ON community_comments FOR INSERT TO authenticated
-  WITH CHECK (user_id = auth.uid()::text);
+  WITH CHECK (
+    user_id = auth.uid()::text
+    AND EXISTS (  -- post must be visible to the caller (RLS) and not locked
+      SELECT 1 FROM community_posts p
+      WHERE p.id = post_id AND NOT coalesce(p.is_locked, false)
+    )
+  );
 
 CREATE POLICY "Users can update own comments"
   ON community_comments FOR UPDATE TO authenticated
@@ -79,9 +101,9 @@ CREATE POLICY "Users can delete own comments"
   ON community_comments FOR DELETE TO authenticated
   USING (user_id = auth.uid()::text);
 
-CREATE POLICY "Signed-in users can read likes"
+CREATE POLICY "Users can read own likes"
   ON community_likes FOR SELECT TO authenticated
-  USING (true);
+  USING (user_id = auth.uid()::text);
 
 CREATE POLICY "Users can create own likes"
   ON community_likes FOR INSERT TO authenticated
@@ -167,11 +189,12 @@ CREATE POLICY "Users can delete own saved resources"
 -- ---------------------------------------------------------------------------
 -- 4. Photo journal bucket -> private, images/videos only, 50 MB max
 -- ---------------------------------------------------------------------------
-UPDATE storage.buckets
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES ('photo-journal', 'photo-journal', false, 52428800, ARRAY['image/*', 'video/*'])
+ON CONFLICT (id) DO UPDATE
 SET public = false,
-    file_size_limit = 52428800,
-    allowed_mime_types = ARRAY['image/*', 'video/*']
-WHERE id = 'photo-journal';
+    file_size_limit = EXCLUDED.file_size_limit,
+    allowed_mime_types = EXCLUDED.allowed_mime_types;
 
 -- ---------------------------------------------------------------------------
 -- 5. Community groups: no self-promotion, no recursion
@@ -218,3 +241,26 @@ CREATE POLICY "Users can join groups"
 -- 6. Pin search_path on the existing SECURITY DEFINER function
 -- ---------------------------------------------------------------------------
 ALTER FUNCTION public.handle_new_user() SET search_path = public;
+
+
+-- ---------------------------------------------------------------------------
+-- 7. Hardening: RLS does not apply to TRUNCATE; drop unused table privileges
+-- ---------------------------------------------------------------------------
+REVOKE TRUNCATE, REFERENCES, TRIGGER
+  ON community_posts, community_comments, community_likes,
+     user_profiles, user_saved_resources
+  FROM authenticated;
+
+-- Safety net: fail the migration if anything still grants anon/public access.
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename IN ('community_posts','community_comments','community_likes',
+                        'user_profiles','user_saved_resources')
+      AND (roles && ARRAY['public','anon']::name[])
+  ) THEN
+    RAISE EXCEPTION 'public/anon policy still present on community/profile tables';
+  END IF;
+END $$;
