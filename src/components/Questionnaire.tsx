@@ -10,7 +10,7 @@ import { getQuestionsForCondition } from '../lib/database';
 interface QuestionnaireProps {
   condition: Condition;
   childAgeMonths: number;
-  onComplete: (responses: Record<string, boolean>, childName: string) => void;
+  onComplete: (responses: Record<string, boolean>, childName: string) => Promise<void> | void;
   onBack: () => void;
 }
 
@@ -23,6 +23,8 @@ export function Questionnaire({ condition, childAgeMonths, onComplete, onBack }:
   const [error, setError] = useState<string | null>(null);
   const [childName, setChildName] = useState('');
   const [showNameInput, setShowNameInput] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   useEffect(() => {
     loadQuestions();
@@ -65,8 +67,19 @@ export function Questionnaire({ condition, childAgeMonths, onComplete, onBack }:
     }
   }
 
-  function handleSubmit() {
-    onComplete(responses, childName || 'Child');
+  async function handleSubmit() {
+    setSubmitting(true);
+    setSubmitError(null);
+    try {
+      await onComplete(responses, childName || 'Child');
+    } catch (err) {
+      logger.error('Failed to save screening result', err);
+      setSubmitError(t(
+        'We could not save your screening. Please check your connection and try again.',
+        'No pudimos guardar su evaluación. Verifique su conexión e intente de nuevo.'
+      ));
+      setSubmitting(false);
+    }
   }
 
   function handleNameSubmit(e: React.FormEvent) {
@@ -221,6 +234,13 @@ export function Questionnaire({ condition, childAgeMonths, onComplete, onBack }:
               </button>
             </div>
 
+            {submitError && (
+              <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3" role="alert">
+                <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                <p className="text-sm text-red-800">{submitError}</p>
+              </div>
+            )}
+
             <div className="flex gap-3">
               <button
                 onClick={currentIndex === 0 ? onBack : handlePrevious}
@@ -233,9 +253,11 @@ export function Questionnaire({ condition, childAgeMonths, onComplete, onBack }:
               {isLastQuestion && hasAnswered && (
                 <button
                   onClick={handleSubmit}
-                  className="flex-1 px-6 py-3 bg-teal-600 text-white rounded-lg font-medium hover:bg-teal-700 transition-colors"
+                  disabled={submitting}
+                  className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-teal-600 text-white rounded-lg font-medium hover:bg-teal-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {translations.submit[language]}
+                  {submitting && <Loader2 className="w-5 h-5 animate-spin" />}
+                  {submitting ? t('Saving...', 'Guardando...') : translations.submit[language]}
                 </button>
               )}
 
