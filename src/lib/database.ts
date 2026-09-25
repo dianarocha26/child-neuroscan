@@ -12,8 +12,6 @@ import type {
 } from '../types/database';
 
 export async function getConditions(): Promise<Condition[]> {
-  console.log('>>> getConditions: Starting query...');
-  console.log('>>> Supabase client:', supabase);
 
   const { data, error } = await supabase
     .from('conditions')
@@ -21,14 +19,11 @@ export async function getConditions(): Promise<Condition[]> {
     .eq('is_active', true)
     .order('order_index');
 
-  console.log('>>> getConditions: Query result:', { data, error });
 
   if (error) {
-    console.error('>>> getConditions: ERROR', error);
     throw error;
   }
 
-  console.log('>>> getConditions: Returning data:', data);
   return data || [];
 }
 

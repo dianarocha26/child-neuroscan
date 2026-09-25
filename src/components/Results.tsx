@@ -44,13 +44,6 @@ export function Results({
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    console.log('=== RESULTS DEBUG ===');
-    console.log('Condition object:', condition);
-    console.log('Has explanation_en:', !!condition.explanation_en);
-    console.log('Has explanation_es:', !!condition.explanation_es);
-    console.log('explanation_en value:', condition.explanation_en);
-    console.log('explanation_es value:', condition.explanation_es);
-    console.log('=====================');
     loadData();
   }, [condition.id, riskLevel, childAgeMonths]);
 

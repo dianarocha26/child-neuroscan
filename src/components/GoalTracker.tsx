@@ -127,7 +127,6 @@ export default function GoalTracker() {
         status: goalForm.current_value === 0 ? 'not_started' : 'in_progress'
       };
 
-      console.log('Submitting goalData:', JSON.stringify(goalData, null, 2));
 
       if (editingGoal) {
         const { error } = await supabase
