@@ -2,12 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { AlertTriangle, Phone, Heart, Shield, Plus, Edit2, Trash2, Users, X } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import { useLoadingState } from '../hooks/useLoadingState';
 import { logger } from '../lib/logger';
 import type { CrisisPlan, CrisisContact, CalmingStrategy } from '../types/components';
 
 export default function CrisisPlanComponent() {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const [crisisPlans, setCrisisPlans] = useState<CrisisPlan[]>([]);
   const [contacts, setContacts] = useState<CrisisContact[]>([]);
   const [strategies, setStrategies] = useState<CalmingStrategy[]>([]);
@@ -256,12 +258,40 @@ export default function CrisisPlanComponent() {
         <div className="flex items-start">
           <Shield className="w-6 h-6 text-red-600 mr-3 mt-0.5" />
           <div>
-            <h3 className="text-lg font-semibold text-red-900 mb-1">Emergency Resources</h3>
-            <p className="text-red-800 mb-2">In case of immediate danger, always call 911 first</p>
-            <div className="space-y-1 text-sm text-red-800">
-              <p>National Suicide Prevention Lifeline: 988</p>
-              <p>Crisis Text Line: Text HOME to 741741</p>
-            </div>
+            <h3 className="text-lg font-semibold text-red-900 mb-1">{t('Emergency Resources', 'Recursos de emergencia')}</h3>
+            <p className="text-red-800 mb-2">
+              {t('In case of immediate danger, always call ', 'En caso de peligro inmediato, llame siempre primero al ')}
+              <a href="tel:911" className="font-bold underline">911</a>
+              {t(' first.', '.')}
+            </p>
+            <ul className="space-y-1 text-sm text-red-800">
+              <li>
+                {t('988 Suicide & Crisis Lifeline (call or text 988): ', 'Línea 988 de Prevención del Suicidio y Crisis (llame o envíe un mensaje de texto al 988): ')}
+                <a href="tel:988" className="font-semibold underline">{t('Call 988', 'Llamar al 988')}</a>
+                {' · '}
+                <a href="sms:988" className="font-semibold underline">{t('Text 988', 'Enviar texto al 988')}</a>
+              </li>
+              <li>
+                {t('Crisis Text Line: text HOME to ', 'Crisis Text Line: envíe HOME al ')}
+                <a href="sms:741741?body=HOME" className="font-semibold underline">741741</a>
+              </li>
+              <li>
+                {t('Poison Control: ', 'Centro de Control de Envenenamientos: ')}
+                <a href="tel:18002221222" className="font-semibold underline">1-800-222-1222</a>
+              </li>
+              <li>
+                {t('En español: call 988 and press 2, or text AYUDA to ', 'En español: llame al 988 y marque 2, o envíe AYUDA al ')}
+                <a href="tel:988" className="font-semibold underline">988</a>
+                {' / '}
+                <a href="sms:741741?body=AYUDA" className="font-semibold underline">741741</a>
+              </li>
+            </ul>
+            <p className="text-xs text-red-700 mt-2">
+              {t(
+                'These numbers are for the United States. Outside the U.S., call your local emergency number.',
+                'Estos números son para los Estados Unidos. Fuera de EE. UU., llame al número de emergencias local.'
+              )}
+            </p>
           </div>
         </div>
       </div>
@@ -342,6 +372,15 @@ export default function CrisisPlanComponent() {
                       placeholder="e.g., Bedroom, sensory corner" />
                   </div>
                   <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      {t('Medication Instructions', 'Instrucciones de medicamentos')}
+                    </label>
+                    <textarea value={planForm.medication_instructions}
+                      onChange={(e) => setPlanForm({ ...planForm, medication_instructions: e.target.value })}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500" rows={3}
+                      placeholder={t('e.g., Medication name, dose, and when to give it, as directed by your child\'s doctor', 'p. ej., nombre del medicamento, dosis y cuándo darlo, según las indicaciones del médico de su hijo')} />
+                  </div>
+                  <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">When to Call 911</label>
                     {planForm.when_to_call_911.map((situation, idx) => (
                       <input key={idx} type="text" value={situation}
@@ -405,6 +444,12 @@ export default function CrisisPlanComponent() {
                 {plan.safe_space_location && (
                   <div className="mb-6"><h3 className="font-bold text-blue-800 mb-2">Safe Space</h3><p className="text-gray-700">{plan.safe_space_location}</p></div>
                 )}
+                {plan.medication_instructions && (
+                  <div className="mb-6">
+                    <h3 className="font-bold text-purple-800 mb-2">{t('Medication Instructions', 'Instrucciones de medicamentos')}</h3>
+                    <p className="text-gray-700 whitespace-pre-line">{plan.medication_instructions}</p>
+                  </div>
+                )}
                 {plan.when_to_call_911.length > 0 && (
                   <div className="bg-red-50 p-4 rounded-lg">
                     <h3 className="font-bold text-red-900 mb-3 flex items-center gap-2"><Phone className="w-5 h-5" /> When to Call 911</h3>
@@ -439,13 +484,13 @@ export default function CrisisPlanComponent() {
 
           {showContactForm && (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-              <div className="bg-white rounded-xl p-6 max-w-lg w-full">
+              <div className="bg-white rounded-xl p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto">
                 <div className="flex items-center justify-between mb-6">
                   <h2 className="text-2xl font-bold">{editingContact ? 'Edit Contact' : 'New Emergency Contact'}</h2>
                   <button onClick={() => { setShowContactForm(false); setEditingContact(null); }} className="text-gray-500 hover:text-gray-700"><X className="w-6 h-6" /></button>
                 </div>
                 <form onSubmit={handleContactSubmit} className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
                       <input type="text" required value={contactForm.contact_name}
@@ -459,7 +504,7 @@ export default function CrisisPlanComponent() {
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500" />
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
                       <input type="tel" required value={contactForm.phone_number}
@@ -591,6 +636,17 @@ export default function CrisisPlanComponent() {
                     <button type="button" onClick={() => addArrayField(setStrategyForm, 'instructions', strategyForm.instructions)}
                       className="text-red-600 hover:text-red-700 text-sm font-semibold">+ Add Step</button>
                   </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('Materials Needed', 'Materiales necesarios')}</label>
+                    {strategyForm.materials_needed.map((material, idx) => (
+                      <input key={idx} type="text" value={material}
+                        onChange={(e) => updateArrayField(setStrategyForm, 'materials_needed', idx, e.target.value, strategyForm.materials_needed)}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 mb-2"
+                        placeholder={t('e.g., Weighted blanket, headphones', 'p. ej., manta con peso, audífonos')} />
+                    ))}
+                    <button type="button" onClick={() => addArrayField(setStrategyForm, 'materials_needed', strategyForm.materials_needed)}
+                      className="text-red-600 hover:text-red-700 text-sm font-semibold">{t('+ Add Item', '+ Agregar elemento')}</button>
+                  </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Effectiveness (1-5)</label>
@@ -632,6 +688,14 @@ export default function CrisisPlanComponent() {
                   </div>
                 </div>
                 <p className="text-gray-700 mb-4">{strategy.description}</p>
+                {strategy.materials_needed.length > 0 && (
+                  <div className="mb-4">
+                    <h4 className="font-semibold text-gray-800 mb-2">{t('Materials needed:', 'Materiales necesarios:')}</h4>
+                    <ul className="list-disc list-inside space-y-1 text-sm text-gray-700">
+                      {strategy.materials_needed.map((material, idx) => <li key={idx}>{material}</li>)}
+                    </ul>
+                  </div>
+                )}
                 {strategy.instructions.length > 0 && (
                   <div className="mb-4">
                     <h4 className="font-semibold text-gray-800 mb-2">Steps:</h4>

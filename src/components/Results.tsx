@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react';
-import { AlertTriangle, CheckCircle, AlertCircle, Brain, Home, ChevronDown, ChevronUp, TrendingUp, Save } from 'lucide-react';
+import { AlertTriangle, CheckCircle, AlertCircle, Brain, Home, ChevronDown, ChevronUp, TrendingUp, Save, Info, RefreshCw } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { translations } from '../lib/translations';
 import { logger } from '../lib/logger';
-import { ErrorState } from './ErrorState';
 import { getRecommendationsForCondition, getDailyTipsForCondition } from '../lib/database';
 import { ConditionInfo } from './ConditionInfo';
 import { HomeProgramTips } from './HomeProgramTips';
@@ -62,7 +61,10 @@ export function Results({
       }
     } catch (err) {
       logger.error('Failed to load results data', err);
-      setError('Unable to load recommendations and tips. Some features may be unavailable.');
+      setError(t(
+        'Unable to load recommendations and tips. Some features may be unavailable.',
+        'No se pudieron cargar las recomendaciones y los consejos. Algunas funciones pueden no estar disponibles.'
+      ));
     } finally {
       setLoading(false);
     }
@@ -92,8 +94,8 @@ export function Results({
         es: 'Riesgo Bajo'
       },
       description: {
-        en: 'The screening indicates a low likelihood of developmental concerns in this area. Continue monitoring your child\'s development.',
-        es: 'La evaluación indica una baja probabilidad de preocupaciones del desarrollo en esta área. Continúe monitoreando el desarrollo de su hijo.'
+        en: 'Your answers did not point to concerns in this area right now. Keep watching your child\'s development and share any new worries with your child\'s doctor.',
+        es: 'Sus respuestas no señalaron inquietudes en esta área por ahora. Siga observando el desarrollo de su hijo y comente cualquier nueva inquietud con su médico.'
       }
     },
     moderate: {
@@ -107,8 +109,8 @@ export function Results({
         es: 'Riesgo Moderado'
       },
       description: {
-        en: 'The screening suggests some developmental concerns that should be discussed with a healthcare professional.',
-        es: 'La evaluación sugiere algunas preocupaciones del desarrollo que deben discutirse con un profesional de la salud.'
+        en: 'Some of your answers suggest it would be helpful to talk with your child\'s doctor about this area at the next visit.',
+        es: 'Algunas de sus respuestas sugieren que sería útil hablar de esta área con el médico de su hijo en la próxima consulta.'
       }
     },
     high: {
@@ -122,8 +124,8 @@ export function Results({
         es: 'Riesgo Alto'
       },
       description: {
-        en: 'The screening indicates significant developmental concerns. Please consult with a pediatrician or specialist as soon as possible.',
-        es: 'La evaluación indica preocupaciones significativas del desarrollo. Por favor consulte con un pediatra o especialista lo antes posible.'
+        en: 'Your answers suggest it would be worth talking to your child\'s doctor or a specialist soon.',
+        es: 'Sus respuestas sugieren que valdría la pena hablar pronto con el médico de su hijo o con un especialista.'
       }
     }
   };
@@ -179,6 +181,15 @@ export function Results({
                   </div>
                 </div>
               </div>
+              <div className="mt-4 flex items-start gap-2 bg-white/70 rounded-lg p-3 text-sm text-gray-700">
+                <Info className="w-4 h-4 text-gray-500 flex-shrink-0 mt-0.5" />
+                <p>
+                  {t(
+                    'This is a parent-reported screening, not a diagnosis. Only a qualified healthcare professional can evaluate and diagnose your child.',
+                    'Esta es una evaluación de detección basada en lo que reportan los padres, no un diagnóstico. Solo un profesional de la salud calificado puede evaluar y diagnosticar a su hijo.'
+                  )}
+                </p>
+              </div>
             </div>
 
             {hasRedFlags && (
@@ -191,8 +202,8 @@ export function Results({
                     </h3>
                     <p className="text-red-800 text-sm">
                       {t(
-                        'This screening identified one or more urgent developmental indicators. Please consult with a healthcare professional promptly.',
-                        'Esta evaluación identificó uno o más indicadores urgentes del desarrollo. Por favor consulte con un profesional de la salud prontamente.'
+                        'One or more of your answers are ones that specialists recommend checking promptly, even when other answers look typical. This is why the result above is marked high. Please contact your child\'s doctor soon to talk about these answers.',
+                        'Una o más de sus respuestas son de las que los especialistas recomiendan revisar pronto, aunque las demás respuestas parezcan típicas. Por eso el resultado de arriba aparece como alto. Comuníquese pronto con el médico de su hijo para hablar sobre estas respuestas.'
                       )}
                     </p>
                   </div>
@@ -230,6 +241,22 @@ export function Results({
                       </div>
                     </div>
                   ))}
+                </div>
+              </div>
+            )}
+
+            {error && (
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3" role="alert">
+                <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p className="text-sm text-amber-800">{error}</p>
+                  <button
+                    onClick={loadData}
+                    className="mt-2 inline-flex items-center gap-1 text-sm font-medium text-amber-900 hover:underline"
+                  >
+                    <RefreshCw className="w-4 h-4" />
+                    {t('Try again', 'Intentar de nuevo')}
+                  </button>
                 </div>
               </div>
             )}
@@ -321,16 +348,19 @@ export function Results({
                   <Save className="w-6 h-6 text-teal-600 flex-shrink-0 mt-1" />
                   <div className="flex-1">
                     <h3 className="text-lg font-bold text-gray-900 mb-2">
-                      Save Your Progress
+                      {t('Save Your Progress', 'Guarde su progreso')}
                     </h3>
                     <p className="text-gray-600 mb-4">
-                      Create your free account to securely save this screening and track your child's development over time.
+                      {t(
+                        'Create your free account to securely save this screening and track your child\'s development over time.',
+                        'Cree su cuenta gratuita para guardar esta evaluación de forma segura y seguir el desarrollo de su hijo a lo largo del tiempo.'
+                      )}
                     </p>
                     <button
                       onClick={onSaveProgress}
                       className="px-6 py-3 bg-teal-600 text-white rounded-lg font-semibold hover:bg-teal-700 transition"
                     >
-                      Create Free Account
+                      {t('Create Free Account', 'Crear cuenta gratuita')}
                     </button>
                   </div>
                 </div>

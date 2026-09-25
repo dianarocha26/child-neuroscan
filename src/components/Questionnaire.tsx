@@ -40,13 +40,19 @@ export function Questionnaire({ condition, childAgeMonths, onComplete, onBack }:
       );
 
       if (filtered.length === 0) {
-        setError('No questions available for this age range. Please try a different condition or age.');
+        setError(t(
+          'No questions available for this age range. Please try a different condition or age.',
+          'No hay preguntas disponibles para este rango de edad. Por favor, pruebe con otra condición u otra edad.'
+        ));
       } else {
         setQuestions(filtered);
       }
     } catch (err) {
       logger.error('Failed to load screening questions', err);
-      setError('Unable to load screening questions. Please check your connection and try again.');
+      setError(t(
+        'Unable to load screening questions. Please check your connection and try again.',
+        'No se pudieron cargar las preguntas de la evaluación. Revise su conexión e intente de nuevo.'
+      ));
     } finally {
       setLoading(false);
     }
@@ -194,15 +200,6 @@ export function Questionnaire({ condition, childAgeMonths, onComplete, onBack }:
           </div>
 
           <div className="p-8">
-            {currentQuestion.is_red_flag && (
-              <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg px-4 py-2 mb-6">
-                <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0" />
-                <span className="text-sm text-red-800 font-medium">
-                  {t('Urgent Indicator', 'Indicador Urgente')}
-                </span>
-              </div>
-            )}
-
             <h3 className="text-2xl font-semibold text-gray-900 mb-8 leading-relaxed">
               {language === 'es' ? currentQuestion.question_es : currentQuestion.question_en}
             </h3>
