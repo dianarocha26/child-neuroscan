@@ -5,7 +5,10 @@
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
+  "display_override": [
+    "standalone",
+    "minimal-ui"
+  ],
   "background_color": "#ffffff",
   "theme_color": "#0ea5e9",
   "orientation": "any",
@@ -20,44 +23,30 @@
       "purpose": "any"
     },
     {
-      "src": "/icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "maskable"
-    },
-    {
       "src": "/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
-    }
-  ],
-  "categories": ["health", "medical", "education", "lifestyle", "utilities"],
-  "screenshots": [],
-  "shortcuts": [
-    {
-      "name": "New Screening",
-      "short_name": "Screen",
-      "description": "Start a new developmental screening",
-      "url": "/?action=screen",
-      "icons": [{ "src": "/CS1.png", "sizes": "96x96" }]
     },
     {
-      "name": "Progress Dashboard",
-      "short_name": "Progress",
-      "description": "View child's progress",
-      "url": "/?action=dashboard",
-      "icons": [{ "src": "/CS1.png", "sizes": "96x96" }]
+      "src": "/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     },
     {
-      "name": "Behavior Diary",
-      "short_name": "Diary",
-      "description": "Log behavior entry",
-      "url": "/?action=behavior",
-      "icons": [{ "src": "/CS1.png", "sizes": "96x96" }]
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
     }
   ],
-  "protocol_handlers": [],
-  "related_applications": [],
-  "iarc_rating_id": ""
+  "categories": [
+    "health",
+    "medical",
+    "education",
+    "lifestyle",
+    "utilities"
+  ],
+  "id": "/"
 }

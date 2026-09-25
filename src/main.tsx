@@ -7,10 +7,14 @@ import { AuthProvider } from './contexts/AuthContext.tsx';
 import { ThemeProvider } from './contexts/ThemeContext.tsx';
 import { LanguageProvider } from './contexts/LanguageContext.tsx';
 import { ErrorBoundary } from './components/ErrorBoundary.tsx';
-import { registerServiceWorker } from './lib/serviceWorker';
+import { registerServiceWorker, unregisterServiceWorker } from './lib/serviceWorker';
 
-
-registerServiceWorker();
+if (import.meta.env.PROD) {
+  registerServiceWorker();
+} else {
+  // Drop any worker left over from older builds that registered it in dev.
+  void unregisterServiceWorker();
+}
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
