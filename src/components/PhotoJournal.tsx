@@ -11,6 +11,7 @@ interface PhotoEntry {
   title: string;
   description: string;
   photo_url: string;
+  display_url?: string;
   media_type: 'photo' | 'video';
   milestone_type: string;
   age_at_capture: string;
@@ -59,6 +60,13 @@ export default function PhotoJournal() {
     };
   }, [previewUrl]);
 
+  // photo_url holds the storage path; older rows hold a full public URL.
+  const storagePath = (photoUrl: string) => {
+    const marker = '/photo-journal/';
+    const i = photoUrl.indexOf(marker);
+    return i === -1 ? photoUrl : decodeURIComponent(photoUrl.slice(i + marker.length).split('?')[0]);
+  };
+
   const loadEntries = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -71,7 +79,19 @@ export default function PhotoJournal() {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setEntries(data || []);
+
+      // Bucket is private: resolve short-lived signed URLs for display
+      const rows: PhotoEntry[] = data || [];
+      const paths = rows.map(r => storagePath(r.photo_url));
+      if (paths.length > 0) {
+        const { data: signed, error: signError } = await supabase.storage
+          .from('photo-journal')
+          .createSignedUrls(paths, 60 * 60);
+        if (signError) logger.error('Failed to sign photo URLs', signError);
+        const byPath = new Map((signed || []).map(s => [s.path, s.signedUrl]));
+        rows.forEach(r => { r.display_url = byPath.get(storagePath(r.photo_url)) || undefined; });
+      }
+      setEntries(rows);
     } catch (error) {
       logger.error('Failed to load photo journal entries', error);
     } finally {
@@ -139,10 +159,6 @@ export default function PhotoJournal() {
 
       if (uploadError) throw uploadError;
 
-      const { data: { publicUrl } } = supabase.storage
-        .from('photo-journal')
-        .getPublicUrl(fileName);
-
       const tagsArray = formData.tags.split(',').map(t => t.trim()).filter(t => t);
       const mediaType = selectedFile.type.startsWith('video/') ? 'video' : 'photo';
 
@@ -153,7 +169,7 @@ export default function PhotoJournal() {
           child_name: formData.child_name,
           title: formData.title,
           description: formData.description,
-          photo_url: publicUrl,
+          photo_url: fileName,
           media_type: mediaType,
           milestone_type: formData.milestone_type,
           age_at_capture: formData.age_at_capture,
@@ -188,13 +204,9 @@ export default function PhotoJournal() {
     if (!confirm('Are you sure you want to delete this entry?')) return;
 
     try {
-      const fileName = entry.photo_url.split('/').pop();
-      if (fileName) {
-        const { data: { user } } = await supabase.auth.getUser();
-        await supabase.storage
-          .from('photo-journal')
-          .remove([`${user?.id}/${fileName}`]);
-      }
+      await supabase.storage
+        .from('photo-journal')
+        .remove([storagePath(entry.photo_url)]);
 
       const { error } = await supabase
         .from('photo_journal_entries')
@@ -530,9 +542,9 @@ export default function PhotoJournal() {
                 <X className="w-6 h-6" />
               </button>
               {selectedEntry.media_type === 'video' ? (
-                <video src={selectedEntry.photo_url} controls className="w-full max-h-96 object-contain bg-black" />
+                <video src={selectedEntry.display_url} controls className="w-full max-h-96 object-contain bg-black" />
               ) : (
-                <img src={selectedEntry.photo_url} alt={selectedEntry.title} className="w-full max-h-96 object-contain bg-black" />
+                <img src={selectedEntry.display_url} alt={selectedEntry.title} className="w-full max-h-96 object-contain bg-black" />
               )}
             </div>
             <div className="p-6">
@@ -624,9 +636,9 @@ export default function PhotoJournal() {
             >
               <div className="relative aspect-video bg-gray-100">
                 {entry.media_type === 'video' ? (
-                  <video src={entry.photo_url} className="w-full h-full object-cover" />
+                  <video src={entry.display_url} className="w-full h-full object-cover" />
                 ) : (
-                  <img src={entry.photo_url} alt={entry.title} className="w-full h-full object-cover group-hover:scale-105 transition" />
+                  <img src={entry.display_url} alt={entry.title} className="w-full h-full object-cover group-hover:scale-105 transition" />
                 )}
                 {entry.media_type === 'video' && (
                   <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-20">
