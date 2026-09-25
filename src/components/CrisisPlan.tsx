@@ -183,7 +183,7 @@ export default function CrisisPlanComponent() {
       description: strategy.description,
       effectiveness_rating: strategy.effectiveness_rating ? String(strategy.effectiveness_rating) : '',
       duration_minutes: strategy.duration_minutes ? String(strategy.duration_minutes) : '',
-      materials_needed: strategy.materials_needed.length ? strategy.materials_needed : [''],
+      materials_needed: strategy.materials_needed?.length ? strategy.materials_needed : [''],
       instructions: strategy.instructions.length ? strategy.instructions : ['']
     });
     setShowStrategyForm(true);
@@ -688,11 +688,11 @@ export default function CrisisPlanComponent() {
                   </div>
                 </div>
                 <p className="text-gray-700 mb-4">{strategy.description}</p>
-                {strategy.materials_needed.length > 0 && (
+                {(strategy.materials_needed ?? []).length > 0 && (
                   <div className="mb-4">
                     <h4 className="font-semibold text-gray-800 mb-2">{t('Materials needed:', 'Materiales necesarios:')}</h4>
                     <ul className="list-disc list-inside space-y-1 text-sm text-gray-700">
-                      {strategy.materials_needed.map((material, idx) => <li key={idx}>{material}</li>)}
+                      {(strategy.materials_needed ?? []).map((material, idx) => <li key={idx}>{material}</li>)}
                     </ul>
                   </div>
                 )}

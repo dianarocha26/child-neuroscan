@@ -146,6 +146,8 @@ function AppContent() {
 
 
   function handleStartNew() {
+    // Don't keep a child's unsaved answers on a shared device
+    localStorage.removeItem('guestScreeningData');
     setCurrentScreen('landing');
     setSelectedCondition(null);
     setChildAgeMonths(0);
@@ -307,6 +309,10 @@ function AppContent() {
       return;
     }
 
+    // Stay on (or return to) results while saving; the login effect just
+    // sent us to landing
+    if (selectedCondition) setCurrentScreen('results');
+
     const guestData = localStorage.getItem('guestScreeningData');
     if (!guestData) return;
 
@@ -327,7 +333,6 @@ function AppContent() {
         );
         setCurrentSessionId(result.id);
         localStorage.removeItem('guestScreeningData');
-        if (selectedCondition) setCurrentScreen('results');
       } catch (err) {
         logger.error('Failed to save guest screening after login', err);
         alert(language === 'es'
@@ -335,7 +340,7 @@ function AppContent() {
           : 'We could not save your screening. Please try again later.');
       }
     })();
-  }, [user, pendingSaveAction]);
+  }, [user, pendingSaveAction, selectedCondition, language]);
 
   function handleGenerateReport(sessionId: string) {
     setSelectedReportSessionId(sessionId);
@@ -371,7 +376,7 @@ function AppContent() {
     <>
       <SkipLink />
       <OfflineIndicator />
-      <div className={showMobileNav ? 'pb-16' : ''} id="main-content">
+      <div className={showMobileNav ? 'pb-[calc(4rem+env(safe-area-inset-bottom))]' : ''} id="main-content">
         <GlobalSearch
         isOpen={isSearchOpen}
         onClose={() => setIsSearchOpen(false)}
@@ -421,7 +426,7 @@ function AppContent() {
       {currentScreen === 'signup' && (
         <SignUp
           onSwitchToLogin={() => setCurrentScreen('login')}
-          onSignUpSuccess={() => setCurrentScreen('login')}
+          onSignUpSuccess={() => setCurrentScreen(s => (s === 'signup' ? 'login' : s))}
         />
       )}
 

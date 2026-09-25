@@ -203,7 +203,9 @@ export default function ComprehensiveReportGenerator() {
     };
 
     // taken_at / appointment_date are timestamptz, so include the whole end day.
-    const endOfDay = `${endDate}T23:59:59.999`;
+    // Timestamp columns: use the user's local day boundaries
+    const startOfDay = new Date(`${startDate}T00:00:00`).toISOString();
+    const endOfDay = new Date(`${endDate}T23:59:59.999`).toISOString();
 
     const [behaviors, medications, goals, appointments] = await Promise.all([
       supabase
@@ -218,7 +220,7 @@ export default function ComprehensiveReportGenerator() {
         .from('medication_logs')
         .select('*, medications(name, dosage)')
         .eq('user_id', user.id)
-        .gte('taken_at', startDate)
+        .gte('taken_at', startOfDay)
         .lte('taken_at', endOfDay)
         .order('taken_at', { ascending: true }),
 
@@ -231,7 +233,7 @@ export default function ComprehensiveReportGenerator() {
         .from('appointments')
         .select('*')
         .eq('user_id', user.id)
-        .gte('appointment_date', startDate)
+        .gte('appointment_date', startOfDay)
         .lte('appointment_date', endOfDay)
         .order('appointment_date', { ascending: true })
     ]);
@@ -326,7 +328,7 @@ export default function ComprehensiveReportGenerator() {
   };
 
   const handleExportCSV = (report: GeneratedReport) => {
-    const data = report.report_data;
+    const data = report.report_data || ({} as ReportData);
     const rows: Array<Record<string, unknown>> = [];
 
     (data.behaviors?.entries || []).forEach((entry) => {

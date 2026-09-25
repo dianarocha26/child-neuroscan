@@ -42,5 +42,6 @@ export function toDateTimeLocalInput(value: string | null | undefined): string {
  * with an explicit offset so it is stored as the correct instant.
  */
 export function fromDateTimeLocalInput(value: string): string {
-  return new Date(value).toISOString();
+  const d = new Date(value);
+  return value && !isNaN(d.getTime()) ? d.toISOString() : '';
 }
