@@ -114,7 +114,7 @@ export default function AnalyticsDashboard() {
         <div className="w-48 h-48 mb-6">
           <ThinkingIllustration />
         </div>
-        <p className="text-xl font-semibold text-gray-700 animate-pulse">{t.analyzingData}</p>
+        <p className="text-xl font-semibold text-gray-700 animate-pulse">{t('Analyzing your data...', 'Analizando tus datos...')}</p>
         <div className="flex gap-2 mt-4">
           <div className="w-3 h-3 bg-primary-500 rounded-full animate-bounce"></div>
           <div className="w-3 h-3 bg-primary-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
@@ -134,10 +134,10 @@ export default function AnalyticsDashboard() {
             <BarChart3 className="w-9 h-9 text-white" />
           </div>
           <h1 className="text-5xl font-bold bg-gradient-to-r from-gray-900 via-blue-800 to-gray-900 bg-clip-text text-transparent mb-3 leading-tight">
-            {t.analytics?.title || 'Analytics Dashboard'}
+            {t('Analytics Dashboard', 'Panel de Análisis')}
           </h1>
           <p className="text-xl text-gray-600 font-medium">
-            {t.analytics?.subtitle || 'Discover patterns, trends, and insights from your tracking data'}
+            {t('Discover patterns, trends, and insights from your tracking data', 'Descubre patrones, tendencias e información de tus datos de seguimiento')}
           </p>
         </div>
 
@@ -263,14 +263,14 @@ export default function AnalyticsDashboard() {
                   <EmptyStateIllustration />
                 </div>
                 <p className="text-gray-600 text-center text-lg font-medium">
-                  {t.noPatternsYet}
+                  {t('No patterns detected yet', 'Aún no se detectan patrones')}
                 </p>
                 <p className="text-gray-500 text-center mt-2">
-                  {t.continueTracking}
+                  {t('Keep tracking behaviors, sleep, and medications to reveal patterns', 'Sigue registrando conductas, sueño y medicamentos para descubrir patrones')}
                 </p>
                 <div className="mt-6 inline-flex items-center gap-2 bg-primary-50 px-4 py-2 rounded-full">
                   <Sparkles className="w-4 h-4 text-primary-600" />
-                  <span className="text-sm font-semibold text-primary-700">{t.insightsSoon}</span>
+                  <span className="text-sm font-semibold text-primary-700">{t('Insights coming soon', 'Información disponible pronto')}</span>
                 </div>
               </div>
             ) : (

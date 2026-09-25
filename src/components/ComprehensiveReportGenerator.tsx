@@ -407,10 +407,10 @@ export default function ComprehensiveReportGenerator() {
               </div>
               <div>
                 <h3 className="font-bold text-gray-900 text-lg flex items-center gap-2">
-                  {t.reportSuccess}
+                  {t('Report generated successfully!', '¡Informe generado con éxito!')}
                   <Sparkles className="w-5 h-5 text-yellow-500" />
                 </h3>
-                <p className="text-gray-600 mt-1">{t.reportReady}</p>
+                <p className="text-gray-600 mt-1">{t('Your report is ready to view, print, or download.', 'Tu informe está listo para ver, imprimir o descargar.')}</p>
               </div>
             </div>
           </div>
@@ -423,10 +423,10 @@ export default function ComprehensiveReportGenerator() {
             <FileText className="w-9 h-9 text-white" />
           </div>
           <h1 className="text-5xl font-bold bg-gradient-to-r from-gray-900 via-slate-800 to-gray-900 bg-clip-text text-transparent mb-3 leading-tight">
-            {t.reports?.title || 'Report Generator'}
+            {t('Report Generator', 'Generador de Informes')}
           </h1>
           <p className="text-xl text-gray-600 font-medium">
-            {t.reports?.subtitle || 'Create comprehensive reports for medical, educational, and therapy purposes'}
+            {t('Create comprehensive reports for medical, educational, and therapy purposes', 'Crea informes completos para fines médicos, educativos y terapéuticos')}
           </p>
         </div>
 
@@ -525,13 +525,13 @@ export default function ComprehensiveReportGenerator() {
                         <div className="w-5 h-5">
                           <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
                         </div>
-                        <span>{t.generatingReport}</span>
+                        <span>{t('Generating report...', 'Generando informe...')}</span>
                         <Sparkles className="w-4 h-4 animate-pulse" />
                       </div>
                     ) : (
                       <div className="flex items-center gap-2">
                         <FileText className="w-5 h-5" />
-                        <span>{t.generateReport}</span>
+                        <span>{t('Generate Report', 'Generar Informe')}</span>
                       </div>
                     )}
                   </button>
@@ -542,8 +542,8 @@ export default function ComprehensiveReportGenerator() {
                           <LoadingIllustration />
                         </div>
                         <div>
-                          <p className="font-semibold text-primary-900">{t.preparingReport}</p>
-                          <p className="text-sm text-primary-700">{t.takesSeconds}</p>
+                          <p className="font-semibold text-primary-900">{t('Preparing your report...', 'Preparando tu informe...')}</p>
+                          <p className="text-sm text-primary-700">{t('This only takes a few seconds', 'Esto solo toma unos segundos')}</p>
                         </div>
                       </div>
                     </div>
@@ -557,7 +557,7 @@ export default function ComprehensiveReportGenerator() {
               <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-emerald-700 rounded-xl flex items-center justify-center shadow-lg">
                 <FileText className="w-6 h-6 text-white" />
               </div>
-              <h2 className="text-2xl font-bold text-gray-900">{t.generatedReports}</h2>
+              <h2 className="text-2xl font-bold text-gray-900">{t('Generated Reports', 'Informes Generados')}</h2>
             </div>
 
             {generatedReports.length === 0 ? (
@@ -566,14 +566,14 @@ export default function ComprehensiveReportGenerator() {
                   <EmptyStateIllustration />
                 </div>
                 <p className="text-gray-600 text-center text-lg font-medium">
-                  {t.noReportsYet}
+                  {t('No reports yet', 'Aún no hay informes')}
                 </p>
                 <p className="text-gray-500 text-center mt-2">
-                  {t.createFirstReport}
+                  {t('Create your first report using the form', 'Crea tu primer informe usando el formulario')}
                 </p>
                 <div className="mt-6 inline-flex items-center gap-2 bg-emerald-50 px-4 py-2 rounded-full">
                   <Sparkles className="w-4 h-4 text-emerald-600" />
-                  <span className="text-sm font-semibold text-emerald-700">{t.reportsAppearHere}</span>
+                  <span className="text-sm font-semibold text-emerald-700">{t('Your reports will appear here', 'Tus informes aparecerán aquí')}</span>
                 </div>
               </div>
             ) : (
