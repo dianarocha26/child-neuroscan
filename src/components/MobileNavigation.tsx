@@ -1,28 +1,29 @@
-import React from 'react';
-import { Home, Brain, BookOpen, Users, BarChart3, UserCircle } from 'lucide-react';
+import { Home, BarChart3, BookOpen, Users, Bell } from 'lucide-react';
+import { useLanguage } from '../contexts/LanguageContext';
+import type { Screen } from '../App';
 
 interface MobileNavigationProps {
-  currentView: string;
-  onNavigate: (view: string) => void;
+  currentView: Screen;
+  onNavigate: (screen: Screen) => void;
 }
 
 export function MobileNavigation({ currentView, onNavigate }: MobileNavigationProps) {
-  const navItems = [
-    { id: 'dashboard', icon: Home, label: 'Home' },
-    { id: 'screening', icon: Brain, label: 'Screen' },
-    { id: 'resources', icon: BookOpen, label: 'Resources' },
-    { id: 'community', icon: Users, label: 'Community' },
-    { id: 'progress', icon: BarChart3, label: 'Progress' },
-    { id: 'profile', icon: UserCircle, label: 'Profile' },
+  const { t } = useLanguage();
+  const navItems: { id: Screen; icon: typeof Home; label: string }[] = [
+    { id: 'landing', icon: Home, label: t('Home', 'Inicio') },
+    { id: 'dashboard', icon: BarChart3, label: t('Progress', 'Progreso') },
+    { id: 'resources', icon: BookOpen, label: t('Resources', 'Recursos') },
+    { id: 'community', icon: Users, label: t('Community', 'Comunidad') },
+    { id: 'reminders', icon: Bell, label: t('Reminders', 'Recordatorios') },
   ];
 
   return (
     <nav
-      className="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 z-50 safe-area-inset-bottom"
+      className="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 z-50 pb-safe-bottom"
       role="navigation"
       aria-label="Mobile navigation"
     >
-      <div className="grid grid-cols-6 h-16">
+      <div className="grid grid-cols-5 h-16">
         {navItems.map(({ id, icon: Icon, label }) => (
           <button
             key={id}
@@ -32,7 +33,7 @@ export function MobileNavigation({ currentView, onNavigate }: MobileNavigationPr
                 ? 'text-blue-600 dark:text-blue-400'
                 : 'text-gray-500 dark:text-gray-400 active:text-blue-600 dark:active:text-blue-400'
             }`}
-            aria-label={`Navigate to ${label}`}
+            aria-label={label}
             aria-current={currentView === id ? 'page' : undefined}
           >
             <Icon className="w-5 h-5" aria-hidden="true" />

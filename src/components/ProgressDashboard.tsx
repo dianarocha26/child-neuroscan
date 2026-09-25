@@ -4,7 +4,7 @@ import { getUserScreeningResults } from '../lib/database';
 import { useLanguage } from '../contexts/LanguageContext';
 import { logger } from '../lib/logger';
 import { ErrorState } from './ErrorState';
-import type { ScreeningResult, RiskLevel } from '../types/database';
+import type { Condition, ScreeningResultWithCondition, RiskLevel } from '../types/database';
 
 interface ProgressDashboardProps {
   userId: string;
@@ -14,7 +14,7 @@ interface ProgressDashboardProps {
 
 export default function ProgressDashboard({ userId, onGenerateReport, onBack }: ProgressDashboardProps) {
   const { t, language } = useLanguage();
-  const [results, setResults] = useState<ScreeningResult[]>([]);
+  const [results, setResults] = useState<ScreeningResultWithCondition[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedCondition, setSelectedCondition] = useState<string>('all');
@@ -31,7 +31,8 @@ export default function ProgressDashboard({ userId, onGenerateReport, onBack }: 
       setResults(data);
     } catch (err) {
       logger.error('Failed to load progress dashboard results', err);
-      setError('Unable to load your screening history. Please check your connection and try again.');
+      setError(t('Unable to load your screening history. Please check your connection and try again.',
+                 'No se pudo cargar su historial de evaluaciones. Verifique su conexión e intente de nuevo.'));
     } finally {
       setLoading(false);
     }
@@ -39,7 +40,7 @@ export default function ProgressDashboard({ userId, onGenerateReport, onBack }: 
 
   const uniqueConditions = Array.from(new Set(results.map(r => r.condition_id)))
     .map(id => results.find(r => r.condition_id === id)?.condition)
-    .filter(Boolean);
+    .filter((c): c is Condition => Boolean(c));
 
   const filteredResults = selectedCondition === 'all'
     ? results
@@ -79,7 +80,7 @@ export default function ProgressDashboard({ userId, onGenerateReport, onBack }: 
   };
 
   const groupResultsByChild = () => {
-    const grouped: { [key: string]: ScreeningResult[] } = {};
+    const grouped: { [key: string]: ScreeningResultWithCondition[] } = {};
     filteredResults.forEach(result => {
       const name = result.child_name || 'Unknown';
       if (!grouped[name]) {
@@ -98,6 +99,10 @@ export default function ProgressDashboard({ userId, onGenerateReport, onBack }: 
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
       </div>
     );
+  }
+
+  if (error) {
+    return <ErrorState message={error} onRetry={loadResults} onBack={onBack} />;
   }
 
   return (
@@ -159,7 +164,6 @@ export default function ProgressDashboard({ userId, onGenerateReport, onBack }: 
       ) : (
         <div className="space-y-8">
           {Object.entries(childGroups).map(([childName, childResults]) => {
-            const latestResult = childResults[0];
             return (
               <div key={childName} className="bg-white rounded-xl shadow-lg p-6">
                 <h2 className="text-2xl font-bold text-gray-900 mb-6">{childName}</h2>
@@ -167,9 +171,10 @@ export default function ProgressDashboard({ userId, onGenerateReport, onBack }: 
                 <div className="grid gap-4">
                   {childResults.map(result => {
                     const RiskIcon = getRiskIcon(result.risk_level);
-                    const percentage = result.total_score && latestResult.total_score
-                      ? Math.round((result.total_score / latestResult.total_score) * 100)
-                      : 0;
+                    // Older rows have no max_score; show the score without a bar
+                    const percentage = result.max_score
+                      ? Math.min(100, Math.round((result.total_score / result.max_score) * 100))
+                      : null;
 
                     return (
                       <div
@@ -213,15 +218,18 @@ export default function ProgressDashboard({ userId, onGenerateReport, onBack }: 
                           <div className="flex items-center justify-between mb-2">
                             <span className="text-sm font-medium text-gray-700">Total Score</span>
                             <span className="text-lg font-bold text-gray-900">
-                              {result.total_score?.toFixed(1) || 0}
+                              {Number(result.total_score || 0).toFixed(1)}
+                              {result.max_score ? <span className="text-sm font-medium text-gray-500"> / {Number(result.max_score).toFixed(1)}</span> : null}
                             </span>
                           </div>
-                          <div className="w-full bg-gray-200 rounded-full h-2">
-                            <div
-                              className="bg-teal-600 rounded-full h-2 transition-all duration-300"
-                              style={{ width: `${percentage}%` }}
-                            />
-                          </div>
+                          {percentage !== null && (
+                            <div className="w-full bg-gray-200 rounded-full h-2">
+                              <div
+                                className="bg-teal-600 rounded-full h-2 transition-all duration-300"
+                                style={{ width: `${percentage}%` }}
+                              />
+                            </div>
+                          )}
                         </div>
 
                         {result.domain_scores && Object.keys(result.domain_scores).length > 0 && (

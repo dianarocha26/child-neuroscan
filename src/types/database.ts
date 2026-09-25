@@ -55,17 +55,23 @@ export interface DomainScore {
 
 export interface ScreeningResult {
   id: string;
+  user_id?: string;
   condition_id: string;
+  child_name?: string | null;
   child_age_months: number;
   language: Language;
   responses: Record<string, boolean>;
   total_score: number;
+  max_score?: number | null;
   risk_level: RiskLevel;
   has_red_flags: boolean;
   domain_scores: Record<string, DomainScore>;
   completed_at: string;
   created_at: string;
 }
+
+/** Screening result as read back with its condition embedded */
+export type ScreeningResultWithCondition = ScreeningResult & { condition: Condition };
 
 export interface RecommendationCategory {
   id: string;

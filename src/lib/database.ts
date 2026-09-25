@@ -4,6 +4,7 @@ import type {
   Question,
   FunctionalDomain,
   ScreeningResult,
+  ScreeningResultWithCondition,
   RiskLevel,
   Language,
   DomainScore,
@@ -158,6 +159,7 @@ export async function saveScreeningResult(
   language: Language,
   responses: Record<string, boolean>,
   totalScore: number,
+  maxScore: number,
   riskLevel: RiskLevel,
   hasRedFlags: boolean,
   domainScores: Record<string, DomainScore>,
@@ -183,6 +185,7 @@ export async function saveScreeningResult(
       language,
       responses,
       total_score: totalScore,
+      max_score: maxScore,
       risk_level: riskLevel,
       has_red_flags: hasRedFlags,
       domain_scores: domainScores
@@ -194,7 +197,7 @@ export async function saveScreeningResult(
   return data;
 }
 
-export async function getUserScreeningResults(userId: string): Promise<ScreeningResult[]> {
+export async function getUserScreeningResults(userId: string): Promise<ScreeningResultWithCondition[]> {
   const { data, error } = await supabase
     .from('screening_results')
     .select(`
@@ -208,7 +211,7 @@ export async function getUserScreeningResults(userId: string): Promise<Screening
   return data || [];
 }
 
-export async function getScreeningResultById(id: string): Promise<ScreeningResult | null> {
+export async function getScreeningResultById(id: string): Promise<ScreeningResultWithCondition | null> {
   const { data, error } = await supabase
     .from('screening_results')
     .select(`
