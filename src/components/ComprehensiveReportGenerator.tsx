@@ -12,6 +12,7 @@ import {
   listReportTemplates, listGeneratedReports, createGeneratedReport, compileReportSourceData
 } from '../lib/api/reports';
 import { PageHeader } from './PageHeader';
+import { ErrorState, LOAD_ERROR_MESSAGE } from './ErrorState';
 import { useDialog } from '../contexts/DialogContext';
 
 // Matches the behavior type saved by BehaviorDiary; every other type counts as challenging.
@@ -99,6 +100,7 @@ export default function ComprehensiveReportGenerator() {
   const [generatedReports, setGeneratedReports] = useState<GeneratedReport[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<ReportTemplate | null>(null);
   const { loading, setLoading } = useLoadingState();
+  const [loadFailed, setLoadFailed] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
 
@@ -115,6 +117,7 @@ export default function ComprehensiveReportGenerator() {
   }, [user]);
 
   const loadData = async () => {
+    setLoadFailed(false);
     if (!user) {
       logger.error('Cannot load data: user is null');
       setLoading(false);
@@ -132,6 +135,7 @@ export default function ComprehensiveReportGenerator() {
       setGeneratedReports(reports);
     } catch (error) {
       logger.error('Error loading data:', error);
+      setLoadFailed(true);
     } finally {
       setLoading(false);
     }
@@ -338,6 +342,10 @@ export default function ComprehensiveReportGenerator() {
     const htmlContent = generateHTMLReport(buildHTMLExportData(report));
     downloadHTMLReport(htmlContent, `${report.title.replace(/\s+/g, '_')}-${new Date().toISOString().split('T')[0]}.html`);
   };
+
+  if (loadFailed) {
+    return <ErrorState inline message={LOAD_ERROR_MESSAGE} onRetry={() => { setLoadFailed(false); setLoading(true); loadData(); }} />;
+  }
 
   if (loading) {
     return (

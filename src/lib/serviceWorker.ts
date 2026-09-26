@@ -69,10 +69,3 @@ export async function unregisterServiceWorker() {
     await Promise.all(registrations.map((registration) => registration.unregister()));
   }
 }
-
-export async function clearServiceWorkerCache() {
-  if ('caches' in window) {
-    const cacheNames = await caches.keys();
-    await Promise.all(cacheNames.map((cacheName) => caches.delete(cacheName)));
-  }
-}

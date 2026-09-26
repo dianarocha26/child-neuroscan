@@ -147,6 +147,54 @@ export function LandingPage({ onConditionSelect, onViewDashboard, onViewResource
           )}
         </div>
 
+        <div className="bg-white/90 backdrop-blur-sm rounded-3xl shadow-soft-lg p-5 sm:p-10 mb-8 sm:mb-10 border border-white/60 animate-in-delay-3">
+          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-3 flex items-center gap-3">
+            <div className="w-10 h-10 flex-shrink-0 bg-gradient-to-br from-emerald-500 to-emerald-700 rounded-xl flex items-center justify-center">
+              <Brain className="w-6 h-6 text-white" />
+            </div>
+            {translations.selectCondition[language]}
+          </h2>
+          <p className="text-gray-600 mb-6">
+            {translations.selectConditionDescription[language]}
+          </p>
+
+          {loading && (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-8 h-8 animate-spin text-teal-600" />
+            </div>
+          )}
+
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-800">
+              {error}
+            </div>
+          )}
+
+          {!loading && !error && (
+            <div className="grid gap-4 lg:grid-cols-2">
+              {conditions.length === 0 && (
+                <div className="text-center py-8 text-gray-600 lg:col-span-2">
+                  {t('No conditions available right now.', 'No hay condiciones disponibles en este momento.')}
+                </div>
+              )}
+              {conditions.map((condition, index) => {
+                return (
+                <div
+                  key={condition.id}
+                  className="animate-in"
+                  style={{ animationDelay: `${index * 0.1}s`, animationFillMode: 'both' }}
+                >
+                  <ConditionCard
+                    condition={condition}
+                    onClick={() => onConditionSelect(condition)}
+                  />
+                </div>
+              );
+              })}
+            </div>
+          )}
+        </div>
+
         {/* Quick links for signed-in users (language, search and account controls live in the app header) */}
         {user && (
           <nav className={`grid grid-cols-2 sm:flex sm:flex-wrap gap-2 mb-6 sm:mb-8 animate-in`} aria-label={t('Quick links', 'Accesos rápidos')}>
@@ -384,54 +432,6 @@ export function LandingPage({ onConditionSelect, onViewDashboard, onViewResource
             </div>
           </div>
         )}
-
-        <div className="bg-white/90 backdrop-blur-sm rounded-3xl shadow-soft-lg p-5 sm:p-10 mb-8 sm:mb-10 border border-white/60 animate-in-delay-3">
-          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-3 flex items-center gap-3">
-            <div className="w-10 h-10 flex-shrink-0 bg-gradient-to-br from-emerald-500 to-emerald-700 rounded-xl flex items-center justify-center">
-              <Brain className="w-6 h-6 text-white" />
-            </div>
-            {translations.selectCondition[language]}
-          </h2>
-          <p className="text-gray-600 mb-6">
-            {translations.selectConditionDescription[language]}
-          </p>
-
-          {loading && (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-8 h-8 animate-spin text-teal-600" />
-            </div>
-          )}
-
-          {error && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-800">
-              {error}
-            </div>
-          )}
-
-          {!loading && !error && (
-            <div className="grid gap-4 lg:grid-cols-2">
-              {conditions.length === 0 && (
-                <div className="text-center py-8 text-gray-600 lg:col-span-2">
-                  {t('No conditions available right now.', 'No hay condiciones disponibles en este momento.')}
-                </div>
-              )}
-              {conditions.map((condition, index) => {
-                return (
-                <div
-                  key={condition.id}
-                  className="animate-in"
-                  style={{ animationDelay: `${index * 0.1}s`, animationFillMode: 'both' }}
-                >
-                  <ConditionCard
-                    condition={condition}
-                    onClick={() => onConditionSelect(condition)}
-                  />
-                </div>
-              );
-              })}
-            </div>
-          )}
-        </div>
 
         <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 sm:p-6">
           <h3 className="font-semibold text-blue-900 mb-2">

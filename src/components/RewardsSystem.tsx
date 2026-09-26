@@ -10,6 +10,7 @@ import {
   type RewardChart, type RewardEntry, type RewardGoal
 } from '../lib/api/rewards';
 import { PageHeader } from './PageHeader';
+import { ErrorState, LOAD_ERROR_MESSAGE } from './ErrorState';
 import { ChildPicker } from './ChildPicker';
 import { useDialog } from '../contexts/DialogContext';
 
@@ -20,6 +21,7 @@ export default function RewardsSystem() {
   const [entries, setEntries] = useState<{ [key: string]: RewardEntry[] }>({});
   const [goals, setGoals] = useState<{ [key: string]: RewardGoal[] }>({});
   const { loading, setLoading } = useLoadingState();
+  const [loadFailed, setLoadFailed] = useState(false);
 
   const [showChartForm, setShowChartForm] = useState(false);
   const [editingChart, setEditingChart] = useState<RewardChart | null>(null);
@@ -40,6 +42,7 @@ export default function RewardsSystem() {
   useEffect(() => { if (user) loadData(); }, [user]);
 
   const loadData = async () => {
+    setLoadFailed(false);
     if (!user) { setLoading(false); return; }
     try {
       const chartsData = await listRewardCharts(user.id);
@@ -57,12 +60,14 @@ export default function RewardsSystem() {
 
           if (entriesResult.status === 'rejected') {
             logger.error('Error loading star entries:', entriesResult.reason);
+            setLoadFailed(true);
           } else {
             entriesMap[chart.id] = entriesResult.value;
           }
 
           if (goalsResult.status === 'rejected') {
             logger.error('Error loading reward goals:', goalsResult.reason);
+            setLoadFailed(true);
           } else {
             goalsMap[chart.id] = goalsResult.value;
           }
@@ -73,6 +78,7 @@ export default function RewardsSystem() {
       setGoals(goalsMap);
     } catch (error) {
       logger.error('Error loading rewards data:', error);
+      setLoadFailed(true);
     } finally {
       setLoading(false);
     }
@@ -173,6 +179,10 @@ export default function RewardsSystem() {
   };
 
   const getTotalStars = (chartId: string) => entries[chartId]?.reduce((sum, e) => sum + (e.stars_earned || 0), 0) || 0;
+
+  if (loadFailed) {
+    return <ErrorState inline message={LOAD_ERROR_MESSAGE} onRetry={() => { setLoadFailed(false); setLoading(true); loadData(); }} />;
+  }
 
   if (loading) {
     return (
