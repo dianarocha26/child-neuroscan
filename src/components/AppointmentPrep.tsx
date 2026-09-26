@@ -17,6 +17,7 @@ import {
   type NewObservation, type NewQuestion, type NewDocument, type NewFollowup
 } from '../lib/api/appointments';
 import { ChildPicker } from './ChildPicker';
+import { useDialog } from '../contexts/DialogContext';
 
 interface AppointmentPrepProps {
   userId: string;
@@ -24,6 +25,7 @@ interface AppointmentPrepProps {
 }
 
 export default function AppointmentPrep({ userId, onBack }: AppointmentPrepProps) {
+  const { notify, confirm } = useDialog();
   const { t } = useLanguage();
   const [view, setView] = useState<'list' | 'create' | 'detail'>('list');
   const [editingApt, setEditingApt] = useState<Appointment | null>(null);
@@ -84,7 +86,7 @@ export default function AppointmentPrep({ userId, onBack }: AppointmentPrepProps
         data = await updateAppointment(editingApt.id, payload);
       } catch (error) {
         logger.error('Error updating appointment:', error);
-        alert(t('Failed to update appointment. Please try again.', 'No se pudo actualizar la cita. Inténtelo de nuevo.'));
+        notify(t('Failed to update appointment. Please try again.', 'No se pudo actualizar la cita. Inténtelo de nuevo.'));
         return;
       }
 
@@ -100,7 +102,7 @@ export default function AppointmentPrep({ userId, onBack }: AppointmentPrepProps
         data = await createAppointment(userId, payload);
       } catch (error) {
         logger.error('Error creating appointment:', error);
-        alert(t('Failed to create appointment. Please try again.', 'No se pudo crear la cita. Inténtelo de nuevo.'));
+        notify(t('Failed to create appointment. Please try again.', 'No se pudo crear la cita. Inténtelo de nuevo.'));
         return;
       }
 
@@ -125,12 +127,12 @@ export default function AppointmentPrep({ userId, onBack }: AppointmentPrepProps
   };
 
   const handleDeleteAppointment = async (aptId: string) => {
-    if (!confirm('Delete this appointment and all its data?')) return;
+    if (!(await confirm('Delete this appointment and all its data?'))) return;
     try {
       await deleteAppointment(aptId);
     } catch (error) {
       logger.error('Error deleting appointment:', error);
-      alert(t('Failed to delete appointment. Please try again.', 'No se pudo eliminar la cita. Inténtelo de nuevo.'));
+      notify(t('Failed to delete appointment. Please try again.', 'No se pudo eliminar la cita. Inténtelo de nuevo.'));
       return;
     }
     setAppointments(appointments.filter(a => a.id !== aptId));
@@ -145,7 +147,7 @@ export default function AppointmentPrep({ userId, onBack }: AppointmentPrepProps
       data = await addObservation(selectedAppointment.id, observation);
     } catch (error) {
       logger.error('Error adding observation:', error);
-      alert(t('Failed to add observation. Please try again.', 'No se pudo agregar la observación. Inténtelo de nuevo.'));
+      notify(t('Failed to add observation. Please try again.', 'No se pudo agregar la observación. Inténtelo de nuevo.'));
       return false;
     }
 
@@ -166,7 +168,7 @@ export default function AppointmentPrep({ userId, onBack }: AppointmentPrepProps
       data = await addQuestion(selectedAppointment.id, question);
     } catch (error) {
       logger.error('Error adding question:', error);
-      alert(t('Failed to add question. Please try again.', 'No se pudo agregar la pregunta. Inténtelo de nuevo.'));
+      notify(t('Failed to add question. Please try again.', 'No se pudo agregar la pregunta. Inténtelo de nuevo.'));
       return false;
     }
 
@@ -187,7 +189,7 @@ export default function AppointmentPrep({ userId, onBack }: AppointmentPrepProps
       data = await addDocument(selectedAppointment.id, doc);
     } catch (error) {
       logger.error('Error adding document:', error);
-      alert(t('Failed to add document. Please try again.', 'No se pudo agregar el documento. Inténtelo de nuevo.'));
+      notify(t('Failed to add document. Please try again.', 'No se pudo agregar el documento. Inténtelo de nuevo.'));
       return false;
     }
 
@@ -208,7 +210,7 @@ export default function AppointmentPrep({ userId, onBack }: AppointmentPrepProps
       data = await addFollowup(selectedAppointment.id, followup);
     } catch (error) {
       logger.error('Error adding follow-up task:', error);
-      alert(t('Failed to add follow-up task. Please try again.', 'No se pudo agregar la tarea de seguimiento. Inténtelo de nuevo.'));
+      notify(t('Failed to add follow-up task. Please try again.', 'No se pudo agregar la tarea de seguimiento. Inténtelo de nuevo.'));
       return false;
     }
 
@@ -222,13 +224,13 @@ export default function AppointmentPrep({ userId, onBack }: AppointmentPrepProps
   };
 
   const handleDeleteItem = async (table: AppointmentChildTable, id: string, field: keyof Appointment) => {
-    if (!confirm(t('Delete this item?', '¿Eliminar este elemento?'))) return;
+    if (!(await confirm(t('Delete this item?', '¿Eliminar este elemento?')))) return;
 
     try {
       await deleteAppointmentItem(table, id);
     } catch (error) {
       logger.error('Error deleting item:', error);
-      alert(t('Failed to delete item. Please try again.', 'No se pudo eliminar el elemento. Inténtelo de nuevo.'));
+      notify(t('Failed to delete item. Please try again.', 'No se pudo eliminar el elemento. Inténtelo de nuevo.'));
       return;
     }
 

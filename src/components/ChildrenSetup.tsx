@@ -5,6 +5,7 @@ import { useChildren } from '../contexts/ChildrenContext';
 import { addChild, updateChild, deleteChild, ageInMonths, type Child } from '../lib/api/children';
 import { localToday, formatDateOnly } from '../lib/dates';
 import { logger } from '../lib/logger';
+import { useDialog } from '../contexts/DialogContext';
 
 interface ChildrenSetupProps {
   /** First visit after sign-in: explains why we ask and offers "Skip for now" */
@@ -22,6 +23,7 @@ function formatAge(dob: string | null): string {
 
 /** Add, edit and remove the parent's child profiles. */
 export function ChildrenSetup({ isOnboarding, onDone }: ChildrenSetupProps) {
+  const { confirm } = useDialog();
   const { user } = useAuth();
   const { childList, refresh } = useChildren();
   const [editing, setEditing] = useState<Child | null>(null);
@@ -61,7 +63,7 @@ export function ChildrenSetup({ isOnboarding, onDone }: ChildrenSetupProps) {
   }
 
   async function handleDelete(child: Child) {
-    if (!confirm(`Remove ${child.child_name}? Entries you already saved for them are kept.`)) return;
+    if (!(await confirm(`Remove ${child.child_name}? Entries you already saved for them are kept.`, { confirmLabel: 'Remove' }))) return;
     try {
       await deleteChild(child.id);
       if (editing?.id === child.id) resetForm();

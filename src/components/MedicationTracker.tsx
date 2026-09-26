@@ -8,8 +8,10 @@ import {
   type Medication, type MedicationLog
 } from '../lib/api/medications';
 import { ChildPicker } from './ChildPicker';
+import { useDialog } from '../contexts/DialogContext';
 
 export default function MedicationTracker() {
+  const { notify, confirm } = useDialog();
   const [medications, setMedications] = useState<Medication[]>([]);
   const [logs, setLogs] = useState<MedicationLog[]>([]);
   const [loading, setLoading] = useState(true);
@@ -94,7 +96,7 @@ export default function MedicationTracker() {
       loadMedications();
     } catch (error) {
       logger.error('Error saving medication:', error);
-      alert('Failed to save medication. Please try again.');
+      notify('Failed to save medication. Please try again.');
     }
   };
 
@@ -115,7 +117,7 @@ export default function MedicationTracker() {
       loadLogs(selectedMed.id);
     } catch (error) {
       logger.error('Error logging dose:', error);
-      alert('Failed to log dose. Please try again.');
+      notify('Failed to log dose. Please try again.');
     }
   };
 
@@ -125,12 +127,12 @@ export default function MedicationTracker() {
       loadMedications();
     } catch (error) {
       logger.error('Error toggling medication', error);
-      alert('Failed to update medication status. Please try again.');
+      notify('Failed to update medication status. Please try again.');
     }
   };
 
   const handleDeleteMed = async (medId: string) => {
-    if (!confirm('Are you sure you want to delete this medication?')) return;
+    if (!(await confirm('Are you sure you want to delete this medication?'))) return;
 
     try {
       await deleteMedication(medId);
@@ -138,7 +140,7 @@ export default function MedicationTracker() {
       setSelectedMed(null);
     } catch (error) {
       logger.error('Error deleting medication', error);
-      alert('Failed to delete medication. Please try again.');
+      notify('Failed to delete medication. Please try again.');
     }
   };
 

@@ -42,10 +42,12 @@ const ComprehensiveReportGenerator = lazy(() => import('./components/Comprehensi
 const ScreenWrapper = lazy(() => import('./components/ScreenWrapper'));
 import { calculateScreeningScore, saveScreeningResult, getQuestionsForCondition } from './lib/database';
 import type { Condition, RiskLevel, DomainScore } from './types/database';
+import { useDialog } from './contexts/DialogContext';
 
 export type Screen = 'login' | 'signup' | 'forgot-password' | 'landing' | 'children' | 'age-input' | 'questionnaire' | 'results' | 'dashboard' | 'report' | 'resources' | 'community' | 'videos' | 'appointments' | 'photos' | 'goals' | 'medications' | 'behavior' | 'crisis' | 'rewards' | 'reminders' | 'schedule' | 'sensory' | 'analytics' | 'reports';
 
 function AppContent() {
+  const { notify } = useDialog();
   const { user, loading, passwordRecovery, clearPasswordRecovery, signOut } = useAuth();
   const { language } = useLanguage();
   const [currentScreen, setCurrentScreen] = useState<Screen>('landing');
@@ -351,12 +353,12 @@ function AppContent() {
         localStorage.removeItem('guestScreeningData');
       } catch (err) {
         logger.error('Failed to save guest screening after login', err);
-        alert(language === 'es'
+        notify(language === 'es'
           ? 'No pudimos guardar su evaluación. Intente de nuevo más tarde.'
           : 'We could not save your screening. Please try again later.');
       }
     })();
-  }, [user, pendingSaveAction, selectedCondition, language]);
+  }, [user, pendingSaveAction, selectedCondition, language, notify]);
 
   function handleGenerateReport(sessionId: string) {
     setSelectedReportSessionId(sessionId);

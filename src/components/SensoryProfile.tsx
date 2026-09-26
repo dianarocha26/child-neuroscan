@@ -6,8 +6,10 @@ import { logger } from '../lib/logger';
 import { createSensoryProfile, listSensoryProfiles, type SensoryProfile } from '../lib/api/sensory';
 import { PageHeader } from './PageHeader';
 import { ChildPicker } from './ChildPicker';
+import { useDialog } from '../contexts/DialogContext';
 
 export default function SensoryProfile() {
+  const { notify } = useDialog();
   const { user } = useAuth();
   const [profiles, setProfiles] = useState<SensoryProfile[]>([]);
   const { loading, setLoading } = useLoadingState();
@@ -127,7 +129,7 @@ export default function SensoryProfile() {
     e.preventDefault();
 
     if (!user) {
-      alert('You must be logged in to create a sensory profile');
+      notify('You must be logged in to create a sensory profile');
       return;
     }
 
@@ -171,7 +173,7 @@ export default function SensoryProfile() {
       loadProfiles();
     } catch (error) {
       logger.error('Error creating sensory profile:', error);
-      alert('Failed to create sensory profile');
+      notify('Failed to create sensory profile');
     }
   };
 

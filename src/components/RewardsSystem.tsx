@@ -11,8 +11,10 @@ import {
 } from '../lib/api/rewards';
 import { PageHeader } from './PageHeader';
 import { ChildPicker } from './ChildPicker';
+import { useDialog } from '../contexts/DialogContext';
 
 export default function RewardsSystem() {
+  const { notify, confirm } = useDialog();
   const { user } = useAuth();
   const [charts, setCharts] = useState<RewardChart[]>([]);
   const [entries, setEntries] = useState<{ [key: string]: RewardEntry[] }>({});
@@ -93,14 +95,14 @@ export default function RewardsSystem() {
         await createRewardChart(user.id, chartForm);
       }
       setShowChartForm(false); setEditingChart(null); setChartForm(emptyChartForm); loadData();
-    } catch (error) { logger.error('Error saving chart:', error); alert('Failed to save reward chart. Please try again.'); }
+    } catch (error) { logger.error('Error saving chart:', error); notify('Failed to save reward chart. Please try again.'); }
   };
   const handleDeleteChart = async (id: string) => {
-    if (!confirm('Delete this reward chart and all its data?')) return;
+    if (!(await confirm('Delete this reward chart and all its data?'))) return;
     try {
       await deleteRewardChart(id);
       loadData();
-    } catch (error) { logger.error('Error deleting chart:', error); alert('Failed to delete chart. Please try again.'); }
+    } catch (error) { logger.error('Error deleting chart:', error); notify('Failed to delete chart. Please try again.'); }
   };
 
   const handleRateChart = async (chart: RewardChart, isEffective: boolean) => {
@@ -109,7 +111,7 @@ export default function RewardsSystem() {
     try {
       await rateRewardChart(chart.id, value);
       setCharts(prev => prev.map(c => (c.id === chart.id ? { ...c, is_effective: value } : c)));
-    } catch (error) { logger.error('Error rating chart:', error); alert('Failed to save rating. Please try again.'); }
+    } catch (error) { logger.error('Error rating chart:', error); notify('Failed to save rating. Please try again.'); }
   };
 
   // --- Entry handlers ---
@@ -133,14 +135,14 @@ export default function RewardsSystem() {
         await createRewardEntry(chartId, payload);
       }
       setShowEntryForm(null); setEditingEntry(null); setEntryForm(emptyEntryForm); loadData();
-    } catch (error) { logger.error('Error saving entry:', error); alert('Failed to save entry. Please try again.'); }
+    } catch (error) { logger.error('Error saving entry:', error); notify('Failed to save entry. Please try again.'); }
   };
   const handleDeleteEntry = async (id: string) => {
-    if (!confirm('Delete this star entry?')) return;
+    if (!(await confirm('Delete this star entry?'))) return;
     try {
       await deleteRewardEntry(id);
       loadData();
-    } catch (error) { logger.error('Error deleting entry:', error); alert('Failed to delete entry. Please try again.'); }
+    } catch (error) { logger.error('Error deleting entry:', error); notify('Failed to delete entry. Please try again.'); }
   };
 
   // --- Goal handlers ---
@@ -160,14 +162,14 @@ export default function RewardsSystem() {
         await createRewardGoal(chartId, payload);
       }
       setShowGoalForm(null); setEditingGoal(null); setGoalForm(emptyGoalForm); loadData();
-    } catch (error) { logger.error('Error saving goal:', error); alert('Failed to save goal. Please try again.'); }
+    } catch (error) { logger.error('Error saving goal:', error); notify('Failed to save goal. Please try again.'); }
   };
   const handleDeleteGoal = async (id: string) => {
-    if (!confirm('Delete this goal?')) return;
+    if (!(await confirm('Delete this goal?'))) return;
     try {
       await deleteRewardGoal(id);
       loadData();
-    } catch (error) { logger.error('Error deleting goal:', error); alert('Failed to delete goal. Please try again.'); }
+    } catch (error) { logger.error('Error deleting goal:', error); notify('Failed to delete goal. Please try again.'); }
   };
 
   const getTotalStars = (chartId: string) => entries[chartId]?.reduce((sum, e) => sum + (e.stars_earned || 0), 0) || 0;

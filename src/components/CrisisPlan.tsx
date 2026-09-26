@@ -12,8 +12,10 @@ import {
 } from '../lib/api/crisis';
 import { PageHeader } from './PageHeader';
 import { ChildPicker } from './ChildPicker';
+import { useDialog } from '../contexts/DialogContext';
 
 export default function CrisisPlanComponent() {
+  const { notify, confirm } = useDialog();
   const { user } = useAuth();
   const { t } = useLanguage();
   const [crisisPlans, setCrisisPlans] = useState<CrisisPlan[]>([]);
@@ -121,16 +123,16 @@ export default function CrisisPlanComponent() {
       setShowPlanForm(false); setEditingPlan(null); setPlanForm(emptyPlanForm); loadData();
     } catch (error) {
       logger.error('Error saving crisis plan:', error);
-      alert('Failed to save crisis plan. Please try again.');
+      notify('Failed to save crisis plan. Please try again.');
     }
   };
 
   const handleDeletePlan = async (id: string) => {
-    if (!confirm('Delete this crisis plan?')) return;
+    if (!(await confirm('Delete this crisis plan?'))) return;
     try {
       await deleteCrisisPlan(id);
       loadData();
-    } catch (error) { logger.error('Error deleting plan:', error); alert('Failed to delete plan. Please try again.'); }
+    } catch (error) { logger.error('Error deleting plan:', error); notify('Failed to delete plan. Please try again.'); }
   };
 
   // --- Contact handlers ---
@@ -170,16 +172,16 @@ export default function CrisisPlanComponent() {
       setShowContactForm(false); setEditingContact(null); setContactForm(emptyContactForm); loadData();
     } catch (error) {
       logger.error('Error saving contact:', error);
-      alert('Failed to save contact. Please try again.');
+      notify('Failed to save contact. Please try again.');
     }
   };
 
   const handleDeleteContact = async (id: string) => {
-    if (!confirm('Delete this contact?')) return;
+    if (!(await confirm('Delete this contact?'))) return;
     try {
       await deleteCrisisContact(id);
       loadData();
-    } catch (error) { logger.error('Error deleting contact:', error); alert('Failed to delete contact. Please try again.'); }
+    } catch (error) { logger.error('Error deleting contact:', error); notify('Failed to delete contact. Please try again.'); }
   };
 
   // --- Strategy handlers ---
@@ -221,16 +223,16 @@ export default function CrisisPlanComponent() {
       setShowStrategyForm(false); setEditingStrategy(null); setStrategyForm(emptyStrategyForm); loadData();
     } catch (error) {
       logger.error('Error saving strategy:', error);
-      alert('Failed to save calming strategy. Please try again.');
+      notify('Failed to save calming strategy. Please try again.');
     }
   };
 
   const handleDeleteStrategy = async (id: string) => {
-    if (!confirm('Delete this calming strategy?')) return;
+    if (!(await confirm('Delete this calming strategy?'))) return;
     try {
       await deleteCalmingStrategy(id);
       loadData();
-    } catch (error) { logger.error('Error deleting strategy:', error); alert('Failed to delete strategy. Please try again.'); }
+    } catch (error) { logger.error('Error deleting strategy:', error); notify('Failed to delete strategy. Please try again.'); }
   };
 
   const addArrayField = <T extends object>(setter: React.Dispatch<React.SetStateAction<T>>, field: string, currentArray: string[]) => {

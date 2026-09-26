@@ -7,8 +7,10 @@ import {
   type Goal, type GoalProgressLog as ProgressLog
 } from '../lib/api/goals';
 import { ChildPicker } from './ChildPicker';
+import { useDialog } from '../contexts/DialogContext';
 
 export default function GoalTracker() {
+  const { notify, confirm } = useDialog();
   const [goals, setGoals] = useState<Goal[]>([]);
   const [loading, setLoading] = useState(true);
   const [dateError, setDateError] = useState(false);
@@ -94,7 +96,7 @@ export default function GoalTracker() {
       loadGoals();
     } catch (error: unknown) {
       logger.error('Error saving goal', error);
-      alert('Failed to save goal. Please try again.');
+      notify('Failed to save goal. Please try again.');
     }
   };
 
@@ -111,12 +113,12 @@ export default function GoalTracker() {
       loadProgressLogs(selectedGoal.id);
     } catch (error) {
       logger.error('Error logging progress', error);
-      alert('Failed to log progress. Please try again.');
+      notify('Failed to log progress. Please try again.');
     }
   };
 
   const handleDeleteGoal = async (goalId: string) => {
-    if (!confirm('Are you sure you want to delete this goal?')) return;
+    if (!(await confirm('Are you sure you want to delete this goal?'))) return;
 
     try {
       await deleteGoal(goalId);
@@ -125,7 +127,7 @@ export default function GoalTracker() {
       setActiveModal("none");
     } catch (error) {
       logger.error('Error deleting goal', error);
-      alert('Failed to delete goal. Please try again.');
+      notify('Failed to delete goal. Please try again.');
     }
   };
 
