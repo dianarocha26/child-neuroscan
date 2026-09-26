@@ -4,11 +4,20 @@ interface ErrorStateProps {
   message?: string;
   onRetry?: () => void;
   onBack?: () => void;
+  /** Inside a screen (e.g. ScreenWrapper) instead of taking the whole page. */
+  inline?: boolean;
 }
 
-export function ErrorState({ message = 'Something went wrong', onRetry, onBack }: ErrorStateProps) {
+export const LOAD_ERROR_MESSAGE = "We couldn't load your data. Check your connection and try again.";
+
+export function ErrorState({ message = 'Something went wrong', onRetry, onBack, inline = false }: ErrorStateProps) {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-red-50 via-white to-gray-50 flex items-center justify-center p-4">
+    <div
+      role="alert"
+      className={inline
+        ? 'flex items-center justify-center min-h-[50vh] p-4'
+        : 'min-h-screen bg-gradient-to-br from-red-50 via-white to-gray-50 flex items-center justify-center p-4'}
+    >
       <div className="text-center max-w-md">
         <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
         <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">

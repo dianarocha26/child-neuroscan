@@ -8,6 +8,7 @@ import {
   updateBehaviorEntry, type BehaviorEntry, type BehaviorIntervention, type BehaviorTrigger
 } from '../lib/api/behavior';
 import { PageHeader } from './PageHeader';
+import { ErrorState, LOAD_ERROR_MESSAGE } from './ErrorState';
 import { ChildPicker } from './ChildPicker';
 import { useDialog } from '../contexts/DialogContext';
 
@@ -20,6 +21,7 @@ export default function BehaviorDiary() {
   const [showForm, setShowForm] = useState(false);
   const [editingEntry, setEditingEntry] = useState<BehaviorEntry | null>(null);
   const { loading, setLoading } = useLoadingState();
+  const [loadFailed, setLoadFailed] = useState(false);
   const [filterType, setFilterType] = useState<string>('all');
 
   const emptyForm = {
@@ -56,6 +58,7 @@ export default function BehaviorDiary() {
       setLoading(false);
       return;
     }
+    setLoadFailed(false);
 
     const [entriesResult, triggersResult, interventionsResult] = await Promise.allSettled([
       listBehaviorEntries(user.id),
@@ -65,18 +68,21 @@ export default function BehaviorDiary() {
 
     if (entriesResult.status === 'rejected') {
       logger.error('Error loading behavior entries:', entriesResult.reason);
+      setLoadFailed(true);
     } else {
       setEntries(entriesResult.value);
     }
 
     if (triggersResult.status === 'rejected') {
       logger.error('Error loading behavior triggers:', triggersResult.reason);
+      setLoadFailed(true);
     } else {
       setTriggers(triggersResult.value);
     }
 
     if (interventionsResult.status === 'rejected') {
       logger.error('Error loading behavior interventions:', interventionsResult.reason);
+      setLoadFailed(true);
     } else {
       setInterventions(interventionsResult.value);
     }
@@ -170,6 +176,10 @@ export default function BehaviorDiary() {
   const filteredEntries = filterType === 'all'
     ? entries
     : entries.filter(e => e.behavior_type === filterType);
+
+  if (loadFailed) {
+    return <ErrorState inline message={LOAD_ERROR_MESSAGE} onRetry={() => { setLoadFailed(false); setLoading(true); loadData(); }} />;
+  }
 
   if (loading) {
     return (
