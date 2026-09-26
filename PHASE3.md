@@ -59,3 +59,11 @@ Read CLAUDE.md first. This file is the starting point for the phase 3 session; d
 - First sign-in with no children shows a skippable "Your children" screen once per browser (`childrenSetupSeen:<userId>` in localStorage). Header "Children" button reopens it.
 - `ChildPicker` replaces the 11 free-text name fields; free text stays available ("Someone else…") and for names not in the list.
 - Screening: signed-in parents pick a child on the age step; age comes from date of birth and the name step is skipped. Guests unchanged.
+
+### Task 4: forms accessibility, reminder alerts, schedule icons (branch `claude/phase-3-task-4-9py10m`)
+- Labels: every form label is now linked (htmlFor/id, or wraps its input). Kept each form's own markup instead of swapping to `FormField` (would restyle forms for no a11y gain). Button groups use `role="group"` + `aria-labelledby` + `aria-pressed`. `FormField.tsx` is still unused (candidate for task 7).
+- Reminder alerts (`src/hooks/useReminderAlerts.ts`, logic in `src/lib/reminderAlerts.ts`): while the app is open, signed-in users get an in-app toast and, if allowed, a browser notification when a reminder is due (up to 24h overdue). Already-alerted reminders are tracked per browser in localStorage (`reminderAlerts:<userId>`); editing a reminder's date/time re-arms it. No push service, no schema change, `last_sent_at` unused. Reminders screen has a "Turn on notifications" button. `sw.js` focuses the app on notification click.
+- Nothing is sent when the app is closed. Real push (Web Push + a scheduled Edge Function) would need VAPID keys and a cron; revisit only if parents ask.
+- Reminders "today"/overdue now use the local date instead of UTC.
+- Visual schedule shows the activity icon (`icon_name`, lucide names from `src/components/scheduleIcons.ts`; unknown → Circle) and the activity form has an icon picker.
+

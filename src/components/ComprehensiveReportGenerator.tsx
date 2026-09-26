@@ -433,7 +433,7 @@ export default function ComprehensiveReportGenerator() {
                         Start Date
                       </label>
                       <input
-                      id="report-start"
+                        id="report-start"
                         type="date"
                         value={dateRangeStart}
                         onChange={(e) => setDateRangeStart(e.target.value)}
@@ -445,7 +445,7 @@ export default function ComprehensiveReportGenerator() {
                         End Date
                       </label>
                       <input
-                      id="report-end"
+                        id="report-end"
                         type="date"
                         value={dateRangeEnd}
                         onChange={(e) => setDateRangeEnd(e.target.value)}
