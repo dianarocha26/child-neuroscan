@@ -53,17 +53,36 @@ export default function AnalyticsDashboard() {
           break;
       }
 
-      const [patterns, correlations, summaries, triggers] = await Promise.all([
+      const [patternsResult, correlationsResult, summariesResult, triggersResult] = await Promise.allSettled([
         listBehaviorPatterns(user.id, startDate.toISOString()),
         listCorrelations(user.id, startDate.toISOString()),
         listWeeklySummaries(user.id, startDate.toISOString().split('T')[0]),
         listTriggerAnalysis(user.id)
       ]);
 
-      setPatterns(patterns);
-      setCorrelations(correlations);
-      setWeeklySummaries(summaries);
-      setTriggerAnalysis(triggers);
+      if (patternsResult.status === 'rejected') {
+        logger.error('Error loading behavior patterns:', patternsResult.reason);
+      } else {
+        setPatterns(patternsResult.value);
+      }
+
+      if (correlationsResult.status === 'rejected') {
+        logger.error('Error loading correlations:', correlationsResult.reason);
+      } else {
+        setCorrelations(correlationsResult.value);
+      }
+
+      if (summariesResult.status === 'rejected') {
+        logger.error('Error loading weekly summaries:', summariesResult.reason);
+      } else {
+        setWeeklySummaries(summariesResult.value);
+      }
+
+      if (triggersResult.status === 'rejected') {
+        logger.error('Error loading trigger analysis:', triggersResult.reason);
+      } else {
+        setTriggerAnalysis(triggersResult.value);
+      }
     } catch (error) {
       logger.error('Error loading analytics:', error);
     } finally {

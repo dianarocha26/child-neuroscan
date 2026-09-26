@@ -1,6 +1,12 @@
 import { supabase } from '../supabase';
 import type { Tables } from '../../types/supabase';
 import { check, unwrapList } from './client';
+import { logger } from '../logger';
+
+// PostgREST .or() filter syntax treats the string as a mini query language,
+// so an unvalidated value could inject extra conditions. Age groups are a
+// small fixed set (e.g. "0-3", "all"), so this is a conservative allowlist.
+const SAFE_FILTER_VALUE = /^[a-z0-9_-]+$/i;
 
 export type Video = Tables<'videos'> & {
   category: {
@@ -45,7 +51,7 @@ export async function listVideos(filters: VideoFilters, userId?: string): Promis
     query = query.eq('category_id', filters.categoryId);
   }
 
-  if (filters.ageGroup !== 'all') {
+  if (filters.ageGroup !== 'all' && SAFE_FILTER_VALUE.test(filters.ageGroup)) {
     query = query.or(`age_group.eq.${filters.ageGroup},age_group.eq.all`);
   }
 
@@ -58,11 +64,15 @@ export async function listVideos(filters: VideoFilters, userId?: string): Promis
   if (userId) {
     const videoIds = videosWithTags.map((v: Video) => v.id);
     // Progress is a display nicety: an error here shouldn't hide the video list.
-    const { data: progressData } = await supabase
+    const { data: progressData, error: progressError } = await supabase
       .from('user_video_progress')
       .select('video_id, watched, progress_seconds')
       .eq('user_id', userId)
       .in('video_id', videoIds);
+
+    if (progressError) {
+      logger.error('Error loading video progress:', progressError);
+    }
 
     const progressMap = new Map(
       progressData?.map(p => [p.video_id, { watched: p.watched ?? false, progress_seconds: p.progress_seconds ?? 0 }])

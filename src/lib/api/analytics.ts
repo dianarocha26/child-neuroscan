@@ -1,6 +1,11 @@
 import { supabase } from '../supabase';
-import type { BehaviorPattern, Correlation, TriggerAnalysis, WeeklySummary } from '../../types/components';
+import type { Tables } from '../../types/supabase';
 import { unwrapList } from './client';
+
+export type BehaviorPattern = Tables<'analytics_behavior_patterns'>;
+export type Correlation = Tables<'analytics_correlations'>;
+export type WeeklySummary = Tables<'analytics_weekly_summaries'>;
+export type TriggerAnalysis = Tables<'analytics_trigger_analysis'>;
 
 export async function listBehaviorPatterns(userId: string, sinceIso: string): Promise<BehaviorPattern[]> {
   return unwrapList(

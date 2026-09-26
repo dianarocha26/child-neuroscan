@@ -55,21 +55,33 @@ export default function VisualSchedule() {
 
     try {
       const schedulesData = await listSchedules(user.id);
-      const templatesData = await listActivityTemplates();
-
       setSchedules(schedulesData);
-
-      const activitiesMap: { [key: string]: Activity[] } = {};
-      for (const schedule of schedulesData) {
-        activitiesMap[schedule.id] = await listScheduleActivities(schedule.id);
-      }
-      setActivities(activitiesMap);
 
       if (schedulesData.length > 0 && !selectedSchedule) {
         setSelectedSchedule(schedulesData[0].id);
       }
 
-      setTemplates(templatesData);
+      const [templatesResult, ...activityResults] = await Promise.allSettled([
+        listActivityTemplates(),
+        ...schedulesData.map((schedule) => listScheduleActivities(schedule.id))
+      ]);
+
+      if (templatesResult.status === 'rejected') {
+        logger.error('Error loading activity templates:', templatesResult.reason);
+      } else {
+        setTemplates(templatesResult.value);
+      }
+
+      const activitiesMap: { [key: string]: Activity[] } = {};
+      activityResults.forEach((result, index) => {
+        const schedule = schedulesData[index];
+        if (result.status === 'rejected') {
+          logger.error('Error loading schedule activities:', result.reason);
+        } else {
+          activitiesMap[schedule.id] = result.value;
+        }
+      });
+      setActivities(activitiesMap);
     } catch (error) {
       logger.error('Error loading visual schedules:', error);
     } finally {

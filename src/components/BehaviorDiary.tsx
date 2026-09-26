@@ -54,21 +54,31 @@ export default function BehaviorDiary() {
       return;
     }
 
-    try {
-      const [entriesData, triggersData, interventionsData] = await Promise.all([
-        listBehaviorEntries(user.id),
-        listBehaviorTriggers(user.id),
-        listBehaviorInterventions(user.id)
-      ]);
+    const [entriesResult, triggersResult, interventionsResult] = await Promise.allSettled([
+      listBehaviorEntries(user.id),
+      listBehaviorTriggers(user.id),
+      listBehaviorInterventions(user.id)
+    ]);
 
-      setEntries(entriesData);
-      setTriggers(triggersData);
-      setInterventions(interventionsData);
-    } catch (error) {
-      logger.error('Error loading behavior diary data:', error);
-    } finally {
-      setLoading(false);
+    if (entriesResult.status === 'rejected') {
+      logger.error('Error loading behavior entries:', entriesResult.reason);
+    } else {
+      setEntries(entriesResult.value);
     }
+
+    if (triggersResult.status === 'rejected') {
+      logger.error('Error loading behavior triggers:', triggersResult.reason);
+    } else {
+      setTriggers(triggersResult.value);
+    }
+
+    if (interventionsResult.status === 'rejected') {
+      logger.error('Error loading behavior interventions:', interventionsResult.reason);
+    } else {
+      setInterventions(interventionsResult.value);
+    }
+
+    setLoading(false);
   };
 
   const openNewEntry = () => {

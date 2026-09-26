@@ -46,15 +46,25 @@ export default function AppointmentPrep({ userId, onBack }: AppointmentPrepProps
 
   const loadData = async () => {
     setLoading(true);
-    try {
-      const [types, appts] = await Promise.all([listAppointmentTypes(), listAppointments(userId)]);
-      setAppointmentTypes(types);
-      setAppointments(appts);
-    } catch (error) {
-      logger.error('Error loading appointments:', error);
-    } finally {
-      setLoading(false);
+
+    const [apptsResult, typesResult] = await Promise.allSettled([
+      listAppointments(userId),
+      listAppointmentTypes()
+    ]);
+
+    if (apptsResult.status === 'rejected') {
+      logger.error('Error loading appointments:', apptsResult.reason);
+    } else {
+      setAppointments(apptsResult.value);
     }
+
+    if (typesResult.status === 'rejected') {
+      logger.error('Error loading appointment types:', typesResult.reason);
+    } else {
+      setAppointmentTypes(typesResult.value);
+    }
+
+    setLoading(false);
   };
 
   const handleCreateAppointment = async (e: React.FormEvent) => {

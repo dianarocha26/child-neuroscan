@@ -57,11 +57,16 @@ export default function VideoLibrary({ userId, onBack }: VideoLibraryProps) {
 
     try {
       await recordVideoView(video.id, video.views || 0);
-      if (userId) {
-        await startVideoProgress(userId, video.id);
-      }
     } catch (error) {
       logger.error('Error recording video view:', error);
+    }
+
+    if (userId) {
+      try {
+        await startVideoProgress(userId, video.id);
+      } catch (error) {
+        logger.error('Error starting video progress:', error);
+      }
     }
   };
 

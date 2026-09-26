@@ -1,21 +1,21 @@
 import { supabase } from '../supabase';
-import type { TablesInsert, TablesUpdate } from '../../types/supabase';
-import type { RewardChart, RewardEntry, RewardGoal } from '../../types/components';
-import { check, requireUserId, unwrapList } from './client';
+import type { Tables, TablesInsert, TablesUpdate } from '../../types/supabase';
+import { check, unwrapList } from './client';
 
-export type { RewardChart, RewardEntry, RewardGoal };
+export type RewardChart = Tables<'reward_charts'>;
+export type RewardEntry = Tables<'reward_entries'>;
+export type RewardGoal = Tables<'reward_goals'>;
 
 export type RewardChartInput = Omit<TablesInsert<'reward_charts'>, 'user_id' | 'id' | 'created_at'>;
-export type RewardChartChanges = TablesUpdate<'reward_charts'>;
+export type RewardChartChanges = Omit<TablesUpdate<'reward_charts'>, 'id' | 'user_id' | 'created_at'>;
 
 export type RewardEntryInput = Omit<TablesInsert<'reward_entries'>, 'id' | 'created_at' | 'chart_id'>;
-export type RewardEntryChanges = TablesUpdate<'reward_entries'>;
+export type RewardEntryChanges = Omit<TablesUpdate<'reward_entries'>, 'id' | 'created_at' | 'chart_id'>;
 
 export type RewardGoalInput = Omit<TablesInsert<'reward_goals'>, 'id' | 'created_at' | 'chart_id' | 'is_achieved'>;
-export type RewardGoalChanges = TablesUpdate<'reward_goals'>;
+export type RewardGoalChanges = Omit<TablesUpdate<'reward_goals'>, 'id' | 'created_at' | 'chart_id'>;
 
-export async function listRewardCharts(): Promise<RewardChart[]> {
-  const userId = await requireUserId();
+export async function listRewardCharts(userId: string): Promise<RewardChart[]> {
   return unwrapList(
     await supabase.from('reward_charts').select('*').eq('user_id', userId).order('created_at', { ascending: false }),
     'load reward charts'
@@ -36,8 +36,7 @@ export async function listRewardGoals(chartId: string): Promise<RewardGoal[]> {
   );
 }
 
-export async function createRewardChart(input: RewardChartInput): Promise<void> {
-  const userId = await requireUserId();
+export async function createRewardChart(userId: string, input: RewardChartInput): Promise<void> {
   check(await supabase.from('reward_charts').insert({ ...input, user_id: userId }), 'save the reward chart');
 }
 

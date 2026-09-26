@@ -9,7 +9,7 @@ export type BehaviorTrigger = Tables<'behavior_triggers'>;
 export type BehaviorIntervention = Tables<'behavior_interventions'>;
 
 export type BehaviorEntryInput = Omit<TablesInsert<'behavior_entries'>, 'user_id' | 'id' | 'created_at'>;
-export type BehaviorEntryChanges = TablesUpdate<'behavior_entries'>;
+export type BehaviorEntryChanges = Omit<TablesUpdate<'behavior_entries'>, 'id' | 'user_id' | 'created_at'>;
 
 export async function listBehaviorEntries(userId: string): Promise<BehaviorEntry[]> {
   return unwrapList(

@@ -6,7 +6,8 @@ import { useLoadingState } from '../hooks/useLoadingState';
 import { logger } from '../lib/logger';
 import {
   createCalmingStrategy, createCrisisContact, createCrisisPlan, deleteCalmingStrategy,
-  deleteCrisisContact, deleteCrisisPlan, loadCrisisData, updateCalmingStrategy, updateCrisisContact,
+  deleteCrisisContact, deleteCrisisPlan, listCalmingStrategies, listCrisisContacts, listCrisisPlans,
+  updateCalmingStrategy, updateCrisisContact,
   updateCrisisPlan, type CalmingStrategy, type CrisisContact, type CrisisPlan
 } from '../lib/api/crisis';
 import { PageHeader } from './PageHeader';
@@ -52,16 +53,32 @@ export default function CrisisPlanComponent() {
 
   const loadData = async () => {
     if (!user) { setLoading(false); return; }
-    try {
-      const { plans, contacts, strategies } = await loadCrisisData();
-      setCrisisPlans(plans);
-      setContacts(contacts);
-      setStrategies(strategies);
-    } catch (error) {
-      logger.error('Error loading crisis plan data:', error);
-    } finally {
-      setLoading(false);
+
+    const [plansResult, contactsResult, strategiesResult] = await Promise.allSettled([
+      listCrisisPlans(user.id),
+      listCrisisContacts(user.id),
+      listCalmingStrategies(user.id)
+    ]);
+
+    if (plansResult.status === 'rejected') {
+      logger.error('Error loading crisis plans:', plansResult.reason);
+    } else {
+      setCrisisPlans(plansResult.value);
     }
+
+    if (contactsResult.status === 'rejected') {
+      logger.error('Error loading emergency contacts:', contactsResult.reason);
+    } else {
+      setContacts(contactsResult.value);
+    }
+
+    if (strategiesResult.status === 'rejected') {
+      logger.error('Error loading calming strategies:', strategiesResult.reason);
+    } else {
+      setStrategies(strategiesResult.value);
+    }
+
+    setLoading(false);
   };
 
   // --- Plan handlers ---
@@ -98,7 +115,7 @@ export default function CrisisPlanComponent() {
       if (editingPlan) {
         await updateCrisisPlan(editingPlan.id, payload);
       } else {
-        await createCrisisPlan(payload);
+        await createCrisisPlan(user.id, payload);
       }
       setShowPlanForm(false); setEditingPlan(null); setPlanForm(emptyPlanForm); loadData();
     } catch (error) {
@@ -147,7 +164,7 @@ export default function CrisisPlanComponent() {
       if (editingContact) {
         await updateCrisisContact(editingContact.id, payload);
       } else {
-        await createCrisisContact(payload);
+        await createCrisisContact(user.id, payload);
       }
       setShowContactForm(false); setEditingContact(null); setContactForm(emptyContactForm); loadData();
     } catch (error) {
@@ -198,7 +215,7 @@ export default function CrisisPlanComponent() {
       if (editingStrategy) {
         await updateCalmingStrategy(editingStrategy.id, payload);
       } else {
-        await createCalmingStrategy(payload);
+        await createCalmingStrategy(user.id, payload);
       }
       setShowStrategyForm(false); setEditingStrategy(null); setStrategyForm(emptyStrategyForm); loadData();
     } catch (error) {

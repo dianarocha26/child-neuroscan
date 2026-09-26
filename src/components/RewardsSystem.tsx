@@ -39,14 +39,33 @@ export default function RewardsSystem() {
   const loadData = async () => {
     if (!user) { setLoading(false); return; }
     try {
-      const chartsData = await listRewardCharts();
+      const chartsData = await listRewardCharts(user.id);
       setCharts(chartsData);
+
       const entriesMap: { [key: string]: RewardEntry[] } = {};
       const goalsMap: { [key: string]: RewardGoal[] } = {};
-      for (const chart of chartsData) {
-        entriesMap[chart.id] = await listRewardEntries(chart.id);
-        goalsMap[chart.id] = await listRewardGoals(chart.id);
-      }
+
+      await Promise.all(
+        chartsData.map(async (chart) => {
+          const [entriesResult, goalsResult] = await Promise.allSettled([
+            listRewardEntries(chart.id),
+            listRewardGoals(chart.id)
+          ]);
+
+          if (entriesResult.status === 'rejected') {
+            logger.error('Error loading star entries:', entriesResult.reason);
+          } else {
+            entriesMap[chart.id] = entriesResult.value;
+          }
+
+          if (goalsResult.status === 'rejected') {
+            logger.error('Error loading reward goals:', goalsResult.reason);
+          } else {
+            goalsMap[chart.id] = goalsResult.value;
+          }
+        })
+      );
+
       setEntries(entriesMap);
       setGoals(goalsMap);
     } catch (error) {
@@ -70,7 +89,7 @@ export default function RewardsSystem() {
       if (editingChart) {
         await updateRewardChart(editingChart.id, chartForm);
       } else {
-        await createRewardChart(chartForm);
+        await createRewardChart(user.id, chartForm);
       }
       setShowChartForm(false); setEditingChart(null); setChartForm(emptyChartForm); loadData();
     } catch (error) { logger.error('Error saving chart:', error); alert('Failed to save reward chart. Please try again.'); }

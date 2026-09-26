@@ -22,7 +22,7 @@ export type GoalInput = Omit<TablesInsert<'goals'>, 'user_id' | 'id' | 'created_
   priority?: GoalPriority;
 };
 
-export type GoalChanges = Omit<TablesUpdate<'goals'>, 'category' | 'status' | 'priority'> &
+export type GoalChanges = Omit<TablesUpdate<'goals'>, 'id' | 'user_id' | 'created_at' | 'category' | 'status' | 'priority'> &
   Partial<Pick<Goal, 'category' | 'status' | 'priority'>>;
 
 const toGoal = (row: Tables<'goals'>): Goal => ({

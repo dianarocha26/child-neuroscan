@@ -15,7 +15,8 @@ export type MedicationInput = Omit<TablesInsert<'medications'>, 'user_id' | 'id'
   type: MedicationType;
 };
 
-export type MedicationChanges = Omit<TablesUpdate<'medications'>, 'type'> & Partial<Pick<Medication, 'type'>>;
+export type MedicationChanges = Omit<TablesUpdate<'medications'>, 'id' | 'user_id' | 'created_at' | 'type'> &
+  Partial<Pick<Medication, 'type'>>;
 
 /** Log fields the user edits; medication_id and user_id are added here. */
 export type MedicationLogInput = Omit<

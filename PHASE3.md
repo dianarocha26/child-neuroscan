@@ -40,7 +40,14 @@ Read CLAUDE.md first. This file is the starting point for the phase 3 session; d
 - Shared row types in `src/types/components.ts` and `src/types/database.ts` are aliases of generated `Tables<...>`; JSON columns are mapped in `src/lib/database.ts` (screening results) and `src/lib/reports.ts` (report templates/generated reports), trusting shapes this app writes.
 - Behavior change: a screening result whose condition can't be read (e.g. RLS) is kept and shown as "Screening" with a `logger.warn`, instead of crashing the page.
 - tsc 22 → 0, eslint errors 9 → 0 (26 warnings). CI typecheck and lint are now blocking.
-- Follow-ups (task 2): several components still keep local copies of row types (GoalTracker, MedicationTracker, NotificationCenter, Community, ResourceFinder, AppointmentPrep, VideoLibrary); move them to shared aliases along with the data-layer move.
+
+### Task 2: data layer (done)
+- All component data access is in `src/lib/api/<domain>.ts`. Components never import `supabase` (AuthContext excepted).
+- One error pattern (`src/lib/api/client.ts`): functions throw `DataError(action, cause)`; helpers `unwrapList` (lists), `unwrap` (`.single()` / insert+select), `unwrapMaybe` (`.maybeSingle()`), `check` (writes), `requireUserId`.
+- Rule: the api module owns its row types. Text columns with a DB CHECK are narrowed to literal unions there (goals, medications, reminders, photos, community, resources).
+- Screens load secondary lists with `Promise.allSettled`, so one failed read doesn't hide the rest. Read errors are logged, not swallowed.
+- Behavior changes: deleting a photo entry keeps the row if the storage file can't be removed (retryable, no orphaned child photos); `listVideos` ignores an age-group value that isn't a plain slug.
+- Later: no screen has a load-error state (a failed load looks like "no data yet"); goals/medications/photos still call `requireUserId()` instead of taking `userId`; `src/types/components.ts` still holds report types used by ComprehensiveReportGenerator; the video view counter never worked (videos has no UPDATE policy).
 
 ### Decisions (owner delegated, 2026-09-26)
 - Allowed values: goals and medications already had CHECK constraints; only `reminders.reminder_type` lacked one, added in `20260926010000_reminders_type_check.sql` (NOT VALID, safe on existing data). Postgres CHECKs don't narrow generated types, so the literal unions are applied in code when rows are mapped in `src/lib/` (task 2).

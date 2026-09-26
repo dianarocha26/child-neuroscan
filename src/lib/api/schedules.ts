@@ -7,10 +7,10 @@ export type Activity = Tables<'schedule_activities'>;
 export type ActivityTemplate = Tables<'activity_templates'>;
 
 export type ScheduleInput = Omit<TablesInsert<'visual_schedules'>, 'user_id' | 'id' | 'created_at' | 'updated_at'>;
-export type ScheduleChanges = TablesUpdate<'visual_schedules'>;
+export type ScheduleChanges = Omit<TablesUpdate<'visual_schedules'>, 'id' | 'user_id' | 'created_at'>;
 
 export type ActivityInput = Omit<TablesInsert<'schedule_activities'>, 'id' | 'created_at'>;
-export type ActivityChanges = TablesUpdate<'schedule_activities'>;
+export type ActivityChanges = Omit<TablesUpdate<'schedule_activities'>, 'id' | 'created_at' | 'schedule_id'>;
 
 export async function listSchedules(userId: string): Promise<VisualSchedule[]> {
   return unwrapList(
