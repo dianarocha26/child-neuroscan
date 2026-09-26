@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase';
 import { logger } from '../lib/logger';
 import { PageHeader } from './PageHeader';
 import type { Tables } from '../types/supabase';
+import { ChildPicker } from './ChildPicker';
 
 type Goal = Tables<'goals'>;
 type ProgressLog = Tables<'goal_progress_logs'>;
@@ -336,13 +337,8 @@ export default function GoalTracker() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label htmlFor="goal-tracker-child-s-name" className="block text-sm font-medium text-gray-700 mb-2">Child's Name *</label>
-                  <input id="goal-tracker-child-s-name"
-                    type="text"
-                    value={goalForm.child_name}
-                    onChange={(e) => setGoalForm({ ...goalForm, child_name: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    required
-                  />
+                  <ChildPicker id="goal-tracker-child-s-name" required value={goalForm.child_name} onChange={(name) => setGoalForm({ ...goalForm, child_name: name })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" />
                 </div>
                 <div>
                   <label htmlFor="goal-tracker-category" className="block text-sm font-medium text-gray-700 mb-2">Category *</label>

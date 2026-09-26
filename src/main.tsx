@@ -6,6 +6,7 @@ import './index.css';
 import { AuthProvider } from './contexts/AuthContext.tsx';
 import { ThemeProvider } from './contexts/ThemeContext.tsx';
 import { LanguageProvider } from './contexts/LanguageContext.tsx';
+import { ChildrenProvider } from './contexts/ChildrenContext.tsx';
 import { ErrorBoundary } from './components/ErrorBoundary.tsx';
 import { registerServiceWorker, unregisterServiceWorker } from './lib/serviceWorker';
 
@@ -21,9 +22,11 @@ createRoot(document.getElementById('root')!).render(
     <ErrorBoundary>
       <ThemeProvider>
         <AuthProvider>
-          <LanguageProvider>
-            <App />
-          </LanguageProvider>
+          <ChildrenProvider>
+            <LanguageProvider>
+              <App />
+            </LanguageProvider>
+          </ChildrenProvider>
         </AuthProvider>
       </ThemeProvider>
     </ErrorBoundary>

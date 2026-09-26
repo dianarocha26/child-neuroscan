@@ -1,4 +1,4 @@
-import { Brain, LogIn, LogOut, Search } from 'lucide-react';
+import { Brain, LogIn, LogOut, Search, Users } from 'lucide-react';
 import { SPANISH_ENABLED, useLanguage } from '../contexts/LanguageContext';
 import { LanguageSwitch } from './LanguageSwitch';
 
@@ -8,6 +8,7 @@ interface AppHeaderProps {
   hideSignIn?: boolean;
   onHome: () => void;
   onSearch: () => void;
+  onChildren: () => void;
   onLogin: () => void;
   onLogout: () => void;
 }
@@ -16,7 +17,7 @@ interface AppHeaderProps {
  * Slim top bar shared by every non-auth screen. Holds the app-wide controls
  * (home, search, language, account) so they no longer float over page content.
  */
-export function AppHeader({ isLoggedIn, hideSignIn = false, onHome, onSearch, onLogin, onLogout }: AppHeaderProps) {
+export function AppHeader({ isLoggedIn, hideSignIn = false, onHome, onSearch, onChildren, onLogin, onLogout }: AppHeaderProps) {
   const { t } = useLanguage();
   const iconButton =
     'inline-flex items-center justify-center gap-2 h-10 min-w-[2.5rem] px-2 sm:px-2.5 rounded-lg text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500';
@@ -46,6 +47,17 @@ export function AppHeader({ isLoggedIn, hideSignIn = false, onHome, onSearch, on
               aria-label={t('Open search', 'Abrir búsqueda')}
             >
               <Search className="w-5 h-5" aria-hidden="true" />
+            </button>
+          )}
+          {isLoggedIn && (
+            <button
+              type="button"
+              onClick={onChildren}
+              className={iconButton}
+              aria-label={t('Your children', 'Sus hijos')}
+            >
+              <Users className="w-5 h-5" aria-hidden="true" />
+              <span className="hidden sm:inline text-sm font-medium">{t('Children', 'Hijos')}</span>
             </button>
           )}
           {SPANISH_ENABLED && <LanguageSwitch />}

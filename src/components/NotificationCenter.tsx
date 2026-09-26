@@ -6,6 +6,7 @@ import { useLoadingState } from '../hooks/useLoadingState';
 import { logger } from '../lib/logger';
 import { PageHeader } from './PageHeader';
 import type { Tables } from '../types/supabase';
+import { ChildPicker } from './ChildPicker';
 
 type ReminderType = 'medication' | 'appointment' | 'therapy' | 'goal' | 'other';
 
@@ -206,8 +207,8 @@ export default function NotificationCenter() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Child Name (optional)</label>
-                <input type="text" value={form.child_name} onChange={(e) => setForm({ ...form, child_name: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500" />
+                <ChildPicker value={form.child_name} onChange={(name) => setForm({ ...form, child_name: name })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500" />
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>

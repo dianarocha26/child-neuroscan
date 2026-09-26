@@ -6,6 +6,7 @@ import { useLoadingState } from '../hooks/useLoadingState';
 import { logger } from '../lib/logger';
 import type { RewardChart, RewardEntry, RewardGoal } from '../types/components';
 import { PageHeader } from './PageHeader';
+import { ChildPicker } from './ChildPicker';
 
 export default function RewardsSystem() {
   const { user } = useAuth();
@@ -217,7 +218,7 @@ export default function RewardsSystem() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label htmlFor="rewards-system-child-name" className="block text-sm font-medium text-gray-700 mb-1">Child Name</label>
-                  <input id="rewards-system-child-name" type="text" required value={chartForm.child_name} onChange={(e) => setChartForm({ ...chartForm, child_name: e.target.value })}
+                  <ChildPicker id="rewards-system-child-name" required value={chartForm.child_name} onChange={(name) => setChartForm({ ...chartForm, child_name: name })}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500" />
                 </div>
                 <div>

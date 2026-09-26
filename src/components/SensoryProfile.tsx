@@ -6,6 +6,7 @@ import { useLoadingState } from '../hooks/useLoadingState';
 import { logger } from '../lib/logger';
 import type { SensoryProfile } from '../types/components';
 import { PageHeader } from './PageHeader';
+import { ChildPicker } from './ChildPicker';
 
 export default function SensoryProfile() {
   const { user } = useAuth();
@@ -226,13 +227,8 @@ export default function SensoryProfile() {
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Child Name</label>
-              <input
-                type="text"
-                required
-                value={formData.child_name}
-                onChange={(e) => setFormData({ ...formData, child_name: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-              />
+              <ChildPicker required value={formData.child_name} onChange={(name) => setFormData({ ...formData, child_name: name })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500" />
             </div>
 
             <div className="space-y-6">

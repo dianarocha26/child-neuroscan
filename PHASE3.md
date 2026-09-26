@@ -42,6 +42,13 @@ Read CLAUDE.md first. This file is the starting point for the phase 3 session; d
 - tsc 22 → 0, eslint errors 9 → 0 (26 warnings). CI typecheck and lint are now blocking.
 - Follow-ups (task 2): several components still keep local copies of row types (GoalTracker, MedicationTracker, NotificationCenter, Community, ResourceFinder, AppointmentPrep, VideoLibrary); move them to shared aliases along with the data-layer move.
 
+### Child profiles (branch `claude/child-profiles-ylz3ky`, off phase 3)
+- Uses the existing `children` table (name, date of birth; RLS per parent). No migration. Data calls in `src/lib/children.ts`, list shared via `ChildrenContext`.
+- Owner chose option A: pickers fill the existing `child_name` text columns; no `child_id` links. Renaming a child does not update old entries.
+- First sign-in with no children shows a skippable "Your children" screen once per browser (`childrenSetupSeen:<userId>` in localStorage). Header "Children" button reopens it.
+- `ChildPicker` replaces the 11 free-text name fields; free text stays available ("Someone else…") and for names not in the list.
+- Screening: signed-in parents pick a child on the age step; age comes from date of birth and the name step is skipped. Guests unchanged.
+
 ### Open questions for the owner
 - Text columns that used to be literal unions in the code (goal status/priority, medication type, reminder type) are plain `text` in the DB. Add CHECK constraints or enums so the generated types narrow again?
 - What is the prod RLS policy on `conditions`? If it filters `is_active`, deactivating a condition hides parents' past screenings.

@@ -10,19 +10,21 @@ import { getQuestionsForCondition } from '../lib/database';
 interface QuestionnaireProps {
   condition: Condition;
   childAgeMonths: number;
+  /** Name from a saved child profile; skips the name step */
+  initialChildName?: string;
   onComplete: (responses: Record<string, boolean>, childName: string) => Promise<void> | void;
   onBack: () => void;
 }
 
-export function Questionnaire({ condition, childAgeMonths, onComplete, onBack }: QuestionnaireProps) {
+export function Questionnaire({ condition, childAgeMonths, initialChildName, onComplete, onBack }: QuestionnaireProps) {
   const { language, t } = useLanguage();
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [responses, setResponses] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [childName, setChildName] = useState('');
-  const [showNameInput, setShowNameInput] = useState(true);
+  const [childName, setChildName] = useState(initialChildName ?? '');
+  const [showNameInput, setShowNameInput] = useState(!initialChildName);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 

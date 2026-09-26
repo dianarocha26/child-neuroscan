@@ -6,6 +6,7 @@ import { useLoadingState } from '../hooks/useLoadingState';
 import { logger } from '../lib/logger';
 import type { BehaviorEntry, BehaviorTrigger, BehaviorIntervention } from '../types/components';
 import { PageHeader } from './PageHeader';
+import { ChildPicker } from './ChildPicker';
 
 export default function BehaviorDiary() {
   const { user } = useAuth();
@@ -258,13 +259,8 @@ export default function BehaviorDiary() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label htmlFor="behavior-diary-child-name" className="block text-sm font-medium text-gray-700 mb-1">Child Name</label>
-                  <input id="behavior-diary-child-name"
-                    type="text"
-                    required
-                    value={formData.child_name}
-                    onChange={(e) => setFormData({ ...formData, child_name: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  />
+                  <ChildPicker id="behavior-diary-child-name" required value={formData.child_name} onChange={(name) => setFormData({ ...formData, child_name: name })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" />
                 </div>
                 <div>
                   <label htmlFor="behavior-diary-behavior-type" className="block text-sm font-medium text-gray-700 mb-1">Behavior Type</label>
