@@ -45,6 +45,9 @@ import type { Condition, RiskLevel, DomainScore } from './types/database';
 import { useDialog } from './contexts/DialogContext';
 import { useReminderAlerts } from './hooks/useReminderAlerts';
 
+// Analytics is hidden for now; flip to true to bring back its entry points.
+const SHOW_ANALYTICS = false;
+
 export type Screen = 'login' | 'signup' | 'forgot-password' | 'landing' | 'children' | 'age-input' | 'questionnaire' | 'results' | 'dashboard' | 'report' | 'resources' | 'community' | 'videos' | 'appointments' | 'photos' | 'goals' | 'medications' | 'behavior' | 'crisis' | 'rewards' | 'reminders' | 'schedule' | 'sensory' | 'analytics' | 'reports';
 
 function AppContent() {
@@ -428,7 +431,7 @@ function AppContent() {
           onViewRewardsSystem: handleViewRewardsSystem,
           onViewVisualSchedule: handleViewVisualSchedule,
           onViewSensoryProfile: handleViewSensoryProfile,
-          onViewAnalytics: handleViewAnalytics,
+          onViewAnalytics: SHOW_ANALYTICS ? handleViewAnalytics : undefined,
           onViewReports: handleViewReports
         }}
       />
@@ -493,7 +496,7 @@ function AppContent() {
           onViewReminders={handleViewReminders}
           onViewVisualSchedule={handleViewVisualSchedule}
           onViewSensoryProfile={handleViewSensoryProfile}
-          onViewAnalytics={handleViewAnalytics}
+          onViewAnalytics={SHOW_ANALYTICS ? handleViewAnalytics : undefined}
           onViewReports={handleViewReports}
           onLogin={() => setCurrentScreen('login')}
           onSignUp={() => setCurrentScreen('signup')}
