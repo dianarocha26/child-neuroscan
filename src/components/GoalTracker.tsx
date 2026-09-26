@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Target, Plus, Calendar, Edit2, Trash2, X } from 'lucide-react';
-import { supabase } from '../lib/supabase';
 import { logger } from '../lib/logger';
 import { PageHeader } from './PageHeader';
-import type { Tables } from '../types/supabase';
-
-type Goal = Tables<'goals'>;
-type ProgressLog = Tables<'goal_progress_logs'>;
+import {
+  createGoal, deleteGoal, listGoalProgress, listGoals, logGoalProgress, updateGoal,
+  type Goal, type GoalProgressLog as ProgressLog
+} from '../lib/api/goals';
 
 export default function GoalTracker() {
   const [goals, setGoals] = useState<Goal[]>([]);
@@ -51,17 +50,7 @@ export default function GoalTracker() {
 
   const loadGoals = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data, error } = await supabase
-        .from('goals')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setGoals(data || []);
+      setGoals(await listGoals());
     } catch (error) {
       logger.error('Failed to load goals', error);
     } finally {
@@ -71,17 +60,7 @@ export default function GoalTracker() {
 
   const loadProgressLogs = async (goalId: string) => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data, error } = await supabase
-        .from('goal_progress_logs')
-        .select('*')
-        .eq('goal_id', goalId)
-        .order('logged_at', { ascending: false });
-
-      if (error) throw error;
-      setProgressLogs(data || []);
+      setProgressLogs(await listGoalProgress(goalId));
     } catch (error) {
       logger.error('Failed to load progress logs', error);
     }
@@ -95,29 +74,17 @@ export default function GoalTracker() {
     }
     setDateError(false);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
       const { target_date, ...restForm } = goalForm;
       const goalData = {
         ...restForm,
-        user_id: user.id,
         target_date: target_date ? target_date : null,
-        status: goalForm.current_value === 0 ? 'not_started' : 'in_progress'
+        status: goalForm.current_value === 0 ? 'not_started' as const : 'in_progress' as const
       };
 
-
       if (editingGoal) {
-        const { error } = await supabase
-          .from('goals')
-          .update(goalData)
-          .eq('id', editingGoal.id);
-        if (error) throw error;
+        await updateGoal(editingGoal.id, goalData);
       } else {
-        const { error } = await supabase
-          .from('goals')
-          .insert(goalData);
-        if (error) throw error;
+        await createGoal(goalData);
       }
 
       setActiveModal("none");
@@ -126,8 +93,7 @@ export default function GoalTracker() {
       loadGoals();
     } catch (error: unknown) {
       logger.error('Error saving goal', error);
-      console.error('Full error:', JSON.stringify(error, null, 2));
-      alert('Failed to save goal: ' + ((error as { message?: string } | null)?.message || JSON.stringify(error)));
+      alert('Failed to save goal. Please try again.');
     }
   };
 
@@ -136,36 +102,7 @@ export default function GoalTracker() {
     if (!selectedGoal) return;
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { error: logError } = await supabase
-        .from('goal_progress_logs')
-        .insert({
-          goal_id: selectedGoal.id,
-          user_id: user.id,
-          value: progressForm.value,
-          notes: progressForm.notes
-        });
-
-      if (logError) throw logError;
-
-      const newStatus = progressForm.value >= selectedGoal.target_value ? 'achieved' : 'in_progress';
-      const updateData: Record<string, unknown> = {
-        current_value: progressForm.value,
-        status: newStatus
-      };
-
-      if (newStatus === 'achieved' && !selectedGoal.completed_at) {
-        updateData.completed_at = new Date().toISOString();
-      }
-
-      const { error: updateError } = await supabase
-        .from('goals')
-        .update(updateData)
-        .eq('id', selectedGoal.id);
-
-      if (updateError) throw updateError;
+      await logGoalProgress(selectedGoal, progressForm.value, progressForm.notes);
 
       setShowProgressForm(false);
       setProgressForm({ value: 0, notes: '' });
@@ -181,12 +118,7 @@ export default function GoalTracker() {
     if (!confirm('Are you sure you want to delete this goal?')) return;
 
     try {
-      const { error } = await supabase
-        .from('goals')
-        .delete()
-        .eq('id', goalId);
-
-      if (error) throw error;
+      await deleteGoal(goalId);
       loadGoals();
       setSelectedGoal(null);
       setActiveModal("none");
