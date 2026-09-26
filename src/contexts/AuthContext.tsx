@@ -7,7 +7,7 @@ import { logger } from '../lib/logger';
 type AuthContextType = {
   user: User | null;
   loading: boolean;
-  signUp: (email: string, password: string) => Promise<{ error: AuthError | null; needsConfirmation: boolean }>;
+  signUp: (email: string, password: string, fullName: string) => Promise<{ error: AuthError | null; needsConfirmation: boolean }>;
   signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>;
   resendConfirmation: (email: string) => Promise<{ error: AuthError | null }>;
   signOut: () => Promise<void>;
@@ -59,11 +59,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const signUp = async (email: string, password: string) => {
+  const signUp = async (email: string, password: string, fullName: string) => {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: { emailRedirectTo: window.location.origin },
+      options: {
+        emailRedirectTo: window.location.origin,
+        // Read by the handle_new_user trigger into profiles.full_name
+        data: { full_name: fullName.trim() },
+      },
     });
     // No session means the project requires email confirmation first
     return { error, needsConfirmation: !error && !data.session };

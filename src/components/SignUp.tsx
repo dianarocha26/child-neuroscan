@@ -51,7 +51,7 @@ export function SignUp({ onSwitchToLogin, onSignUpSuccess }: SignUpProps) {
       return;
     }
 
-    const { error, needsConfirmation } = await signUp(email, password);
+    const { error, needsConfirmation } = await signUp(email, password, fullName);
 
     if (error) {
       setError(error.message || 'Failed to create account. Please try again.');

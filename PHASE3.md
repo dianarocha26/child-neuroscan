@@ -82,4 +82,4 @@ Read CLAUDE.md first. This file is the starting point for the phase 3 session; d
 - Login: `email_not_confirmed` shows "Your account needs verification. Check your email." plus a "Resend confirmation email" button (`supabase.auth.resend`, type `signup`). Every other failure shows one generic message (no account enumeration).
 - `signUp` and `resend` pass `emailRedirectTo: window.location.origin`, so preview deploys need their URL in Supabase redirect URLs to confirm there.
 - Branded templates are in `supabase/templates/` (`confirmation.html`, `recovery.html`), pasted by the owner into the dashboard. Custom SMTP (Resend) and DNS are owner setup; not in `config.toml`.
-- Not done: SignUp collects "Full name" but never saves it (pre-existing).
+- SignUp now sends the full name as `full_name` user metadata; the existing `handle_new_user` trigger copies it into `profiles.full_name`.
