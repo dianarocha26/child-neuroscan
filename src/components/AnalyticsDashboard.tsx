@@ -1,13 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { BarChart3, TrendingUp, AlertCircle, Calendar, Brain, Activity, Sparkles } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useLoadingState } from '../hooks/useLoadingState';
 import { logger } from '../lib/logger';
-import { ErrorState } from './ErrorState';
 import { ThinkingIllustration, EmptyStateIllustration } from './FriendlyIllustrations';
 import type { BehaviorPattern, Correlation, WeeklySummary, TriggerAnalysis } from '../types/components';
+import { PageHeader } from './PageHeader';
 
 export default function AnalyticsDashboard() {
   const { user } = useAuth();
@@ -100,8 +100,8 @@ export default function AnalyticsDashboard() {
   const getCorrelationColor = (strength: number) => {
     const abs = Math.abs(strength);
     if (abs >= 0.7) return 'text-red-600 bg-red-50';
-    if (abs >= 0.4) return 'text-orange-600 bg-orange-50';
-    return 'text-yellow-600 bg-yellow-50';
+    if (abs >= 0.4) return 'text-orange-700 bg-orange-50';
+    return 'text-yellow-800 bg-yellow-50';
   };
 
   const formatCorrelationText = (factorA: string, factorB: string) => {
@@ -110,11 +110,11 @@ export default function AnalyticsDashboard() {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50">
+      <div className="flex flex-col items-center justify-center min-h-[50vh]">
         <div className="w-48 h-48 mb-6">
           <ThinkingIllustration />
         </div>
-        <p className="text-xl font-semibold text-gray-700 animate-pulse">{t.analyzingData}</p>
+        <p className="text-xl font-semibold text-gray-700 animate-pulse">{t('Analyzing your data...', 'Analizando tus datos...')}</p>
         <div className="flex gap-2 mt-4">
           <div className="w-3 h-3 bg-primary-500 rounded-full animate-bounce"></div>
           <div className="w-3 h-3 bg-primary-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
@@ -125,31 +125,26 @@ export default function AnalyticsDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50 py-8 px-4">
-      <div className="absolute inset-0 bg-grid-pattern opacity-5 pointer-events-none"></div>
+    <div>
 
       <div className="max-w-7xl mx-auto relative">
-        <div className="mb-10 animate-in">
-          <div className="inline-flex items-center justify-center mb-4 w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-700 rounded-2xl shadow-glow-md">
-            <BarChart3 className="w-9 h-9 text-white" />
-          </div>
-          <h1 className="text-5xl font-bold bg-gradient-to-r from-gray-900 via-blue-800 to-gray-900 bg-clip-text text-transparent mb-3 leading-tight">
-            {t.analytics?.title || 'Analytics Dashboard'}
-          </h1>
-          <p className="text-xl text-gray-600 font-medium">
-            {t.analytics?.subtitle || 'Discover patterns, trends, and insights from your tracking data'}
-          </p>
-        </div>
+        <PageHeader
+          icon={BarChart3}
+          tone="blue"
+          title={t('Analytics', 'Análisis')}
+          subtitle={t('Patterns, trends, and insights from your tracking data', 'Patrones, tendencias e información de tus datos de seguimiento')}
+        />
 
-        <div className="mb-8 flex gap-2 flex-wrap animate-in-delay-1">
+        <div className="mb-6 sm:mb-8 grid grid-cols-2 sm:flex sm:flex-wrap gap-2 animate-in-delay-1" role="group" aria-label="Time range">
           {['7days', '30days', '90days', '6months'].map((range) => (
             <button
               key={range}
               onClick={() => setTimeRange(range)}
-              className={`px-6 py-3 rounded-xl font-semibold transition-all duration-200 ${
+              aria-pressed={timeRange === range}
+              className={`h-10 px-4 text-sm rounded-lg font-medium whitespace-nowrap transition-colors border ${
                 timeRange === range
-                  ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/30 scale-105'
-                  : 'bg-white text-gray-700 hover:bg-blue-50 hover:text-blue-700 hover:scale-105 border-2 border-gray-200'
+                  ? 'bg-teal-700 border-teal-700 text-white'
+                  : 'bg-white text-gray-700 border-gray-200 hover:bg-teal-50 hover:text-teal-700'
               }`}
             >
               {range === '7days' && 'Last 7 Days'}
@@ -161,12 +156,12 @@ export default function AnalyticsDashboard() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6 animate-in-delay-2">
-          <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-soft-lg p-8 border border-white/60 hover:shadow-soft-lg transition-shadow">
+          <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-soft-lg p-5 sm:p-8 border border-white/60 hover:shadow-soft-lg transition-shadow">
             <div className="flex items-center gap-3 mb-6">
-              <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-green-700 rounded-xl flex items-center justify-center shadow-lg">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 flex-shrink-0 bg-gradient-to-br from-green-500 to-green-700 rounded-xl flex items-center justify-center shadow-lg">
                 <TrendingUp className="w-6 h-6 text-white" />
               </div>
-              <h2 className="text-2xl font-bold text-gray-900">Weekly Trends</h2>
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Weekly Trends</h2>
             </div>
             {weeklySummaries.length === 0 ? (
               <p className="text-gray-500 text-center py-8">
@@ -208,12 +203,12 @@ export default function AnalyticsDashboard() {
             )}
           </div>
 
-          <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-soft-lg p-8 border border-white/60 hover:shadow-soft-lg transition-shadow">
+          <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-soft-lg p-5 sm:p-8 border border-white/60 hover:shadow-soft-lg transition-shadow">
             <div className="flex items-center gap-3 mb-6">
-              <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-700 rounded-xl flex items-center justify-center shadow-lg">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 flex-shrink-0 bg-gradient-to-br from-purple-500 to-purple-700 rounded-xl flex items-center justify-center shadow-lg">
                 <Brain className="w-6 h-6 text-white" />
               </div>
-              <h2 className="text-2xl font-bold text-gray-900">Key Correlations</h2>
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Key Correlations</h2>
             </div>
             {correlations.length === 0 ? (
               <p className="text-gray-500 text-center py-8">
@@ -250,27 +245,27 @@ export default function AnalyticsDashboard() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-in-delay-3">
-          <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-soft-lg p-8 border border-white/60 hover:shadow-soft-lg transition-shadow">
+          <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-soft-lg p-5 sm:p-8 border border-white/60 hover:shadow-soft-lg transition-shadow">
             <div className="flex items-center gap-3 mb-6">
-              <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-orange-700 rounded-xl flex items-center justify-center shadow-lg">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 flex-shrink-0 bg-gradient-to-br from-orange-500 to-orange-700 rounded-xl flex items-center justify-center shadow-lg">
                 <Activity className="w-6 h-6 text-white" />
               </div>
-              <h2 className="text-2xl font-bold text-gray-900">Behavior Patterns</h2>
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Behavior Patterns</h2>
             </div>
             {patterns.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12">
-                <div className="w-48 h-48 mb-4">
+                <div className="w-36 h-36 sm:w-48 sm:h-48 mb-4">
                   <EmptyStateIllustration />
                 </div>
                 <p className="text-gray-600 text-center text-lg font-medium">
-                  {t.noPatternsYet}
+                  {t('No patterns detected yet', 'Aún no se detectan patrones')}
                 </p>
                 <p className="text-gray-500 text-center mt-2">
-                  {t.continueTracking}
+                  {t('Keep tracking behaviors, sleep, and medications to reveal patterns', 'Sigue registrando conductas, sueño y medicamentos para descubrir patrones')}
                 </p>
                 <div className="mt-6 inline-flex items-center gap-2 bg-primary-50 px-4 py-2 rounded-full">
                   <Sparkles className="w-4 h-4 text-primary-600" />
-                  <span className="text-sm font-semibold text-primary-700">{t.insightsSoon}</span>
+                  <span className="text-sm font-semibold text-primary-700">{t('Insights coming soon', 'Información disponible pronto')}</span>
                 </div>
               </div>
             ) : (
@@ -302,12 +297,12 @@ export default function AnalyticsDashboard() {
             )}
           </div>
 
-          <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-soft-lg p-8 border border-white/60 hover:shadow-soft-lg transition-shadow">
+          <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-soft-lg p-5 sm:p-8 border border-white/60 hover:shadow-soft-lg transition-shadow">
             <div className="flex items-center gap-3 mb-6">
-              <div className="w-12 h-12 bg-gradient-to-br from-red-500 to-red-700 rounded-xl flex items-center justify-center shadow-lg">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 flex-shrink-0 bg-gradient-to-br from-red-500 to-red-700 rounded-xl flex items-center justify-center shadow-lg">
                 <AlertCircle className="w-6 h-6 text-white" />
               </div>
-              <h2 className="text-2xl font-bold text-gray-900">Top Triggers</h2>
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Top Triggers</h2>
             </div>
             {triggerAnalysis.length === 0 ? (
               <p className="text-gray-500 text-center py-8">
@@ -340,7 +335,7 @@ export default function AnalyticsDashboard() {
           </div>
         </div>
 
-        <div className="mt-8 bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 rounded-2xl p-8 border-2 border-blue-100 shadow-soft-lg backdrop-blur-sm">
+        <div className="mt-8 bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 rounded-2xl p-5 sm:p-8 border-2 border-blue-100 shadow-soft-lg backdrop-blur-sm">
           <div className="flex items-center gap-3 mb-4">
             <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
               <Calendar className="w-5 h-5 text-white" />

@@ -1,478 +1,180 @@
-# Deployment Guide
+# Deployment
 
-## 🚀 Quick Deploy
+ChildNeuroScan is deployed on **Vercel** as a static Vite build, with
+**Supabase** as the backend. There is no other supported host.
 
-### Prerequisites
-- ✅ Supabase account (database configured)
-- ✅ Environment variables ready
-- ✅ Git repository (optional but recommended)
+- Frontend: Vercel Git integration. Every push builds; the production branch
+  (`main`) deploys to https://childneuroscan.com, every other branch and pull
+  request gets a preview URL.
+- Database, Auth, Storage: one Supabase project. Schema changes live in
+  `supabase/migrations/` and are applied **manually** (see below).
+- CI: `.github/workflows/ci.yml` runs `npm ci`, `npm run build` and `npm test`
+  on every push and pull request. It does not deploy.
 
----
+## 1. Vercel project settings
 
-## 📦 Build Information
+`vercel.json` in the repo sets the framework (Vite), build command
+(`npm run build`), output directory (`dist`), SPA rewrite and headers, so the
+dashboard defaults are fine.
 
-### Production Build Stats
-```
-dist/index.html                     3.80 kB │ gzip:  1.33 kB
-dist/assets/index-[hash].css       71.89 kB │ gzip: 10.88 kB
-dist/assets/icons-vendor.js        28.04 kB │ gzip:  5.55 kB
-dist/assets/supabase-vendor.js    124.09 kB │ gzip: 34.13 kB
-dist/assets/react-vendor.js       141.31 kB │ gzip: 45.38 kB
-dist/assets/index.js              331.35 kB │ gzip: 61.24 kB
+- **Node.js version**: Project Settings -> Build and Deployment -> Node.js
+  Version: 22.x (matches `.nvmrc`; `package.json` requires >= 20).
+- **Environment variables** (Project Settings -> Environment Variables), set
+  for both **Production** and **Preview**:
 
-Total: ~157 KB gzipped (initial load)
-```
+  | Name | Value |
+  | --- | --- |
+  | `VITE_SUPABASE_URL` | `https://<project-ref>.supabase.co` |
+  | `VITE_SUPABASE_ANON_KEY` | the project's anon / public key |
 
-**Optimizations Applied:**
-- ✅ Code splitting (vendor chunks)
-- ✅ Minification (esbuild)
-- ✅ CSS optimization
-- ✅ Tree shaking
-- ✅ Asset compression
+  These are inlined into the JavaScript bundle at build time, so after
+  changing them you must **redeploy**. A missing value does not fail the build;
+  the deployed app shows a blank page and logs
+  `Missing Supabase environment variables` in the console. Never put the
+  `service_role` key in a `VITE_` variable.
 
----
+  Preview deployments use the same Supabase project as production unless you
+  point the Preview variables at a separate project.
 
-## 🔧 Environment Setup
+### What vercel.json does
 
-### 1. Create `.env` file
-```bash
-cp .env.example .env
-```
+- **Rewrite**: any path that is not under `/assets/` and has no file extension
+  is served `/index.html` (the app has no URL routes; this only keeps deep
+  links and refreshes from 404-ing). Vercel checks real files first, so
+  existing files are served normally. A missing hashed chunk such as
+  `/assets/index-abc123.js` returns a real 404 instead of `index.html` with
+  status 200, which would otherwise break module loading after a deploy.
+- **Caching**: `/assets/*` (content-hashed by Vite) is
+  `public, max-age=31536000, immutable`. `/`, `/index.html`, `/sw.js` and
+  `/manifest.json` are `no-cache` so a new deploy is picked up right away.
+  `sw.js` must never be cached long-term.
+- **Security headers** on every response: HSTS, `X-Content-Type-Options`,
+  `X-Frame-Options: DENY`, `Referrer-Policy`, `Permissions-Policy` (camera,
+  microphone, geolocation off) and a Content-Security-Policy.
 
-### 2. Add your Supabase credentials
-```env
-VITE_SUPABASE_URL=https://your-project.supabase.co
-VITE_SUPABASE_ANON_KEY=your-anon-key-here
-```
+### Content-Security-Policy
 
-**Where to find these:**
-1. Go to [Supabase Dashboard](https://app.supabase.com)
-2. Select your project
-3. Go to Settings → API
-4. Copy "Project URL" and "anon public" key
+The CSP only allows what the app actually loads:
 
----
+| Directive | Allows | Why |
+| --- | --- | --- |
+| `script-src` | `'self'` | Vite emits only external module scripts |
+| `style-src` | `'self' 'unsafe-inline'` | React `style={}` props and the print/report window's inline `<style>` |
+| `font-src` | `'self' data:` | Inter is self-hosted via `@fontsource/inter` |
+| `img-src` | `'self' data: blob:`, `*.supabase.co`, `images.pexels.com` | photo previews (blob), signed Storage URLs, video thumbnails seeded from Pexels |
+| `media-src` | `'self' blob:`, `*.supabase.co` | photo-journal videos |
+| `connect-src` | `'self'`, `https://*.supabase.co`, `wss://*.supabase.co` | Supabase REST/Auth/Storage/Realtime |
+| `frame-src` | `www.youtube.com`, `www.youtube-nocookie.com` | video library embeds |
 
-## 🌐 Deployment Options
+If you add content from a new host (for example a video in the `videos` table
+that is not on YouTube, or thumbnails from another CDN), add that host to the
+CSP or it will be blocked. Check the browser console for
+`Refused to ... because it violates the Content Security Policy`.
 
-### Option 1: Vercel (Recommended)
+The Vercel preview toolbar/comments script is not in the CSP, so it will not
+load on preview deployments. Add `https://vercel.live` to `script-src`,
+`connect-src` and `frame-src` if you want it.
 
-**Why Vercel?**
-- Zero configuration
-- Automatic HTTPS
-- Global CDN
-- Free tier available
+## 2. Database migrations
 
-**Steps:**
-1. Push code to GitHub/GitLab/Bitbucket
-2. Visit [vercel.com](https://vercel.com)
-3. Click "Import Project"
-4. Select your repository
-5. Add environment variables:
-   - `VITE_SUPABASE_URL`
-   - `VITE_SUPABASE_ANON_KEY`
-6. Click "Deploy"
+Migrations are plain SQL files in `supabase/migrations/`, named
+`<timestamp>_<description>.sql` and applied in filename order. There is no
+automated migration step in CI or on Vercel.
 
-**Auto-detected settings:**
-```json
-{
-  "framework": "vite",
-  "buildCommand": "npm run build",
-  "outputDirectory": "dist"
-}
-```
+**Rule: apply database migrations before deploying the frontend that needs
+them.** Migrations should be backwards compatible with the currently deployed
+frontend (add columns/tables first, remove old ones in a later release), so the
+order "migrate, then merge/deploy" is always safe.
 
-**Domain:**
-- Auto: `your-project.vercel.app`
-- Custom: Add in Settings → Domains
+Two ways to apply a migration:
 
----
+1. **SQL editor** (what has been used so far): Supabase Dashboard -> SQL
+   Editor, paste the file contents, run. Do this once per new file, in order.
+   The dashboard does not record this in the CLI's migration history.
+2. **Supabase CLI**:
 
-### Option 2: Netlify
-
-**Why Netlify?**
-- Easy setup
-- Automatic deploys
-- Form handling
-- Edge functions
-
-**Steps:**
-1. Push code to Git
-2. Visit [netlify.com](https://netlify.com)
-3. Click "Add new site"
-4. Choose your repository
-5. Build settings (auto-detected from `netlify.toml`):
-   ```
-   Build command: npm run build
-   Publish directory: dist
-   ```
-6. Add environment variables:
-   - `VITE_SUPABASE_URL`
-   - `VITE_SUPABASE_ANON_KEY`
-7. Click "Deploy site"
-
-**Domain:**
-- Auto: `your-project.netlify.app`
-- Custom: Add in Domain settings
-
----
-
-### Option 3: Cloudflare Pages
-
-**Why Cloudflare?**
-- Fast global CDN
-- Free tier
-- DDoS protection
-- Analytics included
-
-**Steps:**
-1. Push code to Git
-2. Visit [Cloudflare Dashboard](https://dash.cloudflare.com)
-3. Go to Pages
-4. Click "Create a project"
-5. Connect your repository
-6. Configure build:
-   ```
-   Build command: npm run build
-   Build output directory: dist
-   ```
-7. Add environment variables
-8. Click "Save and Deploy"
-
----
-
-### Option 4: Self-Hosted (VPS/Server)
-
-**Requirements:**
-- Node.js 18+
-- Nginx or Apache
-- SSL certificate (Let's Encrypt)
-
-**Steps:**
-
-1. **Build locally:**
    ```bash
-   npm run build
+   npx supabase login
+   npx supabase link --project-ref <project-ref>
+   npx supabase migration list        # compare local files vs. remote history
+   npx supabase db push               # applies files not yet in remote history
    ```
 
-2. **Upload `dist/` folder to server:**
-   ```bash
-   scp -r dist/* user@your-server:/var/www/childneuroscan/
-   ```
-
-3. **Configure Nginx:**
-   ```nginx
-   server {
-       listen 80;
-       server_name childneuroscan.com;
-       root /var/www/childneuroscan;
-       index index.html;
-
-       # SPA routing
-       location / {
-           try_files $uri $uri/ /index.html;
-       }
-
-       # Cache static assets
-       location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2)$ {
-           expires 1y;
-           add_header Cache-Control "public, immutable";
-       }
-
-       # Security headers
-       add_header X-Frame-Options "DENY";
-       add_header X-Content-Type-Options "nosniff";
-       add_header X-XSS-Protection "1; mode=block";
-   }
-   ```
-
-4. **Enable HTTPS with Let's Encrypt:**
-   ```bash
-   sudo certbot --nginx -d childneuroscan.com
-   ```
-
----
-
-## 🔒 Post-Deployment Checklist
-
-### Security
-- [ ] HTTPS enabled
-- [ ] Security headers configured
-- [ ] Environment variables set (not committed)
-- [ ] Supabase RLS policies active
-- [ ] API keys secured
-
-### Performance
-- [ ] Assets cached properly
-- [ ] CDN configured
-- [ ] Compression enabled (gzip/brotli)
-- [ ] Images optimized
-
-### SEO
-- [ ] Domain connected
-- [ ] robots.txt accessible
-- [ ] sitemap.xml accessible
-- [ ] Meta tags present
-- [ ] Google Search Console configured
-
-### Functionality
-- [ ] Login/signup works
-- [ ] Database connections work
-- [ ] All features functional
-- [ ] Dark mode works
-- [ ] Search works (Cmd/Ctrl+K)
-- [ ] Export functions work
-
----
-
-## 🔍 Testing Deployment
-
-### 1. Homepage
-```
-https://your-domain.com/
-```
-- Should load landing page
-- Theme toggle works
-- Search button visible (when logged in)
-
-### 2. Authentication
-```
-https://your-domain.com/ → Sign Up
-```
-- User can create account
-- Email verification (if enabled)
-- Login works
-- Session persists
-
-### 3. Features
-Test key features:
-- [ ] Screening questionnaires
-- [ ] Progress dashboard
-- [ ] Behavior diary
-- [ ] Medication tracker
-- [ ] Report generation
-- [ ] Export (HTML, JSON, CSV)
-
-### 4. Mobile
-- [ ] Responsive design
-- [ ] Touch interactions
-- [ ] PWA install prompt
-- [ ] Mobile navigation
-
----
-
-## 🐛 Troubleshooting
-
-### Issue: White screen after deployment
-**Solution:**
-1. Check browser console for errors
-2. Verify environment variables are set
-3. Ensure Supabase URL/key are correct
-4. Check build output in `dist/`
-
-### Issue: 404 errors on page refresh
-**Solution:**
-1. Configure SPA routing:
-   - Vercel: Use `vercel.json` (already configured)
-   - Netlify: Use `netlify.toml` (already configured)
-   - Custom: Configure server rewrites
-
-### Issue: Supabase connection fails
-**Solution:**
-1. Check environment variables
-2. Verify Supabase project is active
-3. Check RLS policies allow access
-4. Test connection in browser console:
-   ```javascript
-   console.log(import.meta.env.VITE_SUPABASE_URL)
-   ```
-
-### Issue: Build fails
-**Solution:**
-1. Clear node_modules and reinstall:
-   ```bash
-   rm -rf node_modules package-lock.json
-   npm install
-   ```
-2. Run typecheck:
-   ```bash
-   npm run typecheck
-   ```
-3. Check Node version (18+)
-
----
-
-## 📊 Monitoring
-
-### Performance Monitoring
-- Use [Lighthouse](https://developers.google.com/web/tools/lighthouse)
-- Check [WebPageTest](https://www.webpagetest.org)
-- Monitor with [Google Analytics](https://analytics.google.com)
-
-### Uptime Monitoring
-- [Upptime](https://upptime.js.org) (free, GitHub-based)
-- [Uptime Robot](https://uptimerobot.com) (free tier)
-- [Better Uptime](https://betteruptime.com)
-
-### Error Tracking
-- [Sentry](https://sentry.io) (recommended)
-- [LogRocket](https://logrocket.com)
-- [Rollbar](https://rollbar.com)
-
----
-
-## 🔄 Updates & Maintenance
-
-### Deploying Updates
-
-**Git-based (Vercel/Netlify):**
-```bash
-git add .
-git commit -m "Update: description"
-git push origin main
-```
-- Automatic deployment triggered
-- Build logs available in dashboard
-
-**Manual (Self-hosted):**
-```bash
-npm run build
-scp -r dist/* user@server:/var/www/childneuroscan/
-```
-
-### Database Migrations
-
-**New migrations:**
-1. Create migration file in `supabase/migrations/`
-2. Apply via Supabase Dashboard or CLI:
-   ```bash
-   supabase db push
-   ```
-
----
-
-## 🌍 Custom Domain Setup
-
-### Vercel
-1. Go to Project Settings → Domains
-2. Add your domain
-3. Configure DNS:
-   ```
-   Type: A
-   Name: @
-   Value: 76.76.21.21
-
-   Type: CNAME
-   Name: www
-   Value: cname.vercel-dns.com
-   ```
-
-### Netlify
-1. Go to Domain Settings → Custom domains
-2. Add your domain
-3. Configure DNS:
-   ```
-   Type: A
-   Name: @
-   Value: 75.2.60.5
-
-   Type: CNAME
-   Name: www
-   Value: your-site.netlify.app
-   ```
-
-### Cloudflare
-1. Add site to Cloudflare
-2. Update nameservers at registrar
-3. Configure DNS in Cloudflare dashboard
-4. Enable proxy (orange cloud)
-
----
-
-## 📈 Performance Tips
-
-### Further Optimizations
-1. **Enable Brotli compression** (most hosts enable by default)
-2. **Use HTTP/2** (automatic on Vercel/Netlify)
-3. **Enable service worker** (for offline support)
-4. **Optimize images** (convert to WebP)
-5. **Preload critical assets**
-
-### CDN Configuration
-- Use edge caching for static assets
-- Configure cache headers (already set)
-- Enable geographic distribution
-
----
-
-## 🎯 Production Checklist
-
-Before going live:
-
-### Code
-- [ ] Remove console.logs
-- [ ] No hardcoded credentials
-- [ ] Error boundaries in place
-- [ ] Analytics configured
-- [ ] Social media tags set
-
-### Performance
-- [ ] Lighthouse score > 90
-- [ ] Bundle size optimized
-- [ ] Images compressed
-- [ ] Fonts optimized
-
-### Security
-- [ ] HTTPS only
-- [ ] Security headers
-- [ ] RLS policies tested
-- [ ] No exposed secrets
-- [ ] CORS configured
-
-### SEO
-- [ ] Meta tags complete
-- [ ] Sitemap submitted
-- [ ] robots.txt configured
-- [ ] Schema markup (optional)
-- [ ] Analytics tracking
-
----
-
-## 📞 Support
-
-### Resources
-- [Vite Documentation](https://vitejs.dev)
-- [React Documentation](https://react.dev)
-- [Supabase Docs](https://supabase.com/docs)
-- [Tailwind CSS Docs](https://tailwindcss.com/docs)
-
-### Common Commands
-```bash
-# Development
-npm run dev
-
-# Production build
-npm run build
-
-# Preview build
-npm run preview
-
-# Type check
-npm run typecheck
-
-# Lint
-npm run lint
-
-# Clean
-npm run clean
-```
-
----
-
-**Ready to deploy?** Choose your platform and follow the steps above!
-
-**Questions?** Check TECHNICAL.md for in-depth documentation.
-
----
-
-Good luck with your deployment! 🚀
+   Because earlier migrations were applied through the dashboard, the remote
+   history may not list them and `db push` would try to re-run all of them.
+   Before the first `db push`, check `migration list` and mark files that are
+   already applied with
+   `npx supabase migration repair --status applied <timestamp>`.
+
+After applying a migration, check it in the dashboard (Table Editor / Auth
+policies) and run the relevant part of the smoke test below.
+
+Note: the tables `conditions`, `questions`, `question_domains` and
+`functional_domains` were created by hand in the live database.
+`20260219000000_baseline_core_screening_tables.sql` recreates them so a new
+project can be built from this folder. It was reconstructed from the code, so
+diff it against `supabase db dump --schema public` of production before
+relying on it. It is idempotent and should change nothing on production.
+Because its timestamp is older than the migrations already applied, mark it
+as applied there
+(`npx supabase migration repair --status applied 20260219000000`) instead of
+pushing it. A new project gets no ASD questions: no migration seeds them.
+
+## 3. Supabase Auth URL configuration
+
+Supabase Dashboard -> Authentication -> URL Configuration:
+
+- **Site URL**: `https://childneuroscan.com`. Sign-up confirmation emails link
+  here.
+- **Redirect URLs** (allow-list). The password-reset flow calls
+  `resetPasswordForEmail` with `redirectTo: window.location.origin`, so every
+  origin the app runs on must be listed, or the reset link falls back to the
+  Site URL:
+  - `https://childneuroscan.com/**`
+  - `https://www.childneuroscan.com/**` (if `www` is served)
+  - Vercel previews: `https://*-<vercel-team-slug>.vercel.app/**` (match your
+    project's preview URL pattern, shown on any preview deployment)
+  - Local development: `http://localhost:5173/**`
+
+Also under Authentication: Email provider enabled (email + password is the
+only sign-in method the app uses).
+
+## 4. Rollback
+
+- **Frontend**: Vercel Dashboard -> Deployments -> pick the last good
+  production deployment -> **Instant Rollback** (or "Promote to Production").
+  This is immediate and does not rebuild. Then revert the bad commit on `main`
+  so the next push does not redeploy it.
+- **Database**: migrations are **forward-only**; there are no down migrations.
+  To undo a schema change, write and apply a new migration that reverses it.
+  For data loss, restore from Supabase backups (Dashboard -> Database ->
+  Backups; availability depends on the plan).
+- Because migrations are applied first and are backwards compatible, rolling
+  back the frontend alone is normally safe.
+
+## 5. Post-deploy smoke test
+
+Run on the production URL (and on the preview URL before merging anything
+risky). Use a private window so no old service worker or session interferes.
+
+- [ ] Home page loads, no errors in the browser console, no CSP violations.
+- [ ] Hard-refresh a deep path (e.g. `/anything`): the app loads (SPA rewrite).
+- [ ] `https://childneuroscan.com/assets/does-not-exist.js` returns **404**,
+      not the HTML page.
+- [ ] Response headers (DevTools -> Network -> document): CSP, HSTS,
+      `X-Frame-Options: DENY` present; `/sw.js` and `/` have
+      `Cache-Control: no-cache`; an `/assets/*.js` file has
+      `max-age=31536000, immutable`.
+- [ ] Switch language EN/ES; labels change.
+- [ ] As a guest: choose a condition, enter an age, answer the questionnaire,
+      see the result with the not-a-diagnosis note.
+- [ ] Sign up / log in; the guest screening can be saved and appears in the
+      progress dashboard.
+- [ ] "Forgot password": the email arrives and its link opens the reset screen
+      on the same domain.
+- [ ] Create, edit and delete an entry in one tracker (e.g. behaviour diary).
+- [ ] Photo journal: upload an image, it displays (signed URL), delete it.
+- [ ] Video library: a video plays (YouTube embed not blocked).
+- [ ] Generate a report and open the print view / CSV export.
+- [ ] After a second deploy, an open tab offers to reload (service worker
+      update) and the new version loads.

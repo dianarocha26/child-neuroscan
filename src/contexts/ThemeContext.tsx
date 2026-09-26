@@ -10,8 +10,13 @@ interface ThemeContextType {
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
+// Most screens have no dark: styles yet, so dark mode renders unreadable
+// text. Keep the app in light mode until every screen supports it.
+const DARK_MODE_ENABLED = false;
+
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<Theme>(() => {
+    if (!DARK_MODE_ENABLED) return 'light';
     const saved = localStorage.getItem('theme') as Theme;
     return saved || 'system';
   });
@@ -44,6 +49,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   }, [theme]);
 
   const setTheme = (newTheme: Theme) => {
+    if (!DARK_MODE_ENABLED) return;
     setThemeState(newTheme);
     localStorage.setItem('theme', newTheme);
   };

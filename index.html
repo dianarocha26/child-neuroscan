@@ -3,63 +3,63 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover" />
 
     <!-- Theme Colors -->
-    <meta name="theme-color" content="#0ea5e9" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#0c4a6e" media="(prefers-color-scheme: dark)" />
+    <!-- App is light-only -->
+    <meta name="theme-color" content="#0ea5e9" />
 
     <!-- Apple Touch & Mobile Web App -->
     <meta name="mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="ChildNeuroScan" />
-    <link rel="apple-touch-icon" href="/favicon.svg" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
 
     <!-- PWA Manifest -->
     <link rel="manifest" href="/manifest.json" />
 
     <!-- SEO Meta Tags -->
     <title>ChildNeuroScan - Comprehensive Child Development Screening & Tracking</title>
-    <meta name="description" content="Professional neurodevelopmental screening and tracking tool for parents and caregivers. Screen for Autism, ADHD, Speech Delays, and more. Track progress, manage medications, and connect with support." />
+    <meta name="description" content="Parent-reported developmental screening and tracking tool for parents and caregivers (not a diagnosis). Screen for Autism, ADHD, Speech Delays, and more. Track progress, manage medications, and connect with support." />
     <meta name="keywords" content="child development, autism screening, ADHD assessment, neurodevelopmental disorders, parenting tools, developmental milestones, behavior tracking, therapy goals, special needs" />
     <meta name="author" content="ChildNeuroScan" />
     <meta name="robots" content="index, follow" />
-    <link rel="canonical" href="https://childneuroscan.com" />
+    <link rel="canonical" href="https://childneuroscan.com/" />
 
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://childneuroscan.com" />
+    <meta property="og:url" content="https://childneuroscan.com/" />
     <meta property="og:title" content="ChildNeuroScan - Child Development Screening & Tracking" />
-    <meta property="og:description" content="Screen for developmental conditions, track progress, and manage your child's care with our comprehensive platform. Trusted by thousands of families." />
-    <meta property="og:image" content="/CS1.png" />
+    <meta property="og:description" content="Screen for developmental conditions, track progress, and manage your child's care in one place. A parent-reported screening tool, not a diagnosis." />
+    <meta property="og:image" content="https://childneuroscan.com/og-image.png" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="ChildNeuroScan logo with the tagline: child development screening and progress tracking for families" />
     <meta property="og:site_name" content="ChildNeuroScan" />
     <meta property="og:locale" content="en_US" />
     <meta property="og:locale:alternate" content="es_ES" />
 
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:url" content="https://childneuroscan.com" />
+    <meta name="twitter:url" content="https://childneuroscan.com/" />
     <meta name="twitter:title" content="ChildNeuroScan - Child Development Screening" />
     <meta name="twitter:description" content="Comprehensive screening and tracking for neurodevelopmental conditions. Free tools for parents and caregivers." />
-    <meta name="twitter:image" content="/CS1.png" />
+    <meta name="twitter:image" content="https://childneuroscan.com/og-image.png" />
+    <meta name="twitter:image:alt" content="ChildNeuroScan logo with the tagline: child development screening and progress tracking for families" />
 
     <!-- Accessibility -->
-    <meta name="color-scheme" content="light dark" />
-
-    <!-- Performance -->
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
+    <meta name="color-scheme" content="light" />
   </head>
   <body>
     <noscript>
-      <div style="padding: 2rem; text-align: center; font-family: system-ui, -apple-system, sans-serif;">
+      <div>
         <h1>JavaScript Required</h1>
         <p>ChildNeuroScan requires JavaScript to function. Please enable JavaScript in your browser settings.</p>
       </div>
     </noscript>
     <div id="root"></div>
-    <script type="module" src="./src/main.tsx"></script>
+    <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

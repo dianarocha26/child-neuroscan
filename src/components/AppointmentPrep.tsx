@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Calendar, Plus, ChevronLeft, FileText, Save, Trash2, Edit2,
+  Calendar, Plus, ArrowLeft, FileText, Save, Trash2, Edit2,
   AlertCircle, CheckCircle2, Clock, MapPin, User,
   ClipboardList, MessageSquare, FolderOpen, ListTodo,
   Download, X
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useLanguage } from '../contexts/LanguageContext';
+import { logger } from '../lib/logger';
+import { localToday, toLocalDateString, toDateTimeLocalInput, fromDateTimeLocalInput } from '../lib/dates';
+import { PageHeader } from './PageHeader';
 
 interface AppointmentType {
   id: string;
@@ -20,7 +23,7 @@ interface AppointmentType {
 interface Appointment {
   id: string;
   child_name: string;
-  appointment_type: AppointmentType;
+  appointment_type: AppointmentType | null;
   appointment_date: string;
   provider_name: string;
   location: string;
@@ -117,11 +120,17 @@ export default function AppointmentPrep({ userId, onBack }: AppointmentPrepProps
   const handleCreateAppointment = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // datetime-local values are zone-less local times; send an explicit instant
+    const payload = {
+      ...formData,
+      appointment_date: fromDateTimeLocalInput(formData.appointment_date)
+    };
+
     if (editingApt) {
       // Update existing appointment
       const { data, error } = await supabase
         .from('appointments')
-        .update(formData)
+        .update(payload)
         .eq('id', editingApt.id)
         .select(`
           *,
@@ -133,18 +142,22 @@ export default function AppointmentPrep({ userId, onBack }: AppointmentPrepProps
         `)
         .single();
 
-      if (!error && data) {
-        updateAppointmentInList(data as any);
-        setSelectedAppointment(data as any);
-        setEditingApt(null);
-        setFormData({ child_name: '', appointment_type_id: '', appointment_date: '', provider_name: '', location: '', notes: '' });
-        setView('detail');
+      if (error || !data) {
+        logger.error('Error updating appointment:', error);
+        alert(t('Failed to update appointment. Please try again.', 'No se pudo actualizar la cita. Inténtelo de nuevo.'));
+        return;
       }
+
+      updateAppointmentInList(data as any);
+      setSelectedAppointment(data as any);
+      setEditingApt(null);
+      setFormData({ child_name: '', appointment_type_id: '', appointment_date: '', provider_name: '', location: '', notes: '' });
+      setView('detail');
     } else {
       // Create new appointment
       const { data, error } = await supabase
         .from('appointments')
-        .insert({ user_id: userId, ...formData })
+        .insert({ user_id: userId, ...payload })
         .select(`
           *,
           appointment_type:appointment_types(*),
@@ -155,12 +168,16 @@ export default function AppointmentPrep({ userId, onBack }: AppointmentPrepProps
         `)
         .single();
 
-      if (!error && data) {
-        setAppointments([...appointments, data as any]);
-        setSelectedAppointment(data as any);
-        setView('detail');
-        setFormData({ child_name: '', appointment_type_id: '', appointment_date: '', provider_name: '', location: '', notes: '' });
+      if (error || !data) {
+        logger.error('Error creating appointment:', error);
+        alert(t('Failed to create appointment. Please try again.', 'No se pudo crear la cita. Inténtelo de nuevo.'));
+        return;
       }
+
+      setAppointments([...appointments, data as any]);
+      setSelectedAppointment(data as any);
+      setView('detail');
+      setFormData({ child_name: '', appointment_type_id: '', appointment_date: '', provider_name: '', location: '', notes: '' });
     }
   };
 
@@ -169,7 +186,7 @@ export default function AppointmentPrep({ userId, onBack }: AppointmentPrepProps
     setFormData({
       child_name: apt.child_name,
       appointment_type_id: apt.appointment_type?.id || '',
-      appointment_date: apt.appointment_date,
+      appointment_date: toDateTimeLocalInput(apt.appointment_date),
       provider_name: apt.provider_name || '',
       location: apt.location || '',
       notes: apt.notes || ''
@@ -180,14 +197,17 @@ export default function AppointmentPrep({ userId, onBack }: AppointmentPrepProps
   const handleDeleteAppointment = async (aptId: string) => {
     if (!confirm('Delete this appointment and all its data?')) return;
     const { error } = await supabase.from('appointments').delete().eq('id', aptId);
-    if (!error) {
-      setAppointments(appointments.filter(a => a.id !== aptId));
-      setView('list');
+    if (error) {
+      logger.error('Error deleting appointment:', error);
+      alert(t('Failed to delete appointment. Please try again.', 'No se pudo eliminar la cita. Inténtelo de nuevo.'));
+      return;
     }
+    setAppointments(appointments.filter(a => a.id !== aptId));
+    setView('list');
   };
 
-  const handleAddObservation = async (observation: Observation) => {
-    if (!selectedAppointment) return;
+  const handleAddObservation = async (observation: Observation): Promise<boolean> => {
+    if (!selectedAppointment) return false;
 
     const { data, error } = await supabase
       .from('appointment_observations')
@@ -198,18 +218,23 @@ export default function AppointmentPrep({ userId, onBack }: AppointmentPrepProps
       .select()
       .single();
 
-    if (!error && data) {
-      const updated = {
-        ...selectedAppointment,
-        observations: [...selectedAppointment.observations, data]
-      };
-      setSelectedAppointment(updated);
-      updateAppointmentInList(updated);
+    if (error || !data) {
+      logger.error('Error adding observation:', error);
+      alert(t('Failed to add observation. Please try again.', 'No se pudo agregar la observación. Inténtelo de nuevo.'));
+      return false;
     }
+
+    const updated = {
+      ...selectedAppointment,
+      observations: [...selectedAppointment.observations, data]
+    };
+    setSelectedAppointment(updated);
+    updateAppointmentInList(updated);
+    return true;
   };
 
-  const handleAddQuestion = async (question: Question) => {
-    if (!selectedAppointment) return;
+  const handleAddQuestion = async (question: Question): Promise<boolean> => {
+    if (!selectedAppointment) return false;
 
     const { data, error } = await supabase
       .from('appointment_questions')
@@ -221,18 +246,23 @@ export default function AppointmentPrep({ userId, onBack }: AppointmentPrepProps
       .select()
       .single();
 
-    if (!error && data) {
-      const updated = {
-        ...selectedAppointment,
-        questions: [...selectedAppointment.questions, data]
-      };
-      setSelectedAppointment(updated);
-      updateAppointmentInList(updated);
+    if (error || !data) {
+      logger.error('Error adding question:', error);
+      alert(t('Failed to add question. Please try again.', 'No se pudo agregar la pregunta. Inténtelo de nuevo.'));
+      return false;
     }
+
+    const updated = {
+      ...selectedAppointment,
+      questions: [...selectedAppointment.questions, data]
+    };
+    setSelectedAppointment(updated);
+    updateAppointmentInList(updated);
+    return true;
   };
 
-  const handleAddDocument = async (doc: Document) => {
-    if (!selectedAppointment) return;
+  const handleAddDocument = async (doc: Document): Promise<boolean> => {
+    if (!selectedAppointment) return false;
 
     const { data, error } = await supabase
       .from('appointment_documents')
@@ -243,45 +273,63 @@ export default function AppointmentPrep({ userId, onBack }: AppointmentPrepProps
       .select()
       .single();
 
-    if (!error && data) {
-      const updated = {
-        ...selectedAppointment,
-        documents: [...selectedAppointment.documents, data]
-      };
-      setSelectedAppointment(updated);
-      updateAppointmentInList(updated);
+    if (error || !data) {
+      logger.error('Error adding document:', error);
+      alert(t('Failed to add document. Please try again.', 'No se pudo agregar el documento. Inténtelo de nuevo.'));
+      return false;
     }
+
+    const updated = {
+      ...selectedAppointment,
+      documents: [...selectedAppointment.documents, data]
+    };
+    setSelectedAppointment(updated);
+    updateAppointmentInList(updated);
+    return true;
   };
 
-  const handleAddFollowup = async (followup: Followup) => {
-    if (!selectedAppointment) return;
+  const handleAddFollowup = async (followup: Followup): Promise<boolean> => {
+    if (!selectedAppointment) return false;
 
     const { data, error } = await supabase
       .from('appointment_followups')
       .insert({
         appointment_id: selectedAppointment.id,
-        ...followup
+        ...followup,
+        due_date: followup.due_date || null
       })
       .select()
       .single();
 
-    if (!error && data) {
-      const updated = {
-        ...selectedAppointment,
-        followups: [...selectedAppointment.followups, data]
-      };
-      setSelectedAppointment(updated);
-      updateAppointmentInList(updated);
+    if (error || !data) {
+      logger.error('Error adding follow-up task:', error);
+      alert(t('Failed to add follow-up task. Please try again.', 'No se pudo agregar la tarea de seguimiento. Inténtelo de nuevo.'));
+      return false;
     }
+
+    const updated = {
+      ...selectedAppointment,
+      followups: [...selectedAppointment.followups, data]
+    };
+    setSelectedAppointment(updated);
+    updateAppointmentInList(updated);
+    return true;
   };
 
   const handleDeleteItem = async (table: string, id: string, field: keyof Appointment) => {
-    await supabase.from(table).delete().eq('id', id);
+    if (!confirm(t('Delete this item?', '¿Eliminar este elemento?'))) return;
+
+    const { error } = await supabase.from(table).delete().eq('id', id);
+    if (error) {
+      logger.error('Error deleting item:', error);
+      alert(t('Failed to delete item. Please try again.', 'No se pudo eliminar el elemento. Inténtelo de nuevo.'));
+      return;
+    }
 
     if (selectedAppointment) {
       const updated = {
         ...selectedAppointment,
-        [field]: (selectedAppointment[field] as any[]).filter((item: any) => item.id !== id)
+        [field]: (selectedAppointment[field] as { id?: string }[]).filter((item) => item.id !== id)
       };
       setSelectedAppointment(updated);
       updateAppointmentInList(updated);
@@ -300,7 +348,7 @@ export default function AppointmentPrep({ userId, onBack }: AppointmentPrepProps
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `appointment-prep-${selectedAppointment.child_name}-${new Date(selectedAppointment.appointment_date).toISOString().split('T')[0]}.txt`;
+    a.download = `appointment-prep-${selectedAppointment.child_name}-${toLocalDateString(new Date(selectedAppointment.appointment_date))}.txt`;
     a.click();
   };
 
@@ -309,7 +357,7 @@ export default function AppointmentPrep({ userId, onBack }: AppointmentPrepProps
     let summary = `APPOINTMENT PREPARATION SUMMARY\n`;
     summary += `${'='.repeat(50)}\n\n`;
     summary += `Child: ${apt.child_name}\n`;
-    summary += `Appointment Type: ${apt.appointment_type.name}\n`;
+    summary += `Appointment Type: ${apt.appointment_type?.name ?? 'N/A'}\n`;
     summary += `Date: ${date}\n`;
     summary += `Provider: ${apt.provider_name || 'N/A'}\n`;
     summary += `Location: ${apt.location || 'N/A'}\n\n`;
@@ -345,10 +393,11 @@ export default function AppointmentPrep({ userId, onBack }: AppointmentPrepProps
       });
     }
 
-    if (apt.appointment_type.preparation_tips.length > 0) {
+    const prepTips = apt.appointment_type?.preparation_tips ?? [];
+    if (prepTips.length > 0) {
       summary += `\nPREPARATION TIPS\n`;
       summary += `${'-'.repeat(50)}\n`;
-      apt.appointment_type.preparation_tips.forEach((tip, idx) => {
+      prepTips.forEach((tip, idx) => {
         summary += `${idx + 1}. ${tip}\n`;
       });
     }
@@ -364,7 +413,7 @@ export default function AppointmentPrep({ userId, onBack }: AppointmentPrepProps
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-[50vh] flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
       </div>
     );
@@ -372,27 +421,27 @@ export default function AppointmentPrep({ userId, onBack }: AppointmentPrepProps
 
   if (view === 'create') {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-teal-50 p-6">
-        <div className="max-w-3xl mx-auto">
+      <div className="min-h-[calc(100vh-3.5rem)] bg-gray-50">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 pt-2 sm:pt-4 pb-8">
           <button
             onClick={() => { setView(editingApt ? 'detail' : 'list'); setEditingApt(null); }}
-            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6 transition-colors"
+            className="no-print inline-flex items-center gap-1.5 -ml-2 px-2 min-h-[44px] rounded-lg text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors mb-2 sm:mb-4"
           >
-            <ChevronLeft className="w-5 h-5" />
+            <ArrowLeft className="w-4 h-4" aria-hidden="true" />
             {t('Back to Appointments', 'Volver a Citas')}
           </button>
 
-          <div className="bg-white rounded-xl shadow-lg p-8">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">
+          <div className="bg-white rounded-xl shadow-lg p-5 sm:p-8">
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-6">
               {editingApt ? t('Edit Appointment', 'Editar Cita') : t('Create New Appointment', 'Crear Nueva Cita')}
             </h2>
 
             <form onSubmit={handleCreateAppointment} className="space-y-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="appointment-prep-child-name" className="block text-sm font-medium text-gray-700 mb-2">
                   {t('Child Name', 'Nombre del Niño')}
                 </label>
-                <input
+                <input id="appointment-prep-child-name"
                   type="text"
                   required
                   value={formData.child_name}
@@ -402,10 +451,10 @@ export default function AppointmentPrep({ userId, onBack }: AppointmentPrepProps
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="appointment-prep-appointment-type" className="block text-sm font-medium text-gray-700 mb-2">
                   {t('Appointment Type', 'Tipo de Cita')}
                 </label>
-                <select
+                <select id="appointment-prep-appointment-type"
                   required
                   value={formData.appointment_type_id}
                   onChange={(e) => setFormData({ ...formData, appointment_type_id: e.target.value })}
@@ -419,10 +468,10 @@ export default function AppointmentPrep({ userId, onBack }: AppointmentPrepProps
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="appointment-prep-date-and-time" className="block text-sm font-medium text-gray-700 mb-2">
                   {t('Date and Time', 'Fecha y Hora')}
                 </label>
-                <input
+                <input id="appointment-prep-date-and-time"
                   type="datetime-local"
                   required
                   value={formData.appointment_date}
@@ -432,10 +481,10 @@ export default function AppointmentPrep({ userId, onBack }: AppointmentPrepProps
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="appointment-prep-provider-name" className="block text-sm font-medium text-gray-700 mb-2">
                   {t('Provider Name', 'Nombre del Proveedor')}
                 </label>
-                <input
+                <input id="appointment-prep-provider-name"
                   type="text"
                   value={formData.provider_name}
                   onChange={(e) => setFormData({ ...formData, provider_name: e.target.value })}
@@ -445,10 +494,10 @@ export default function AppointmentPrep({ userId, onBack }: AppointmentPrepProps
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="appointment-prep-location" className="block text-sm font-medium text-gray-700 mb-2">
                   {t('Location', 'Ubicación')}
                 </label>
-                <input
+                <input id="appointment-prep-location"
                   type="text"
                   value={formData.location}
                   onChange={(e) => setFormData({ ...formData, location: e.target.value })}
@@ -458,10 +507,10 @@ export default function AppointmentPrep({ userId, onBack }: AppointmentPrepProps
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="appointment-prep-notes" className="block text-sm font-medium text-gray-700 mb-2">
                   {t('Notes', 'Notas')}
                 </label>
-                <textarea
+                <textarea id="appointment-prep-notes"
                   value={formData.notes}
                   onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                   rows={4}
@@ -472,7 +521,7 @@ export default function AppointmentPrep({ userId, onBack }: AppointmentPrepProps
 
               <button
                 type="submit"
-                className="w-full bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+                className="w-full bg-teal-700 text-white py-3 rounded-lg font-medium hover:bg-teal-800 transition-colors flex items-center justify-center gap-2"
               >
                 <Save className="w-5 h-5" />
                 {editingApt ? t('Update Appointment', 'Actualizar Cita') : t('Create Appointment', 'Crear Cita')}
@@ -502,37 +551,27 @@ export default function AppointmentPrep({ userId, onBack }: AppointmentPrepProps
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-teal-50 p-6">
-      <div className="max-w-6xl mx-auto">
-        <div className="flex items-center justify-between mb-8">
-          <button
-            onClick={onBack}
-            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
-          >
-            <ChevronLeft className="w-5 h-5" />
-            {t('Back', 'Volver')}
-          </button>
-          <button
-            onClick={() => setView('create')}
-            className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
-          >
-            <Plus className="w-5 h-5" />
-            {t('New Appointment', 'Nueva Cita')}
-          </button>
-        </div>
+    <div className="min-h-[calc(100vh-3.5rem)] bg-gray-50">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-2 sm:pt-4 pb-8">
+        <button
+          onClick={onBack}
+          className="no-print inline-flex items-center gap-1.5 -ml-2 mb-2 sm:mb-4 px-2 min-h-[44px] rounded-lg text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors"
+        >
+          <ArrowLeft className="w-4 h-4" aria-hidden="true" />
+          {t('Back to Home', 'Volver al inicio')}
+        </button>
 
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">
-            {t('Appointment Preparation', 'Preparación de Citas')}
-          </h1>
-          <p className="text-lg text-gray-600">
-            {t('Organize your observations, questions, and documents for doctor visits',
-               'Organice sus observaciones, preguntas y documentos para visitas médicas')}
-          </p>
-        </div>
+        <PageHeader
+          icon={Calendar}
+          tone="blue"
+          title={t('Appointments', 'Citas')}
+          subtitle={t('Organize observations, questions, and documents for doctor visits',
+             'Organice observaciones, preguntas y documentos para visitas médicas')}
+          action={{ label: t('New Appointment', 'Nueva Cita'), icon: Plus, onClick: () => setView('create') }}
+        />
 
         {appointments.length === 0 ? (
-          <div className="bg-white rounded-xl shadow-lg p-12 text-center">
+          <div className="bg-white rounded-xl shadow-lg p-6 sm:p-12 text-center">
             <Calendar className="w-16 h-16 text-gray-400 mx-auto mb-4" />
             <h3 className="text-xl font-semibold text-gray-900 mb-2">
               {t('No appointments yet', 'Aún no hay citas')}
@@ -543,7 +582,7 @@ export default function AppointmentPrep({ userId, onBack }: AppointmentPrepProps
             </p>
             <button
               onClick={() => setView('create')}
-              className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-teal-700 text-white rounded-lg hover:bg-teal-800 transition-colors font-medium"
             >
               <Plus className="w-5 h-5" />
               {t('Create Appointment', 'Crear Cita')}
@@ -569,6 +608,7 @@ export default function AppointmentPrep({ userId, onBack }: AppointmentPrepProps
 }
 
 function AppointmentCard({ appointment, onClick }: { appointment: Appointment; onClick: () => void }) {
+  const { t } = useLanguage();
   const date = new Date(appointment.appointment_date);
   const isUpcoming = date > new Date();
   const isPast = date < new Date();
@@ -579,11 +619,11 @@ function AppointmentCard({ appointment, onClick }: { appointment: Appointment; o
       className="bg-white rounded-xl shadow-md hover:shadow-xl transition-shadow cursor-pointer overflow-hidden"
     >
       <div className={`h-2 ${isUpcoming ? 'bg-blue-600' : isPast ? 'bg-gray-400' : 'bg-green-600'}`}></div>
-      <div className="p-6">
+      <div className="p-5 sm:p-6">
         <div className="flex items-start justify-between mb-4">
           <div>
             <h3 className="text-lg font-semibold text-gray-900 mb-1">
-              {appointment.appointment_type.name}
+              {appointment.appointment_type?.name ?? t('Appointment', 'Cita')}
             </h3>
             <p className="text-sm text-gray-600">{appointment.child_name}</p>
           </div>
@@ -634,10 +674,10 @@ function AppointmentDetail({
 }: {
   appointment: Appointment;
   onBack: () => void;
-  onAddObservation: (obs: Observation) => void;
-  onAddQuestion: (q: Question) => void;
-  onAddDocument: (doc: Document) => void;
-  onAddFollowup: (f: Followup) => void;
+  onAddObservation: (obs: Observation) => Promise<boolean>;
+  onAddQuestion: (q: Question) => Promise<boolean>;
+  onAddDocument: (doc: Document) => Promise<boolean>;
+  onAddFollowup: (f: Followup) => Promise<boolean>;
   onDeleteItem: (table: string, id: string, field: keyof Appointment) => void;
   onGenerateSummary: () => void;
   onEditAppointment: (apt: Appointment) => void;
@@ -649,20 +689,20 @@ function AppointmentDetail({
   const date = new Date(appointment.appointment_date);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-teal-50 p-6">
-      <div className="max-w-6xl mx-auto">
-        <div className="flex items-center justify-between mb-6">
+    <div className="min-h-[calc(100vh-3.5rem)] bg-gray-50">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-2 sm:pt-4 pb-8">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
           <button
             onClick={onBack}
-            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
+            className="no-print inline-flex items-center gap-1.5 -ml-2 px-2 min-h-[44px] rounded-lg text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors"
           >
-            <ChevronLeft className="w-5 h-5" />
+            <ArrowLeft className="w-4 h-4" aria-hidden="true" />
             {t('Back to Appointments', 'Volver a Citas')}
           </button>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
             <button
               onClick={() => onEditAppointment(appointment)}
-              className="flex items-center gap-2 px-4 py-2 border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors"
+              className="flex items-center gap-2 px-4 py-2 border border-teal-700 text-teal-700 rounded-lg hover:bg-teal-50 transition-colors"
             >
               <Edit2 className="w-4 h-4" />
               {t('Edit', 'Editar')}
@@ -684,13 +724,13 @@ function AppointmentDetail({
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-lg p-8 mb-6">
-          <div className="flex items-start justify-between mb-6">
+        <div className="bg-white rounded-xl shadow-lg p-5 sm:p-8 mb-6">
+          <div className="flex flex-wrap items-start justify-between gap-3 mb-6">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                {appointment.appointment_type.name}
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
+                {appointment.appointment_type?.name ?? t('Appointment', 'Cita')}
               </h1>
-              <p className="text-lg text-gray-600">{appointment.child_name}</p>
+              <p className="sm:text-lg text-gray-600">{appointment.child_name}</p>
             </div>
             {appointment.completed && (
               <span className="px-4 py-2 bg-green-100 text-green-700 rounded-full text-sm font-medium">
@@ -732,7 +772,7 @@ function AppointmentDetail({
 
         <div className="bg-white rounded-xl shadow-lg overflow-hidden">
           <div className="border-b border-gray-200">
-            <div className="flex overflow-x-auto">
+            <div className="flex overflow-x-auto scroll-fade-x">
               <TabButton
                 active={activeTab === 'overview'}
                 onClick={() => setActiveTab('overview')}
@@ -770,7 +810,7 @@ function AppointmentDetail({
             </div>
           </div>
 
-          <div className="p-8">
+          <div className="p-4 sm:p-8">
             {activeTab === 'overview' && (
               <OverviewTab appointment={appointment} />
             )}
@@ -809,11 +849,19 @@ function AppointmentDetail({
   );
 }
 
-function TabButton({ active, onClick, icon, label, count }: any) {
+interface TabButtonProps {
+  active: boolean;
+  onClick: () => void;
+  icon: React.ReactNode;
+  label: string;
+  count?: number;
+}
+
+function TabButton({ active, onClick, icon, label, count }: TabButtonProps) {
   return (
     <button
       onClick={onClick}
-      className={`flex items-center gap-2 px-6 py-4 font-medium transition-colors whitespace-nowrap ${
+      className={`flex items-center gap-2 px-4 sm:px-6 py-4 font-medium transition-colors whitespace-nowrap ${
         active
           ? 'text-blue-600 border-b-2 border-blue-600'
           : 'text-gray-600 hover:text-gray-900'
@@ -837,7 +885,7 @@ function OverviewTab({ appointment }: { appointment: Appointment }) {
     <div className="space-y-6">
       <div>
         <h3 className="text-lg font-semibold text-gray-900 mb-3">About This Appointment</h3>
-        <p className="text-gray-700">{appointment.appointment_type.description}</p>
+        <p className="text-gray-700">{appointment.appointment_type?.description}</p>
       </div>
 
       {appointment.notes && (
@@ -847,11 +895,11 @@ function OverviewTab({ appointment }: { appointment: Appointment }) {
         </div>
       )}
 
-      {appointment.appointment_type.preparation_tips.length > 0 && (
+      {(appointment.appointment_type?.preparation_tips?.length ?? 0) > 0 && (
         <div>
           <h3 className="text-lg font-semibold text-gray-900 mb-3">Preparation Tips</h3>
           <ul className="space-y-2">
-            {appointment.appointment_type.preparation_tips.map((tip, idx) => (
+            {appointment.appointment_type?.preparation_tips.map((tip, idx) => (
               <li key={idx} className="flex items-start gap-3">
                 <CheckCircle2 className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
                 <span className="text-gray-700">{tip}</span>
@@ -887,7 +935,13 @@ function OverviewTab({ appointment }: { appointment: Appointment }) {
   );
 }
 
-function StatCard({ icon, label, value }: any) {
+interface StatCardProps {
+  icon: React.ReactNode;
+  label: string;
+  value: number;
+}
+
+function StatCard({ icon, label, value }: StatCardProps) {
   return (
     <div className="p-4 bg-gray-50 rounded-lg">
       <div className="flex items-center gap-2 mb-2">
@@ -899,23 +953,30 @@ function StatCard({ icon, label, value }: any) {
   );
 }
 
-function ObservationsTab({ observations, onAdd, onDelete }: any) {
+interface ObservationsTabProps {
+  observations: Observation[];
+  onAdd: (item: Observation) => Promise<boolean>;
+  onDelete: (id: string) => void;
+}
+
+function ObservationsTab({ observations, onAdd, onDelete }: ObservationsTabProps) {
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState<Observation>({
     category: 'behavior',
     observation: '',
-    date_observed: new Date().toISOString().split('T')[0],
+    date_observed: localToday(),
     frequency: 'occasionally',
     concern_level: 'mild'
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onAdd(formData);
+    // Keep the form (and what was typed) if saving failed
+    if (!(await onAdd(formData))) return;
     setFormData({
       category: 'behavior',
       observation: '',
-      date_observed: new Date().toISOString().split('T')[0],
+      date_observed: localToday(),
       frequency: 'occasionally',
       concern_level: 'mild'
     });
@@ -932,7 +993,7 @@ function ObservationsTab({ observations, onAdd, onDelete }: any) {
         <h3 className="text-lg font-semibold text-gray-900">Observations & Concerns</h3>
         <button
           onClick={() => setShowForm(!showForm)}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          className="flex items-center gap-2 px-4 py-2 bg-teal-700 text-white rounded-lg hover:bg-teal-800 transition-colors"
         >
           {showForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
           {showForm ? 'Cancel' : 'Add Observation'}
@@ -941,10 +1002,10 @@ function ObservationsTab({ observations, onAdd, onDelete }: any) {
 
       {showForm && (
         <form onSubmit={handleSubmit} className="bg-gray-50 p-6 rounded-lg space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
-              <select
+              <label htmlFor="appointment-prep-category" className="block text-sm font-medium text-gray-700 mb-2">Category</label>
+              <select id="appointment-prep-category"
                 value={formData.category}
                 onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
@@ -956,8 +1017,8 @@ function ObservationsTab({ observations, onAdd, onDelete }: any) {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Date Observed</label>
-              <input
+              <label htmlFor="appointment-prep-date-observed" className="block text-sm font-medium text-gray-700 mb-2">Date Observed</label>
+              <input id="appointment-prep-date-observed"
                 type="date"
                 value={formData.date_observed}
                 onChange={(e) => setFormData({ ...formData, date_observed: e.target.value })}
@@ -967,8 +1028,8 @@ function ObservationsTab({ observations, onAdd, onDelete }: any) {
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Observation</label>
-            <textarea
+            <label htmlFor="appointment-prep-observation" className="block text-sm font-medium text-gray-700 mb-2">Observation</label>
+            <textarea id="appointment-prep-observation"
               value={formData.observation}
               onChange={(e) => setFormData({ ...formData, observation: e.target.value })}
               rows={3}
@@ -977,10 +1038,10 @@ function ObservationsTab({ observations, onAdd, onDelete }: any) {
               required
             />
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Frequency</label>
-              <select
+              <label htmlFor="appointment-prep-frequency" className="block text-sm font-medium text-gray-700 mb-2">Frequency</label>
+              <select id="appointment-prep-frequency"
                 value={formData.frequency}
                 onChange={(e) => setFormData({ ...formData, frequency: e.target.value })}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
@@ -991,8 +1052,8 @@ function ObservationsTab({ observations, onAdd, onDelete }: any) {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Concern Level</label>
-              <select
+              <label htmlFor="appointment-prep-concern-level" className="block text-sm font-medium text-gray-700 mb-2">Concern Level</label>
+              <select id="appointment-prep-concern-level"
                 value={formData.concern_level}
                 onChange={(e) => setFormData({ ...formData, concern_level: e.target.value })}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
@@ -1005,7 +1066,7 @@ function ObservationsTab({ observations, onAdd, onDelete }: any) {
           </div>
           <button
             type="submit"
-            className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors"
+            className="w-full bg-teal-700 text-white py-2 rounded-lg hover:bg-teal-800 transition-colors"
           >
             Add Observation
           </button>
@@ -1037,6 +1098,7 @@ function ObservationsTab({ observations, onAdd, onDelete }: any) {
               </div>
               <button
                 onClick={() => obs.id && onDelete(obs.id)}
+                aria-label="Delete observation"
                 className="text-red-600 hover:text-red-700 p-2"
               >
                 <Trash2 className="w-4 h-4" />
@@ -1052,7 +1114,13 @@ function ObservationsTab({ observations, onAdd, onDelete }: any) {
   );
 }
 
-function QuestionsTab({ questions, onAdd, onDelete }: any) {
+interface QuestionsTabProps {
+  questions: Question[];
+  onAdd: (item: Question) => Promise<boolean>;
+  onDelete: (id: string) => void;
+}
+
+function QuestionsTab({ questions, onAdd, onDelete }: QuestionsTabProps) {
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState<Question>({
     question: '',
@@ -1061,9 +1129,10 @@ function QuestionsTab({ questions, onAdd, onDelete }: any) {
     answer: ''
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onAdd(formData);
+    // Keep the form (and what was typed) if saving failed
+    if (!(await onAdd(formData))) return;
     setFormData({
       question: '',
       priority: 'medium',
@@ -1084,7 +1153,7 @@ function QuestionsTab({ questions, onAdd, onDelete }: any) {
         <h3 className="text-lg font-semibold text-gray-900">Questions to Ask</h3>
         <button
           onClick={() => setShowForm(!showForm)}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          className="flex items-center gap-2 px-4 py-2 bg-teal-700 text-white rounded-lg hover:bg-teal-800 transition-colors"
         >
           {showForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
           {showForm ? 'Cancel' : 'Add Question'}
@@ -1094,8 +1163,8 @@ function QuestionsTab({ questions, onAdd, onDelete }: any) {
       {showForm && (
         <form onSubmit={handleSubmit} className="bg-gray-50 p-6 rounded-lg space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Question</label>
-            <textarea
+            <label htmlFor="appointment-prep-question" className="block text-sm font-medium text-gray-700 mb-2">Question</label>
+            <textarea id="appointment-prep-question"
               value={formData.question}
               onChange={(e) => setFormData({ ...formData, question: e.target.value })}
               rows={2}
@@ -1105,8 +1174,8 @@ function QuestionsTab({ questions, onAdd, onDelete }: any) {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Priority</label>
-            <select
+            <label htmlFor="appointment-prep-priority" className="block text-sm font-medium text-gray-700 mb-2">Priority</label>
+            <select id="appointment-prep-priority"
               value={formData.priority}
               onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
@@ -1118,7 +1187,7 @@ function QuestionsTab({ questions, onAdd, onDelete }: any) {
           </div>
           <button
             type="submit"
-            className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors"
+            className="w-full bg-teal-700 text-white py-2 rounded-lg hover:bg-teal-800 transition-colors"
           >
             Add Question
           </button>
@@ -1151,6 +1220,7 @@ function QuestionsTab({ questions, onAdd, onDelete }: any) {
               </div>
               <button
                 onClick={() => q.id && onDelete(q.id)}
+                aria-label="Delete question"
                 className="text-red-600 hover:text-red-700 p-2"
               >
                 <Trash2 className="w-4 h-4" />
@@ -1166,7 +1236,13 @@ function QuestionsTab({ questions, onAdd, onDelete }: any) {
   );
 }
 
-function DocumentsTab({ documents, onAdd, onDelete }: any) {
+interface DocumentsTabProps {
+  documents: Document[];
+  onAdd: (item: Document) => Promise<boolean>;
+  onDelete: (id: string) => void;
+}
+
+function DocumentsTab({ documents, onAdd, onDelete }: DocumentsTabProps) {
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState<Document>({
     document_type: 'medical_records',
@@ -1174,9 +1250,10 @@ function DocumentsTab({ documents, onAdd, onDelete }: any) {
     notes: ''
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onAdd(formData);
+    // Keep the form (and what was typed) if saving failed
+    if (!(await onAdd(formData))) return;
     setFormData({
       document_type: 'medical_records',
       document_name: '',
@@ -1201,7 +1278,7 @@ function DocumentsTab({ documents, onAdd, onDelete }: any) {
         <h3 className="text-lg font-semibold text-gray-900">Documents to Bring</h3>
         <button
           onClick={() => setShowForm(!showForm)}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          className="flex items-center gap-2 px-4 py-2 bg-teal-700 text-white rounded-lg hover:bg-teal-800 transition-colors"
         >
           {showForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
           {showForm ? 'Cancel' : 'Add Document'}
@@ -1211,8 +1288,8 @@ function DocumentsTab({ documents, onAdd, onDelete }: any) {
       {showForm && (
         <form onSubmit={handleSubmit} className="bg-gray-50 p-6 rounded-lg space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Document Type</label>
-            <select
+            <label htmlFor="appointment-prep-document-type" className="block text-sm font-medium text-gray-700 mb-2">Document Type</label>
+            <select id="appointment-prep-document-type"
               value={formData.document_type}
               onChange={(e) => setFormData({ ...formData, document_type: e.target.value })}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
@@ -1223,8 +1300,8 @@ function DocumentsTab({ documents, onAdd, onDelete }: any) {
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Document Name</label>
-            <input
+            <label htmlFor="appointment-prep-document-name" className="block text-sm font-medium text-gray-700 mb-2">Document Name</label>
+            <input id="appointment-prep-document-name"
               type="text"
               value={formData.document_name}
               onChange={(e) => setFormData({ ...formData, document_name: e.target.value })}
@@ -1234,8 +1311,8 @@ function DocumentsTab({ documents, onAdd, onDelete }: any) {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Notes</label>
-            <textarea
+            <label htmlFor="appointment-prep-notes-2" className="block text-sm font-medium text-gray-700 mb-2">Notes</label>
+            <textarea id="appointment-prep-notes-2"
               value={formData.notes}
               onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
               rows={2}
@@ -1245,7 +1322,7 @@ function DocumentsTab({ documents, onAdd, onDelete }: any) {
           </div>
           <button
             type="submit"
-            className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors"
+            className="w-full bg-teal-700 text-white py-2 rounded-lg hover:bg-teal-800 transition-colors"
           >
             Add Document
           </button>
@@ -1267,6 +1344,7 @@ function DocumentsTab({ documents, onAdd, onDelete }: any) {
             </div>
             <button
               onClick={() => doc.id && onDelete(doc.id)}
+              aria-label="Delete document"
               className="text-red-600 hover:text-red-700 p-2"
             >
               <Trash2 className="w-4 h-4" />
@@ -1281,7 +1359,13 @@ function DocumentsTab({ documents, onAdd, onDelete }: any) {
   );
 }
 
-function FollowupTab({ followups, onAdd, onDelete }: any) {
+interface FollowupTabProps {
+  followups: Followup[];
+  onAdd: (item: Followup) => Promise<boolean>;
+  onDelete: (id: string) => void;
+}
+
+function FollowupTab({ followups, onAdd, onDelete }: FollowupTabProps) {
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState<Followup>({
     followup_item: '',
@@ -1289,9 +1373,10 @@ function FollowupTab({ followups, onAdd, onDelete }: any) {
     completed: false
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onAdd(formData);
+    // Keep the form (and what was typed) if saving failed
+    if (!(await onAdd(formData))) return;
     setFormData({
       followup_item: '',
       due_date: '',
@@ -1306,7 +1391,7 @@ function FollowupTab({ followups, onAdd, onDelete }: any) {
         <h3 className="text-lg font-semibold text-gray-900">Follow-up Tasks</h3>
         <button
           onClick={() => setShowForm(!showForm)}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          className="flex items-center gap-2 px-4 py-2 bg-teal-700 text-white rounded-lg hover:bg-teal-800 transition-colors"
         >
           {showForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
           {showForm ? 'Cancel' : 'Add Task'}
@@ -1316,8 +1401,8 @@ function FollowupTab({ followups, onAdd, onDelete }: any) {
       {showForm && (
         <form onSubmit={handleSubmit} className="bg-gray-50 p-6 rounded-lg space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Task</label>
-            <input
+            <label htmlFor="appointment-prep-task" className="block text-sm font-medium text-gray-700 mb-2">Task</label>
+            <input id="appointment-prep-task"
               type="text"
               value={formData.followup_item}
               onChange={(e) => setFormData({ ...formData, followup_item: e.target.value })}
@@ -1327,8 +1412,8 @@ function FollowupTab({ followups, onAdd, onDelete }: any) {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Due Date</label>
-            <input
+            <label htmlFor="appointment-prep-due-date" className="block text-sm font-medium text-gray-700 mb-2">Due Date</label>
+            <input id="appointment-prep-due-date"
               type="date"
               value={formData.due_date}
               onChange={(e) => setFormData({ ...formData, due_date: e.target.value })}
@@ -1337,7 +1422,7 @@ function FollowupTab({ followups, onAdd, onDelete }: any) {
           </div>
           <button
             type="submit"
-            className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors"
+            className="w-full bg-teal-700 text-white py-2 rounded-lg hover:bg-teal-800 transition-colors"
           >
             Add Task
           </button>
@@ -1364,6 +1449,7 @@ function FollowupTab({ followups, onAdd, onDelete }: any) {
             </div>
             <button
               onClick={() => task.id && onDelete(task.id)}
+              aria-label="Delete task"
               className="text-red-600 hover:text-red-700 p-2"
             >
               <Trash2 className="w-4 h-4" />

@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Camera, Upload, X, Filter, Search, Calendar, Tag } from 'lucide-react';
-import { useLanguage } from '../contexts/LanguageContext';
+import { Camera, Upload, X, Search, Calendar, Tag } from 'lucide-react';
 import { useLoadingState } from '../hooks/useLoadingState';
 import { supabase } from '../lib/supabase';
 import { logger } from '../lib/logger';
+import { PageHeader } from './PageHeader';
 
 interface PhotoEntry {
   id: string;
@@ -11,6 +11,7 @@ interface PhotoEntry {
   title: string;
   description: string;
   photo_url: string;
+  display_url?: string;
   media_type: 'photo' | 'video';
   milestone_type: string;
   age_at_capture: string;
@@ -20,7 +21,6 @@ interface PhotoEntry {
 }
 
 export default function PhotoJournal() {
-  const { t } = useLanguage();
   const [entries, setEntries] = useState<PhotoEntry[]>([]);
   const [filteredEntries, setFilteredEntries] = useState<PhotoEntry[]>([]);
   const { loading, setLoading } = useLoadingState();
@@ -59,6 +59,41 @@ export default function PhotoJournal() {
     };
   }, [previewUrl]);
 
+  // photo_url holds the storage path; older rows hold a full public URL.
+  const storagePath = (photoUrl: string) => {
+    const marker = '/photo-journal/';
+    const i = photoUrl.indexOf(marker);
+    if (i === -1) return photoUrl;
+    const path = photoUrl.slice(i + marker.length).split('?')[0];
+    try { return decodeURIComponent(path); } catch { return path; }
+  };
+
+  const resetForm = () => {
+    setEditingEntry(null);
+    setFormData({
+      child_name: '',
+      title: '',
+      description: '',
+      milestone_type: '',
+      age_at_capture: '',
+      linked_condition: '',
+      tags: ''
+    });
+    setSelectedFile(null);
+    setPreviewUrl('');
+  };
+
+  const closeForm = () => {
+    setShowUploadForm(false);
+    setSelectedEntry(null);
+    resetForm();
+  };
+
+  const openAddForm = () => {
+    resetForm();
+    setShowUploadForm(true);
+  };
+
   const loadEntries = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -71,7 +106,19 @@ export default function PhotoJournal() {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setEntries(data || []);
+
+      // Bucket is private: resolve short-lived signed URLs for display
+      const rows: PhotoEntry[] = data || [];
+      const paths = rows.map(r => storagePath(r.photo_url));
+      if (paths.length > 0) {
+        const { data: signed, error: signError } = await supabase.storage
+          .from('photo-journal')
+          .createSignedUrls(paths, 60 * 60);
+        if (signError) logger.error('Failed to sign photo URLs', signError);
+        const byPath = new Map((signed || []).map(s => [s.path, s.signedUrl]));
+        rows.forEach(r => { r.display_url = byPath.get(storagePath(r.photo_url)) || undefined; });
+      }
+      setEntries(rows);
     } catch (error) {
       logger.error('Failed to load photo journal entries', error);
     } finally {
@@ -139,10 +186,6 @@ export default function PhotoJournal() {
 
       if (uploadError) throw uploadError;
 
-      const { data: { publicUrl } } = supabase.storage
-        .from('photo-journal')
-        .getPublicUrl(fileName);
-
       const tagsArray = formData.tags.split(',').map(t => t.trim()).filter(t => t);
       const mediaType = selectedFile.type.startsWith('video/') ? 'video' : 'photo';
 
@@ -153,7 +196,7 @@ export default function PhotoJournal() {
           child_name: formData.child_name,
           title: formData.title,
           description: formData.description,
-          photo_url: publicUrl,
+          photo_url: fileName,
           media_type: mediaType,
           milestone_type: formData.milestone_type,
           age_at_capture: formData.age_at_capture,
@@ -161,20 +204,16 @@ export default function PhotoJournal() {
           tags: tagsArray
         });
 
-      if (insertError) throw insertError;
+      if (insertError) {
+        // Don't leave an orphaned file in storage if the row insert failed
+        const { error: cleanupError } = await supabase.storage
+          .from('photo-journal')
+          .remove([fileName]);
+        if (cleanupError) logger.error('Failed to remove orphaned upload', cleanupError);
+        throw insertError;
+      }
 
-      setShowUploadForm(false);
-      setFormData({
-        child_name: '',
-        title: '',
-        description: '',
-        milestone_type: '',
-        age_at_capture: '',
-        linked_condition: '',
-        tags: ''
-      });
-      setSelectedFile(null);
-      setPreviewUrl('');
+      closeForm();
       loadEntries();
     } catch (error) {
       logger.error('Error uploading photo/video', error);
@@ -188,13 +227,10 @@ export default function PhotoJournal() {
     if (!confirm('Are you sure you want to delete this entry?')) return;
 
     try {
-      const fileName = entry.photo_url.split('/').pop();
-      if (fileName) {
-        const { data: { user } } = await supabase.auth.getUser();
-        await supabase.storage
-          .from('photo-journal')
-          .remove([`${user?.id}/${fileName}`]);
-      }
+      const { error: storageError } = await supabase.storage
+        .from('photo-journal')
+        .remove([storagePath(entry.photo_url)]);
+      if (storageError) logger.error('Failed to remove photo journal file from storage', storageError);
 
       const { error } = await supabase
         .from('photo_journal_entries')
@@ -248,17 +284,7 @@ export default function PhotoJournal() {
 
       if (error) throw error;
 
-      setShowUploadForm(false);
-      setFormData({
-        child_name: '',
-        title: '',
-        description: '',
-        milestone_type: '',
-        age_at_capture: '',
-        linked_condition: '',
-        tags: ''
-      });
-      setSelectedEntry(null);
+      closeForm();
       loadEntries();
     } catch (error) {
       logger.error('Error updating photo journal entry', error);
@@ -281,19 +307,13 @@ export default function PhotoJournal() {
   return (
     <div className="max-w-7xl mx-auto">
       <div className="mb-8">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h2 className="text-3xl font-bold text-gray-900 mb-2">Photo Journal</h2>
-            <p className="text-gray-600">Document your child's progress with photos and videos</p>
-          </div>
-          <button
-            onClick={() => setShowUploadForm(true)}
-            className="flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition"
-          >
-            <Upload className="w-5 h-5" />
-            Add Entry
-          </button>
-        </div>
+        <PageHeader
+          icon={Camera}
+          tone="blue"
+          title="Photo Journal"
+          subtitle="Document your child's progress with photos and videos"
+          action={{ label: 'Add Entry', icon: Upload, onClick: openAddForm }}
+        />
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           <div className="relative">
@@ -323,27 +343,13 @@ export default function PhotoJournal() {
       </div>
 
       {showUploadForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6">
+        <div className="modal-overlay">
+          <div className="modal-panel max-w-2xl">
             <div className="flex justify-between items-center mb-6">
-              <h3 className="text-2xl font-bold text-gray-900">
+              <h3 className="text-xl sm:text-2xl font-bold text-gray-900">
                 {editingEntry ? 'Edit Entry' : 'Add Photo/Video Entry'}
               </h3>
-              <button onClick={() => {
-                setShowUploadForm(false);
-                setSelectedEntry(null);
-                setFormData({
-                  child_name: '',
-                  title: '',
-                  description: '',
-                  milestone_type: '',
-                  age_at_capture: '',
-                  linked_condition: '',
-                  tags: ''
-                });
-                setSelectedFile(null);
-                setPreviewUrl('');
-              }} className="text-gray-500 hover:text-gray-700">
+              <button onClick={closeForm} type="button" aria-label="Close" className="p-2 -m-2 flex-shrink-0 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100">
                 <X className="w-6 h-6" />
               </button>
             </div>
@@ -351,10 +357,10 @@ export default function PhotoJournal() {
             <form onSubmit={editingEntry ? handleUpdate : handleUpload} className="space-y-4">
               {!editingEntry && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <p className="block text-sm font-medium text-gray-700 mb-2">
                     Photo or Video *
-                  </label>
-                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                  </p>
+                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 sm:p-6 text-center">
                     {previewUrl ? (
                       <div className="relative">
                         {selectedFile?.type.startsWith('video/') ? (
@@ -369,19 +375,22 @@ export default function PhotoJournal() {
                             setPreviewUrl('');
                           }}
                           className="absolute top-2 right-2 bg-red-500 text-white p-2 rounded-full hover:bg-red-600"
+                          aria-label="Remove file"
                         >
                           <X className="w-4 h-4" />
                         </button>
                       </div>
                     ) : (
-                      <label className="cursor-pointer">
-                        <Camera className="w-12 h-12 mx-auto text-gray-400 mb-2" />
+                      <label className="relative block cursor-pointer py-2 rounded-lg focus-within:ring-2 focus-within:ring-blue-500">
+                        <Camera className="w-12 h-12 mx-auto text-gray-400 mb-2" aria-hidden="true" />
                         <span className="text-blue-600 hover:text-blue-700">Choose file</span>
+                        {/* Visually hidden but still focusable, so the browser can
+                            point at it when "required" validation fails */}
                         <input
                           type="file"
                           accept="image/*,video/*"
                           onChange={handleFileSelect}
-                          className="hidden"
+                          className="sr-only"
                           required
                         />
                       </label>
@@ -392,10 +401,10 @@ export default function PhotoJournal() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label htmlFor="photo-journal-child-s-name" className="block text-sm font-medium text-gray-700 mb-2">
                     Child's Name *
                   </label>
-                  <input
+                  <input id="photo-journal-child-s-name"
                     type="text"
                     value={formData.child_name}
                     onChange={(e) => setFormData({ ...formData, child_name: e.target.value })}
@@ -404,10 +413,10 @@ export default function PhotoJournal() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label htmlFor="photo-journal-age-at-time" className="block text-sm font-medium text-gray-700 mb-2">
                     Age at Time *
                   </label>
-                  <input
+                  <input id="photo-journal-age-at-time"
                     type="text"
                     placeholder="e.g., 3 years 2 months"
                     value={formData.age_at_capture}
@@ -419,10 +428,10 @@ export default function PhotoJournal() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="photo-journal-title" className="block text-sm font-medium text-gray-700 mb-2">
                   Title *
                 </label>
-                <input
+                <input id="photo-journal-title"
                   type="text"
                   placeholder="e.g., First time using fork independently"
                   value={formData.title}
@@ -433,10 +442,10 @@ export default function PhotoJournal() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="photo-journal-description" className="block text-sm font-medium text-gray-700 mb-2">
                   Description
                 </label>
-                <textarea
+                <textarea id="photo-journal-description"
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
@@ -446,10 +455,10 @@ export default function PhotoJournal() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label htmlFor="photo-journal-milestone-type" className="block text-sm font-medium text-gray-700 mb-2">
                     Milestone Type
                   </label>
-                  <input
+                  <input id="photo-journal-milestone-type"
                     type="text"
                     placeholder="e.g., Motor Skills, Social"
                     value={formData.milestone_type}
@@ -458,10 +467,10 @@ export default function PhotoJournal() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label htmlFor="photo-journal-related-condition" className="block text-sm font-medium text-gray-700 mb-2">
                     Related Condition
                   </label>
-                  <input
+                  <input id="photo-journal-related-condition"
                     type="text"
                     placeholder="e.g., Autism, ADHD"
                     value={formData.linked_condition}
@@ -472,10 +481,10 @@ export default function PhotoJournal() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="photo-journal-tags-comma-separated" className="block text-sm font-medium text-gray-700 mb-2">
                   Tags (comma-separated)
                 </label>
-                <input
+                <input id="photo-journal-tags-comma-separated"
                   type="text"
                   placeholder="e.g., eating, independence, progress"
                   value={formData.tags}
@@ -484,32 +493,18 @@ export default function PhotoJournal() {
                 />
               </div>
 
-              <div className="flex gap-3 pt-4">
+              <div className="modal-footer flex gap-3">
                 <button
                   type="button"
-                  onClick={() => {
-                    setShowUploadForm(false);
-                    setSelectedEntry(null);
-                    setFormData({
-                      child_name: '',
-                      title: '',
-                      description: '',
-                      milestone_type: '',
-                      age_at_capture: '',
-                      linked_condition: '',
-                      tags: ''
-                    });
-                    setSelectedFile(null);
-                    setPreviewUrl('');
-                  }}
-                  className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
+                  onClick={closeForm}
+                  className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={uploading}
-                  className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:bg-gray-400"
+                  className="flex-1 px-4 py-3 bg-teal-700 text-white rounded-lg hover:bg-teal-800 transition disabled:bg-gray-400"
                 >
                   {uploading ? (editingEntry ? 'Updating...' : 'Uploading...') : (editingEntry ? 'Update Entry' : 'Add Entry')}
                 </button>
@@ -520,24 +515,25 @@ export default function PhotoJournal() {
       )}
 
       {selectedEntry && (
-        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50" onClick={() => setSelectedEntry(null)}>
-          <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-overlay bg-black/75" onClick={() => setSelectedEntry(null)}>
+          <div className="modal-panel max-w-4xl p-0 sm:p-0" onClick={(e) => e.stopPropagation()}>
             <div className="relative">
               <button
                 onClick={() => setSelectedEntry(null)}
-                className="absolute top-4 right-4 bg-white rounded-full p-2 shadow-lg hover:bg-gray-100 z-10"
+                className="absolute top-3 right-3 bg-white rounded-full p-2.5 shadow-lg hover:bg-gray-100 z-10"
+                aria-label="Close"
               >
                 <X className="w-6 h-6" />
               </button>
               {selectedEntry.media_type === 'video' ? (
-                <video src={selectedEntry.photo_url} controls className="w-full max-h-96 object-contain bg-black" />
+                <video src={selectedEntry.display_url} controls className="w-full max-h-96 object-contain bg-black" />
               ) : (
-                <img src={selectedEntry.photo_url} alt={selectedEntry.title} className="w-full max-h-96 object-contain bg-black" />
+                <img src={selectedEntry.display_url} alt={selectedEntry.title} className="w-full max-h-96 object-contain bg-black" />
               )}
             </div>
-            <div className="p-6">
+            <div className="p-4 sm:p-6 pb-[max(1rem,env(safe-area-inset-bottom))]">
               <div className="mb-4">
-                <h3 className="text-2xl font-bold text-gray-900 mb-2">{selectedEntry.title}</h3>
+                <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">{selectedEntry.title}</h3>
                 <div className="flex flex-wrap gap-2 text-sm text-gray-600">
                   <span className="flex items-center gap-1">
                     <Calendar className="w-4 h-4" />
@@ -585,13 +581,13 @@ export default function PhotoJournal() {
               <div className="flex gap-3">
                 <button
                   onClick={() => handleEdit(selectedEntry)}
-                  className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                  className="flex-1 px-4 py-3 bg-teal-700 text-white rounded-lg hover:bg-teal-800 transition"
                 >
                   Edit Entry
                 </button>
                 <button
                   onClick={() => handleDelete(selectedEntry)}
-                  className="flex-1 px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
+                  className="flex-1 px-4 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
                 >
                   Delete Entry
                 </button>
@@ -607,8 +603,8 @@ export default function PhotoJournal() {
           <h3 className="text-xl font-semibold text-gray-700 mb-2">No Entries Yet</h3>
           <p className="text-gray-600 mb-6">Start documenting your child's milestones and progress</p>
           <button
-            onClick={() => setShowUploadForm(true)}
-            className="inline-flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition"
+            onClick={openAddForm}
+            className="inline-flex items-center gap-2 bg-teal-700 text-white px-6 py-3 rounded-lg hover:bg-teal-800 transition"
           >
             <Upload className="w-5 h-5" />
             Add First Entry
@@ -624,9 +620,9 @@ export default function PhotoJournal() {
             >
               <div className="relative aspect-video bg-gray-100">
                 {entry.media_type === 'video' ? (
-                  <video src={entry.photo_url} className="w-full h-full object-cover" />
+                  <video src={entry.display_url} className="w-full h-full object-cover" />
                 ) : (
-                  <img src={entry.photo_url} alt={entry.title} className="w-full h-full object-cover group-hover:scale-105 transition" />
+                  <img src={entry.display_url} alt={entry.title} className="w-full h-full object-cover group-hover:scale-105 transition" />
                 )}
                 {entry.media_type === 'video' && (
                   <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-20">

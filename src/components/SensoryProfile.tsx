@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useLoadingState } from '../hooks/useLoadingState';
 import { logger } from '../lib/logger';
 import type { SensoryProfile } from '../types/components';
+import { PageHeader } from './PageHeader';
 
 export default function SensoryProfile() {
   const { user } = useAuth();
@@ -31,7 +32,7 @@ export default function SensoryProfile() {
     proprioceptive_notes: ''
   });
 
-  const sensoryystems = [
+  const sensorySystems = [
     {
       key: 'visual',
       name: 'Visual',
@@ -150,7 +151,11 @@ export default function SensoryProfile() {
         proprioceptive_sensitivity: formData.proprioceptive_sensitivity,
         visual_notes: formData.visual_notes || null,
         auditory_notes: formData.auditory_notes || null,
-        tactile_notes: formData.tactile_notes || null
+        tactile_notes: formData.tactile_notes || null,
+        taste_notes: formData.taste_notes || null,
+        smell_notes: formData.smell_notes || null,
+        vestibular_notes: formData.vestibular_notes || null,
+        proprioceptive_notes: formData.proprioceptive_notes || null
       });
 
       if (error) throw error;
@@ -200,21 +205,15 @@ export default function SensoryProfile() {
 
   return (
     <div className="max-w-7xl mx-auto">
-      <div className="flex items-center justify-between mb-8">
-        <div className="flex items-center gap-3">
-          <Sparkles className="w-8 h-8 text-purple-600" />
-          <h1 className="text-3xl font-bold text-gray-900">Sensory Profile</h1>
-        </div>
-        <button
-          onClick={() => setShowForm(true)}
-          className="flex items-center gap-2 bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition"
-        >
-          <Plus className="w-5 h-5" />
-          New Profile
-        </button>
-      </div>
+      <PageHeader
+        icon={Sparkles}
+        tone="purple"
+        title="Sensory Profile"
+        subtitle="How your child responds to sights, sounds, touch and movement"
+        action={{ label: 'New Profile', icon: Plus, onClick: () => setShowForm(true) }}
+      />
 
-      <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-8">
+      <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6 sm:mb-8">
         <h3 className="text-lg font-semibold text-blue-900 mb-1">What is a Sensory Profile?</h3>
         <p className="text-blue-800 text-sm">
           A sensory profile helps identify how your child processes sensory information. This understanding can help you prevent meltdowns, choose appropriate activities, and communicate needs to therapists and teachers.
@@ -222,8 +221,8 @@ export default function SensoryProfile() {
       </div>
 
       {showForm && (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8 max-h-[80vh] overflow-y-auto">
-          <h2 className="text-2xl font-bold mb-6">Create Sensory Profile</h2>
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6 mb-8">
+          <h2 className="text-xl sm:text-2xl font-bold mb-6">Create Sensory Profile</h2>
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Child Name</label>
@@ -237,15 +236,15 @@ export default function SensoryProfile() {
             </div>
 
             <div className="space-y-6">
-              {sensoryystems.map((system) => {
+              {sensorySystems.map((system) => {
                 const Icon = system.icon;
                 const sensitivityKey = `${system.key}_sensitivity` as keyof typeof formData;
                 const notesKey = `${system.key}_notes` as keyof typeof formData;
 
                 return (
                   <div key={system.key} className="border border-gray-200 rounded-lg p-4">
-                    <div className="flex items-center gap-3 mb-3">
-                      <Icon className={`w-6 h-6 text-${system.color}-600`} />
+                    <div className="flex items-start gap-3 mb-3">
+                      <Icon className={`w-6 h-6 mt-0.5 flex-shrink-0 text-${system.color}-600`} aria-hidden="true" />
                       <div>
                         <h3 className="font-bold text-gray-900">{system.name}</h3>
                         <p className="text-sm text-gray-600">{system.description}</p>
@@ -256,7 +255,7 @@ export default function SensoryProfile() {
                     <div className="space-y-3">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">Sensitivity Level</label>
-                        <div className="grid grid-cols-3 gap-2">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                           {sensitivityLevels.map((level) => (
                             <button
                               key={level.value}
@@ -293,14 +292,14 @@ export default function SensoryProfile() {
             <div className="flex gap-3 pt-4">
               <button
                 type="submit"
-                className="flex-1 bg-purple-600 text-white py-2 rounded-lg hover:bg-purple-700 transition"
+                className="flex-1 bg-purple-600 text-white py-2.5 rounded-lg hover:bg-purple-700 transition"
               >
                 Create Profile
               </button>
               <button
                 type="button"
                 onClick={() => setShowForm(false)}
-                className="flex-1 bg-gray-200 text-gray-700 py-2 rounded-lg hover:bg-gray-300 transition"
+                className="flex-1 bg-gray-200 text-gray-700 py-2.5 rounded-lg hover:bg-gray-300 transition"
               >
                 Cancel
               </button>
@@ -311,12 +310,12 @@ export default function SensoryProfile() {
 
       {profiles.length > 0 && !showForm && (
         <div className="space-y-6">
-          <div className="flex gap-3">
+          <div className="flex flex-wrap gap-2 sm:gap-3">
             {profiles.map((profile) => (
               <button
                 key={profile.id}
                 onClick={() => setSelectedProfile(profile.id)}
-                className={`px-6 py-3 rounded-lg font-semibold transition ${
+                className={`px-4 py-2.5 sm:px-6 sm:py-3 rounded-lg font-semibold transition ${
                   selectedProfile === profile.id
                     ? 'bg-purple-600 text-white'
                     : 'bg-white text-gray-700 hover:bg-gray-100'
@@ -329,13 +328,13 @@ export default function SensoryProfile() {
 
           {currentProfile && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {sensoryystems.map((system) => {
+              {sensorySystems.map((system) => {
                 const Icon = system.icon;
                 const sensitivity = currentProfile[`${system.key}_sensitivity` as keyof SensoryProfile] as string;
                 const notes = currentProfile[`${system.key}_notes` as keyof SensoryProfile] as string;
 
                 return (
-                  <div key={system.key} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                  <div key={system.key} className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
                     <div className="flex items-center gap-3 mb-4">
                       <Icon className={`w-6 h-6 text-${system.color}-600`} />
                       <div className="flex-1">

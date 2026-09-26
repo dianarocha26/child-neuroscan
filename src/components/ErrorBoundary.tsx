@@ -1,4 +1,4 @@
-import { Component, ReactNode } from 'react';
+import { Component, ErrorInfo, ReactNode } from 'react';
 import { AlertTriangle, RefreshCw, Home } from 'lucide-react';
 import { logger } from '../lib/logger';
 import { handleError, getUserMessage } from '../lib/errorHandler';
@@ -6,14 +6,14 @@ import { handleError, getUserMessage } from '../lib/errorHandler';
 interface Props {
   children: ReactNode;
   fallback?: ReactNode;
-  onError?: (error: Error, errorInfo: any) => void;
+  onError?: (error: Error, errorInfo: ErrorInfo) => void;
   onReset?: () => void;
 }
 
 interface State {
   hasError: boolean;
   error: Error | null;
-  errorInfo: any;
+  errorInfo: ErrorInfo | null;
   errorCount: number;
 }
 
@@ -37,7 +37,7 @@ export class ErrorBoundary extends Component<Props, State> {
     };
   }
 
-  componentDidCatch(error: Error, errorInfo: any) {
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     const appError = handleError(error, {
       component: errorInfo?.componentStack,
       errorCount: this.state.errorCount + 1
@@ -108,7 +108,7 @@ export class ErrorBoundary extends Component<Props, State> {
                 <AlertTriangle className="w-10 h-10 text-red-600 dark:text-red-400" />
               </div>
 
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-white text-center mb-4">
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white text-center mb-4">
                 Oops! Something went wrong
               </h1>
 

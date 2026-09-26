@@ -68,13 +68,13 @@ export function HomeProgramTips({ tips }: HomeProgramTipsProps) {
   }
 
   return (
-    <div className="bg-gradient-to-br from-emerald-50 to-teal-50 rounded-xl p-6">
+    <div className="bg-gradient-to-br from-emerald-50 to-teal-50 rounded-xl p-4 sm:p-6">
       <div className="flex items-center gap-3 mb-4">
         <div className="w-12 h-12 bg-emerald-600 rounded-xl flex items-center justify-center">
           <Home className="w-6 h-6 text-white" />
         </div>
         <div className="flex-1">
-          <h3 className="text-2xl font-bold text-gray-900">
+          <h3 className="text-xl sm:text-2xl font-bold text-gray-900">
             {t('Daily Home Program', 'Programa Diario en Casa')}
           </h3>
           <p className="text-sm text-gray-600">
@@ -114,8 +114,11 @@ export function HomeProgramTips({ tips }: HomeProgramTipsProps) {
             >
               <div className="flex items-start gap-4">
                 <button
+                  type="button"
                   onClick={() => toggleTip(tip.id)}
-                  className={`flex-shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${
+                  aria-pressed={isCompleted}
+                  aria-label={`${t('Mark done', 'Marcar como hecho')}: ${language === 'es' ? tip.title_es : tip.title_en}`}
+                  className={`relative after:absolute after:-inset-2.5 after:content-[''] flex-shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${
                     isCompleted
                       ? 'bg-emerald-600 border-emerald-600'
                       : 'border-gray-300 hover:border-emerald-500'

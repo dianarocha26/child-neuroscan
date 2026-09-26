@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { FileText, Download, Calendar, CheckCircle, Printer, ChevronDown, ChevronUp, Sparkles } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
@@ -6,8 +6,85 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { useLoadingState } from '../hooks/useLoadingState';
 import { logger } from '../lib/logger';
 import { SuccessIllustration, LoadingIllustration, EmptyStateIllustration } from './FriendlyIllustrations';
-import { exportToJSON, exportToCSV, generateHTMLReport, printReport, downloadHTMLReport, type ExportData } from '../lib/exportUtils';
-import type { ReportTemplate, GeneratedReport, ReportData } from '../types/components';
+import { exportToJSON, exportToCSV, generateHTMLReport, printReport, downloadHTMLReport, type ExportData, type ReportContent } from '../lib/exportUtils';
+import type { ReportTemplate, GeneratedReport, ReportData, BehaviorEntry, MedicationLog, Goal, Appointment } from '../types/components';
+import { PageHeader } from './PageHeader';
+
+// Matches the behavior type saved by BehaviorDiary; every other type counts as challenging.
+const POSITIVE_BEHAVIOR_TYPE = 'Positive Behavior';
+
+const formatList = (value: string[] | string | null | undefined): string =>
+  Array.isArray(value) ? value.join(', ') : value || '';
+
+const formatDateTime = (value: string | null | undefined): string => {
+  if (!value) return '';
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
+};
+
+const goalProgress = (goal: Goal): number => {
+  const target = Number(goal.target_value) || 0;
+  if (goal.status === 'achieved') return 100;
+  if (target <= 0) return 0;
+  return Math.min(100, Math.max(0, Math.round(((Number(goal.current_value) || 0) / target) * 100)));
+};
+
+// Maps a stored report into the shape exportUtils.generateHTMLReport renders.
+const toReportContent = (report: GeneratedReport): ReportContent => {
+  const data = report.report_data || ({} as ReportData);
+  const summary: NonNullable<ReportContent['summary']> = [];
+  const content: ReportContent = { summary };
+
+  if (data.behaviors) {
+    summary.push({ label: 'Behaviors', value: data.behaviors.summary });
+    content.behaviors = (data.behaviors.entries || []).map((entry) => ({
+      date: entry.entry_date,
+      type: entry.behavior_type || '',
+      severity: entry.severity ?? '',
+      durationMinutes: entry.duration_minutes ?? '',
+      triggers: formatList(entry.triggers),
+      notes: entry.notes || ''
+    }));
+  }
+
+  if (data.medications) {
+    summary.push({ label: 'Medication Adherence', value: `${data.medications.adherenceRate}% - ${data.medications.summary}` });
+    content.medicationLogs = (data.medications.logs || []).map((log) => ({
+      date: formatDateTime(log.taken_at),
+      medication: log.medications?.name || '',
+      dosage: log.medications?.dosage || '',
+      status: log.status || '',
+      notes: log.notes || ''
+    }));
+  }
+
+  if (data.goals) {
+    summary.push({ label: 'Goals', value: `${data.goals.completed} of ${data.goals.total} achieved, ${data.goals.active} in progress` });
+    content.goals = (data.goals.details || []).map((goal) => ({
+      title: goal.title,
+      description: goal.description || '',
+      status: goal.status,
+      progress: goalProgress(goal)
+    }));
+  }
+
+  if (data.appointments) {
+    summary.push({ label: 'Appointments', value: `${data.appointments.attended} of ${data.appointments.total} completed` });
+    content.appointments = (data.appointments.details || []).map((appt) => ({
+      date: formatDateTime(appt.appointment_date),
+      provider: appt.provider_name || '',
+      location: appt.location || '',
+      completed: Boolean(appt.completed),
+      notes: appt.notes || ''
+    }));
+  }
+
+  if (report.notes) {
+    content.notes = report.notes;
+  }
+
+  return content;
+};
 
 export default function ComprehensiveReportGenerator() {
   const { user } = useAuth();
@@ -54,6 +131,9 @@ export default function ComprehensiveReportGenerator() {
           .eq('user_id', user.id)
           .order('generated_at', { ascending: false })
       ]);
+
+      if (templatesRes.error) throw templatesRes.error;
+      if (reportsRes.error) throw reportsRes.error;
 
       setTemplates(templatesRes.data || []);
       setGeneratedReports(reportsRes.data || []);
@@ -123,71 +203,88 @@ export default function ComprehensiveReportGenerator() {
       dateRange: { start: startDate, end: endDate }
     };
 
-    try {
-      const [behaviors, medications, goals, appointments] = await Promise.all([
-        supabase
-          .from('behavior_diary_entries')
-          .select('*')
-          .eq('user_id', user.id)
-          .gte('entry_date', startDate)
-          .lte('entry_date', endDate),
+    // taken_at / appointment_date are timestamptz, so include the whole end day.
+    // Timestamp columns: use the user's local day boundaries
+    const startOfDay = new Date(`${startDate}T00:00:00`).toISOString();
+    const endOfDay = new Date(`${endDate}T23:59:59.999`).toISOString();
 
-        supabase
-          .from('medication_logs')
-          .select('*')
-          .eq('user_id', user.id)
-          .gte('log_date', startDate)
-          .lte('log_date', endDate),
+    const [behaviors, medications, goals, appointments] = await Promise.all([
+      supabase
+        .from('behavior_entries')
+        .select('*')
+        .eq('user_id', user.id)
+        .gte('entry_date', startDate)
+        .lte('entry_date', endDate)
+        .order('entry_date', { ascending: true }),
 
-        supabase
-          .from('goals')
-          .select('*')
-          .eq('user_id', user.id),
+      supabase
+        .from('medication_logs')
+        .select('*, medications(name, dosage)')
+        .eq('user_id', user.id)
+        .gte('taken_at', startOfDay)
+        .lte('taken_at', endOfDay)
+        .order('taken_at', { ascending: true }),
 
-        supabase
-          .from('appointments')
-          .select('*')
-          .eq('user_id', user.id)
-          .gte('appointment_date', startDate)
-          .lte('appointment_date', endDate)
-      ]);
+      supabase
+        .from('goals')
+        .select('*')
+        .eq('user_id', user.id),
 
-      data.behaviors = {
-        total: behaviors.data?.length || 0,
-        entries: behaviors.data || [],
-        summary: generateBehaviorSummary(behaviors.data || [])
-      };
+      supabase
+        .from('appointments')
+        .select('*')
+        .eq('user_id', user.id)
+        .gte('appointment_date', startOfDay)
+        .lte('appointment_date', endOfDay)
+        .order('appointment_date', { ascending: true })
+    ]);
 
-      data.medications = {
-        logs: medications.data || [],
-        adherenceRate: calculateAdherence(medications.data || []),
-        summary: generateMedicationSummary(medications.data || [])
-      };
+    const firstError = behaviors.error || medications.error || goals.error || appointments.error;
+    if (firstError) {
+      throw firstError;
+    }
 
-      data.goals = {
-        total: goals.data?.length || 0,
-        active: goals.data?.filter(g => g.status === 'in_progress').length || 0,
-        completed: goals.data?.filter(g => g.status === 'completed').length || 0,
-        details: goals.data || []
-      };
+    const behaviorEntries: BehaviorEntry[] = behaviors.data || [];
+    const medicationLogs: MedicationLog[] = medications.data || [];
+    const goalRows: Goal[] = goals.data || [];
+    const appointmentRows: Appointment[] = appointments.data || [];
 
-      data.appointments = {
-        total: appointments.data?.length || 0,
-        attended: appointments.data?.filter(a => a.status === 'completed').length || 0,
-        details: appointments.data || []
-      };
+    data.behaviors = {
+      total: behaviorEntries.length,
+      entries: behaviorEntries,
+      summary: generateBehaviorSummary(behaviorEntries)
+    };
 
-      if (reportType === 'crisis') {
-        const crisisPlans = await supabase
-          .from('crisis_plans')
-          .select('*')
-          .eq('user_id', user.id);
+    data.medications = {
+      logs: medicationLogs,
+      adherenceRate: calculateAdherence(medicationLogs),
+      summary: generateMedicationSummary(medicationLogs)
+    };
 
-        data.crisisPlans = crisisPlans.data || [];
+    data.goals = {
+      total: goalRows.length,
+      active: goalRows.filter(g => g.status === 'in_progress').length,
+      completed: goalRows.filter(g => g.status === 'achieved').length,
+      details: goalRows
+    };
+
+    data.appointments = {
+      total: appointmentRows.length,
+      attended: appointmentRows.filter(a => a.completed).length,
+      details: appointmentRows
+    };
+
+    if (reportType === 'crisis') {
+      const crisisPlans = await supabase
+        .from('crisis_plans')
+        .select('*')
+        .eq('user_id', user.id);
+
+      if (crisisPlans.error) {
+        throw crisisPlans.error;
       }
 
-    } catch (error) {
-      logger.error('Error compiling report data:', error);
+      data.crisisPlans = crisisPlans.data || [];
     }
 
     return data;
@@ -196,8 +293,8 @@ export default function ComprehensiveReportGenerator() {
   const generateBehaviorSummary = (behaviors: Array<{ behavior_type?: string }>) => {
     if (behaviors.length === 0) return 'No behaviors logged during this period.';
 
-    const positive = behaviors.filter(b => b.behavior_type === 'positive').length;
-    const challenging = behaviors.filter(b => b.behavior_type === 'challenging').length;
+    const positive = behaviors.filter(b => b.behavior_type === POSITIVE_BEHAVIOR_TYPE).length;
+    const challenging = behaviors.length - positive;
 
     return `Total: ${behaviors.length} (${positive} positive, ${challenging} challenging)`;
   };
@@ -212,77 +309,6 @@ export default function ComprehensiveReportGenerator() {
     if (logs.length === 0) return 0;
     const taken = logs.filter(l => l.status === 'taken').length;
     return Math.round((taken / logs.length) * 100);
-  };
-
-  const downloadReport = (report: GeneratedReport) => {
-    handleDownloadHTML(report);
-  };
-
-  const printReportOld = (report: GeneratedReport) => {
-    handlePrintReport(report);
-  };
-
-  const formatReportForPrint = (report: GeneratedReport) => {
-    let content = `${report.title}\n`;
-    content += `Generated: ${new Date(report.generated_at).toLocaleString()}\n`;
-    content += `Period: ${new Date(report.date_range_start).toLocaleDateString()} - ${new Date(report.date_range_end).toLocaleDateString()}\n`;
-    content += `Type: ${report.report_type.toUpperCase()}\n`;
-    content += `\n${'='.repeat(60)}\n\n`;
-
-    const data = report.report_data;
-
-    if (data.behaviors) {
-      content += `BEHAVIORAL OBSERVATIONS\n`;
-      content += `${'-'.repeat(60)}\n`;
-      content += `Summary: ${data.behaviors.summary}\n\n`;
-      if (data.behaviors.entries.length > 0) {
-        content += `Recent Entries:\n`;
-        data.behaviors.entries.slice(0, 5).forEach((entry: any) => {
-          content += `  • ${new Date(entry.entry_date).toLocaleDateString()}: ${entry.behavior_description || 'No description'}\n`;
-        });
-      }
-      content += `\n`;
-    }
-
-    if (data.medications) {
-      content += `MEDICATION TRACKING\n`;
-      content += `${'-'.repeat(60)}\n`;
-      content += `Summary: ${data.medications.summary}\n`;
-      content += `Adherence Rate: ${data.medications.adherenceRate}%\n\n`;
-    }
-
-    if (data.goals) {
-      content += `GOALS PROGRESS\n`;
-      content += `${'-'.repeat(60)}\n`;
-      content += `Total Goals: ${data.goals.total}\n`;
-      content += `Active: ${data.goals.active}\n`;
-      content += `Completed: ${data.goals.completed}\n\n`;
-      if (data.goals.details.length > 0) {
-        content += `Goal Details:\n`;
-        data.goals.details.slice(0, 5).forEach((goal: any) => {
-          content += `  • ${goal.title} (${goal.status})\n`;
-        });
-      }
-      content += `\n`;
-    }
-
-    if (data.appointments) {
-      content += `APPOINTMENTS\n`;
-      content += `${'-'.repeat(60)}\n`;
-      content += `Total: ${data.appointments.total}\n`;
-      content += `Attended: ${data.appointments.attended}\n\n`;
-    }
-
-    if (report.notes) {
-      content += `ADDITIONAL NOTES\n`;
-      content += `${'-'.repeat(60)}\n`;
-      content += `${report.notes}\n\n`;
-    }
-
-    content += `\n${'='.repeat(60)}\n`;
-    content += `End of Report\n`;
-
-    return content;
   };
 
   const handleExportJSON = (report: GeneratedReport) => {
@@ -303,114 +329,106 @@ export default function ComprehensiveReportGenerator() {
   };
 
   const handleExportCSV = (report: GeneratedReport) => {
-    const data = report.report_data;
-    const rows: any[] = [];
+    const data = report.report_data || ({} as ReportData);
+    const rows: Array<Record<string, unknown>> = [];
 
-    if (data.behaviors?.entries) {
-      data.behaviors.entries.forEach((entry: any) => {
-        rows.push({
-          Type: 'Behavior',
-          Date: entry.entry_date,
-          Description: entry.behavior_description || '',
-          Intensity: entry.intensity || '',
-          Duration: entry.duration_minutes || '',
-          Trigger: entry.triggers || '',
-          Notes: entry.notes || ''
-        });
+    (data.behaviors?.entries || []).forEach((entry) => {
+      rows.push({
+        Type: 'Behavior',
+        Date: entry.entry_date,
+        Item: entry.behavior_type || '',
+        Status: '',
+        Details: [
+          entry.severity != null ? `Severity ${entry.severity}/5` : '',
+          entry.duration_minutes != null ? `${entry.duration_minutes} min` : '',
+          formatList(entry.triggers) ? `Triggers: ${formatList(entry.triggers)}` : ''
+        ].filter(Boolean).join('; '),
+        Notes: entry.notes || ''
       });
-    }
+    });
 
-    if (data.medications?.logs) {
-      data.medications.logs.forEach((log: any) => {
-        rows.push({
-          Type: 'Medication',
-          Date: log.log_date,
-          Medication: log.medication_name || '',
-          Dosage: log.dosage_amount || '',
-          Taken: log.taken ? 'Yes' : 'No',
-          Notes: log.notes || ''
-        });
+    (data.medications?.logs || []).forEach((log) => {
+      rows.push({
+        Type: 'Medication',
+        Date: formatDateTime(log.taken_at),
+        Item: log.medications?.name || '',
+        Status: log.status || '',
+        Details: log.medications?.dosage ? `Dosage: ${log.medications.dosage}` : '',
+        Notes: log.notes || ''
       });
-    }
+    });
 
-    if (data.goals?.details) {
-      data.goals.details.forEach((goal: any) => {
-        rows.push({
-          Type: 'Goal',
-          Goal: goal.title || '',
-          Status: goal.status || '',
-          Progress: goal.progress_percent || 0,
-          Category: goal.category || '',
-          Description: goal.description || ''
-        });
+    (data.goals?.details || []).forEach((goal) => {
+      rows.push({
+        Type: 'Goal',
+        Date: goal.target_date || '',
+        Item: goal.title || '',
+        Status: goal.status || '',
+        Details: [
+          goal.category ? `Category: ${goal.category}` : '',
+          `Progress: ${goalProgress(goal)}%`,
+          goal.target_value != null ? `${goal.current_value ?? 0}/${goal.target_value} ${goal.unit || ''}`.trim() : ''
+        ].filter(Boolean).join('; '),
+        Notes: goal.description || goal.notes || ''
       });
-    }
+    });
 
-    const headers = ['Type', 'Date', 'Description', 'Notes'];
+    (data.appointments?.details || []).forEach((appt) => {
+      rows.push({
+        Type: 'Appointment',
+        Date: formatDateTime(appt.appointment_date),
+        Item: appt.provider_name || '',
+        Status: appt.completed ? 'Completed' : 'Scheduled',
+        Details: appt.location ? `Location: ${appt.location}` : '',
+        Notes: appt.notes || ''
+      });
+    });
+
+    const headers = ['Type', 'Date', 'Item', 'Status', 'Details', 'Notes'];
     exportToCSV(rows, headers, `${report.title.replace(/\s+/g, '_')}-${new Date().toISOString().split('T')[0]}.csv`);
   };
 
+  const buildHTMLExportData = (report: GeneratedReport): ExportData => ({
+    type: 'comprehensive',
+    title: report.title,
+    date: report.generated_at,
+    data: toReportContent(report)
+  });
+
   const handlePrintReport = (report: GeneratedReport) => {
-    const exportData: ExportData = {
-      type: 'comprehensive',
-      title: report.title,
-      date: report.generated_at,
-      data: {
-        ...report.report_data,
-        notes: report.notes,
-        dateRange: {
-          start: report.date_range_start,
-          end: report.date_range_end
-        }
-      }
-    };
-    const htmlContent = generateHTMLReport(exportData);
+    const htmlContent = generateHTMLReport(buildHTMLExportData(report));
     printReport(htmlContent);
   };
 
   const handleDownloadHTML = (report: GeneratedReport) => {
-    const exportData: ExportData = {
-      type: 'comprehensive',
-      title: report.title,
-      date: report.generated_at,
-      data: {
-        ...report.report_data,
-        notes: report.notes,
-        dateRange: {
-          start: report.date_range_start,
-          end: report.date_range_end
-        }
-      }
-    };
-    const htmlContent = generateHTMLReport(exportData);
+    const htmlContent = generateHTMLReport(buildHTMLExportData(report));
     downloadHTMLReport(htmlContent, `${report.title.replace(/\s+/g, '_')}-${new Date().toISOString().split('T')[0]}.html`);
   };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center min-h-[50vh]">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 py-8 px-4">
-      <div className="absolute inset-0 bg-grid-pattern opacity-5 pointer-events-none"></div>
+    <div>
 
       {showSuccess && (
-        <div className="fixed top-4 right-4 z-50 animate-in">
-          <div className="bg-white rounded-2xl shadow-soft-lg border-2 border-emerald-200 p-6 max-w-sm">
+        <div className="fixed top-4 right-4 left-4 sm:left-auto z-[70] animate-in" role="status" aria-live="polite">
+          <div className="bg-white rounded-2xl shadow-soft-lg border-2 border-emerald-200 p-4 sm:p-6 sm:max-w-sm">
             <div className="flex items-start gap-4">
               <div className="w-16 h-16 flex-shrink-0">
                 <SuccessIllustration />
               </div>
               <div>
-                <h3 className="font-bold text-gray-900 text-lg flex items-center gap-2">
-                  {t.reportSuccess}
-                  <Sparkles className="w-5 h-5 text-yellow-500" />
-                </h3>
-                <p className="text-gray-600 mt-1">{t.reportReady}</p>
+                <p className="font-bold text-gray-900 text-lg flex items-center gap-2">
+                  {t('Report generated successfully!', '¡Informe generado con éxito!')}
+                  <Sparkles className="w-5 h-5 text-yellow-500" aria-hidden="true" />
+                </p>
+                <p className="text-gray-600 mt-1">{t('Your report is ready to view, print, or download.', 'Tu informe está listo para ver, imprimir o descargar.')}</p>
               </div>
             </div>
           </div>
@@ -418,25 +436,20 @@ export default function ComprehensiveReportGenerator() {
       )}
 
       <div className="max-w-6xl mx-auto relative">
-        <div className="mb-10 animate-in">
-          <div className="inline-flex items-center justify-center mb-4 w-16 h-16 bg-gradient-to-br from-slate-500 to-slate-700 rounded-2xl shadow-glow-md">
-            <FileText className="w-9 h-9 text-white" />
-          </div>
-          <h1 className="text-5xl font-bold bg-gradient-to-r from-gray-900 via-slate-800 to-gray-900 bg-clip-text text-transparent mb-3 leading-tight">
-            {t.reports?.title || 'Report Generator'}
-          </h1>
-          <p className="text-xl text-gray-600 font-medium">
-            {t.reports?.subtitle || 'Create comprehensive reports for medical, educational, and therapy purposes'}
-          </p>
-        </div>
+        <PageHeader
+          icon={FileText}
+          tone="slate"
+          title={t('Reports', 'Informes')}
+          subtitle={t('Printable summaries for doctors, schools, and therapists', 'Resúmenes imprimibles para médicos, escuelas y terapeutas')}
+        />
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-in-delay-1">
-          <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-soft-lg p-8 border border-white/60">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 animate-in-delay-1">
+          <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-soft-lg p-5 sm:p-8 border border-white/60">
             <div className="flex items-center gap-3 mb-6">
-              <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-700 rounded-xl flex items-center justify-center shadow-lg">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 flex-shrink-0 bg-gradient-to-br from-blue-500 to-blue-700 rounded-xl flex items-center justify-center shadow-lg">
                 <FileText className="w-6 h-6 text-white" />
               </div>
-              <h2 className="text-2xl font-bold text-gray-900">Create New Report</h2>
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Create New Report</h2>
             </div>
 
             <div className="space-y-4">
@@ -449,10 +462,10 @@ export default function ComprehensiveReportGenerator() {
                     <button
                       key={template.id}
                       onClick={() => setSelectedTemplate(template)}
-                      className={`w-full text-left p-5 rounded-xl border-2 transition-all duration-200 ${
+                      className={`w-full text-left p-4 sm:p-5 rounded-xl border-2 transition-all duration-200 ${
                         selectedTemplate?.id === template.id
-                          ? 'border-blue-600 bg-gradient-to-br from-blue-50 to-blue-100 shadow-lg scale-105'
-                          : 'border-gray-200 hover:border-blue-300 hover:bg-blue-50/50 hover:scale-102'
+                          ? 'border-blue-600 bg-gradient-to-br from-blue-50 to-blue-100 shadow-lg'
+                          : 'border-gray-200 hover:border-blue-300 hover:bg-blue-50/50'
                       }`}
                     >
                       <p className="font-bold text-gray-900 text-lg">{template.name}</p>
@@ -477,7 +490,7 @@ export default function ComprehensiveReportGenerator() {
                     />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Start Date
@@ -525,13 +538,13 @@ export default function ComprehensiveReportGenerator() {
                         <div className="w-5 h-5">
                           <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
                         </div>
-                        <span>{t.generatingReport}</span>
+                        <span>{t('Generating report...', 'Generando informe...')}</span>
                         <Sparkles className="w-4 h-4 animate-pulse" />
                       </div>
                     ) : (
                       <div className="flex items-center gap-2">
                         <FileText className="w-5 h-5" />
-                        <span>{t.generateReport}</span>
+                        <span>{t('Generate Report', 'Generar Informe')}</span>
                       </div>
                     )}
                   </button>
@@ -542,38 +555,39 @@ export default function ComprehensiveReportGenerator() {
                           <LoadingIllustration />
                         </div>
                         <div>
-                          <p className="font-semibold text-primary-900">{t.preparingReport}</p>
-                          <p className="text-sm text-primary-700">{t.takesSeconds}</p>
+                          <p className="font-semibold text-primary-900">{t('Preparing your report...', 'Preparando tu informe...')}</p>
+                          <p className="text-sm text-primary-700">{t('This only takes a few seconds', 'Esto solo toma unos segundos')}</p>
                         </div>
                       </div>
                     </div>
                   )}
               </>
             )}
+            </div>
           </div>
 
-          <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-soft-lg p-8 border border-white/60">
+          <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-soft-lg p-5 sm:p-8 border border-white/60">
             <div className="flex items-center gap-3 mb-6">
-              <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-emerald-700 rounded-xl flex items-center justify-center shadow-lg">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 flex-shrink-0 bg-gradient-to-br from-emerald-500 to-emerald-700 rounded-xl flex items-center justify-center shadow-lg">
                 <FileText className="w-6 h-6 text-white" />
               </div>
-              <h2 className="text-2xl font-bold text-gray-900">{t.generatedReports}</h2>
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-900">{t('Generated Reports', 'Informes Generados')}</h2>
             </div>
 
             {generatedReports.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12">
-                <div className="w-56 h-56 mb-4">
+                <div className="w-40 h-40 sm:w-56 sm:h-56 mb-4">
                   <EmptyStateIllustration />
                 </div>
                 <p className="text-gray-600 text-center text-lg font-medium">
-                  {t.noReportsYet}
+                  {t('No reports yet', 'Aún no hay informes')}
                 </p>
                 <p className="text-gray-500 text-center mt-2">
-                  {t.createFirstReport}
+                  {t('Create your first report using the form', 'Crea tu primer informe usando el formulario')}
                 </p>
                 <div className="mt-6 inline-flex items-center gap-2 bg-emerald-50 px-4 py-2 rounded-full">
                   <Sparkles className="w-4 h-4 text-emerald-600" />
-                  <span className="text-sm font-semibold text-emerald-700">{t.reportsAppearHere}</span>
+                  <span className="text-sm font-semibold text-emerald-700">{t('Your reports will appear here', 'Tus informes aparecerán aquí')}</span>
                 </div>
               </div>
             ) : (
@@ -611,7 +625,7 @@ export default function ComprehensiveReportGenerator() {
                       <div className="grid grid-cols-2 gap-2">
                         <button
                           onClick={() => handleDownloadHTML(report)}
-                          className="bg-blue-600 text-white px-3 py-2 rounded text-sm font-medium hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+                          className="bg-teal-700 text-white px-3 py-2 rounded text-sm font-medium hover:bg-teal-800 transition-colors flex items-center justify-center gap-2"
                           title="Download as HTML"
                         >
                           <Download className="w-4 h-4" />
@@ -688,7 +702,7 @@ export default function ComprehensiveReportGenerator() {
           </div>
         </div>
 
-        <div className="mt-8 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 border-2 border-blue-100 rounded-2xl p-8 shadow-soft-lg backdrop-blur-sm">
+        <div className="mt-8 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 border-2 border-blue-100 rounded-2xl p-5 sm:p-8 shadow-soft-lg backdrop-blur-sm">
           <div className="flex items-center gap-3 mb-4">
             <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
               <FileText className="w-5 h-5 text-white" />
@@ -715,7 +729,6 @@ export default function ComprehensiveReportGenerator() {
           </div>
         </div>
       </div>
-    </div>
     </div>
   );
 }

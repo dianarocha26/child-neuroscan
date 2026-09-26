@@ -2,12 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { AlertTriangle, Phone, Heart, Shield, Plus, Edit2, Trash2, Users, X } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import { useLoadingState } from '../hooks/useLoadingState';
 import { logger } from '../lib/logger';
 import type { CrisisPlan, CrisisContact, CalmingStrategy } from '../types/components';
+import { PageHeader } from './PageHeader';
 
 export default function CrisisPlanComponent() {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const [crisisPlans, setCrisisPlans] = useState<CrisisPlan[]>([]);
   const [contacts, setContacts] = useState<CrisisContact[]>([]);
   const [strategies, setStrategies] = useState<CalmingStrategy[]>([]);
@@ -181,7 +184,7 @@ export default function CrisisPlanComponent() {
       description: strategy.description,
       effectiveness_rating: strategy.effectiveness_rating ? String(strategy.effectiveness_rating) : '',
       duration_minutes: strategy.duration_minutes ? String(strategy.duration_minutes) : '',
-      materials_needed: strategy.materials_needed.length ? strategy.materials_needed : [''],
+      materials_needed: strategy.materials_needed?.length ? strategy.materials_needed : [''],
       instructions: strategy.instructions.length ? strategy.instructions : ['']
     });
     setShowStrategyForm(true);
@@ -225,14 +228,14 @@ export default function CrisisPlanComponent() {
     } catch (error) { logger.error('Error deleting strategy:', error); alert('Failed to delete strategy'); }
   };
 
-  const addArrayField = (setter: any, field: string, currentArray: string[]) => {
-    setter((prev: any) => ({ ...prev, [field]: [...currentArray, ''] }));
+  const addArrayField = <T extends object>(setter: React.Dispatch<React.SetStateAction<T>>, field: string, currentArray: string[]) => {
+    setter((prev) => ({ ...prev, [field]: [...currentArray, ''] }));
   };
 
-  const updateArrayField = (setter: any, field: string, index: number, value: string, currentArray: string[]) => {
+  const updateArrayField = <T extends object>(setter: React.Dispatch<React.SetStateAction<T>>, field: string, index: number, value: string, currentArray: string[]) => {
     const newArray = [...currentArray];
     newArray[index] = value;
-    setter((prev: any) => ({ ...prev, [field]: newArray }));
+    setter((prev) => ({ ...prev, [field]: newArray }));
   };
 
   if (loading) {
@@ -245,33 +248,61 @@ export default function CrisisPlanComponent() {
 
   return (
     <div className="max-w-7xl mx-auto">
-      <div className="flex items-center justify-between mb-8">
-        <div className="flex items-center gap-3">
-          <AlertTriangle className="w-8 h-8 text-red-600" />
-          <h1 className="text-3xl font-bold text-gray-900">Crisis Plan</h1>
-        </div>
-      </div>
+      <PageHeader
+        icon={AlertTriangle}
+        tone="red"
+        title="Crisis Plan"
+        subtitle="Warning signs, calming steps and who to call, ready when you need them"
+      />
 
-      <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-8">
+      <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-6 sm:mb-8">
         <div className="flex items-start">
-          <Shield className="w-6 h-6 text-red-600 mr-3 mt-0.5" />
+          <Shield className="w-6 h-6 text-red-600 mr-3 mt-0.5 flex-shrink-0" aria-hidden="true" />
           <div>
-            <h3 className="text-lg font-semibold text-red-900 mb-1">Emergency Resources</h3>
-            <p className="text-red-800 mb-2">In case of immediate danger, always call 911 first</p>
-            <div className="space-y-1 text-sm text-red-800">
-              <p>National Suicide Prevention Lifeline: 988</p>
-              <p>Crisis Text Line: Text HOME to 741741</p>
-            </div>
+            <h3 className="text-lg font-semibold text-red-900 mb-1">{t('Emergency Resources', 'Recursos de emergencia')}</h3>
+            <p className="text-red-800 mb-2">
+              {t('In case of immediate danger, always call ', 'En caso de peligro inmediato, llame siempre primero al ')}
+              <a href="tel:911" className="font-bold underline">911</a>
+              {t(' first.', '.')}
+            </p>
+            <ul className="space-y-1 text-sm text-red-800">
+              <li>
+                {t('988 Suicide & Crisis Lifeline (call or text 988): ', 'Línea 988 de Prevención del Suicidio y Crisis (llame o envíe un mensaje de texto al 988): ')}
+                <a href="tel:988" className="font-semibold underline">{t('Call 988', 'Llamar al 988')}</a>
+                {' · '}
+                <a href="sms:988" className="font-semibold underline">{t('Text 988', 'Enviar texto al 988')}</a>
+              </li>
+              <li>
+                {t('Crisis Text Line: text HOME to ', 'Crisis Text Line: envíe HOME al ')}
+                <a href="sms:741741?body=HOME" className="font-semibold underline">741741</a>
+              </li>
+              <li>
+                {t('Poison Control: ', 'Centro de Control de Envenenamientos: ')}
+                <a href="tel:18002221222" className="font-semibold underline">1-800-222-1222</a>
+              </li>
+              <li>
+                {t('En español: call 988 and press 2, or text AYUDA to ', 'En español: llame al 988 y marque 2, o envíe AYUDA al ')}
+                <a href="tel:988" className="font-semibold underline">988</a>
+                {' / '}
+                <a href="sms:741741?body=AYUDA" className="font-semibold underline">741741</a>
+              </li>
+            </ul>
+            <p className="text-xs text-red-700 mt-2">
+              {t(
+                'These numbers are for the United States. Outside the U.S., call your local emergency number.',
+                'Estos números son para los Estados Unidos. Fuera de EE. UU., llame al número de emergencias local.'
+              )}
+            </p>
           </div>
         </div>
       </div>
 
-      <div className="flex gap-2 mb-6 border-b border-gray-200">
+      <div className="flex gap-1 sm:gap-2 mb-6 border-b border-gray-200 overflow-x-auto -mx-4 px-4 scroll-fade-x sm:mx-0 sm:px-0">
         {(['plan', 'contacts', 'strategies'] as const).map(tab => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`px-6 py-3 font-semibold transition ${activeTab === tab ? 'border-b-2 border-red-600 text-red-600' : 'text-gray-600 hover:text-gray-900'}`}
+            className={`px-3 sm:px-6 py-3 font-semibold whitespace-nowrap transition ${activeTab === tab ? 'border-b-2 border-red-600 text-red-600' : 'text-gray-600 hover:text-gray-900'}`}
           >
             {tab === 'plan' ? 'Crisis Plans' : tab === 'contacts' ? 'Emergency Contacts' : 'Calming Strategies'}
           </button>
@@ -282,29 +313,29 @@ export default function CrisisPlanComponent() {
       {activeTab === 'plan' && (
         <div>
           <div className="mb-6 flex justify-end">
-            <button onClick={openNewPlan} className="flex items-center gap-2 bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition">
+            <button onClick={openNewPlan} className="flex items-center gap-2 bg-red-600 text-white px-4 py-2.5 sm:px-6 sm:py-3 whitespace-nowrap rounded-lg hover:bg-red-700 transition">
               <Plus className="w-5 h-5" /> Create Crisis Plan
             </button>
           </div>
 
           {showPlanForm && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-              <div className="bg-white rounded-xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-2xl font-bold">{editingPlan ? 'Edit Crisis Plan' : 'New Crisis Plan'}</h2>
-                  <button onClick={() => { setShowPlanForm(false); setEditingPlan(null); }} className="text-gray-500 hover:text-gray-700"><X className="w-6 h-6" /></button>
+            <div className="modal-overlay">
+              <div className="modal-panel max-w-2xl">
+                <div className="flex items-start justify-between gap-2 mb-6">
+                  <h2 className="text-xl sm:text-2xl font-bold">{editingPlan ? 'Edit Crisis Plan' : 'New Crisis Plan'}</h2>
+                  <button onClick={() => { setShowPlanForm(false); setEditingPlan(null); }} type="button" aria-label="Close" className="p-2 -m-2 flex-shrink-0 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100"><X className="w-6 h-6" /></button>
                 </div>
                 <form onSubmit={handlePlanSubmit} className="space-y-6">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Child Name</label>
-                    <input type="text" required value={planForm.child_name}
+                    <label htmlFor="crisis-plan-child-name" className="block text-sm font-medium text-gray-700 mb-1">Child Name</label>
+                    <input id="crisis-plan-child-name" type="text" required value={planForm.child_name}
                       onChange={(e) => setPlanForm({ ...planForm, child_name: e.target.value })}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500" />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Warning Signs</label>
+                    <p className="block text-sm font-medium text-gray-700 mb-1">Warning Signs</p>
                     {planForm.warning_signs.map((sign, idx) => (
-                      <input key={idx} type="text" value={sign}
+                      <input key={idx} aria-label={`Warning sign ${idx + 1}`} type="text" value={sign}
                         onChange={(e) => updateArrayField(setPlanForm, 'warning_signs', idx, e.target.value, planForm.warning_signs)}
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 mb-2"
                         placeholder="e.g., Increased pacing, hand flapping" />
@@ -313,9 +344,9 @@ export default function CrisisPlanComponent() {
                       className="text-red-600 hover:text-red-700 text-sm font-semibold">+ Add Warning Sign</button>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Immediate Actions</label>
+                    <p className="block text-sm font-medium text-gray-700 mb-1">Immediate Actions</p>
                     {planForm.immediate_actions.map((action, idx) => (
-                      <input key={idx} type="text" value={action}
+                      <input key={idx} aria-label={`Immediate action ${idx + 1}`} type="text" value={action}
                         onChange={(e) => updateArrayField(setPlanForm, 'immediate_actions', idx, e.target.value, planForm.immediate_actions)}
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 mb-2"
                         placeholder="e.g., Move to quiet space" />
@@ -324,9 +355,9 @@ export default function CrisisPlanComponent() {
                       className="text-red-600 hover:text-red-700 text-sm font-semibold">+ Add Action</button>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Things to AVOID</label>
+                    <p className="block text-sm font-medium text-gray-700 mb-1">Things to AVOID</p>
                     {planForm.things_to_avoid.map((thing, idx) => (
-                      <input key={idx} type="text" value={thing}
+                      <input key={idx} aria-label={`Thing to avoid ${idx + 1}`} type="text" value={thing}
                         onChange={(e) => updateArrayField(setPlanForm, 'things_to_avoid', idx, e.target.value, planForm.things_to_avoid)}
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 mb-2"
                         placeholder="e.g., Loud voices, physical restraint" />
@@ -335,16 +366,25 @@ export default function CrisisPlanComponent() {
                       className="text-red-600 hover:text-red-700 text-sm font-semibold">+ Add Item</button>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Safe Space Location</label>
-                    <input type="text" value={planForm.safe_space_location}
+                    <label htmlFor="crisis-plan-safe-space-location" className="block text-sm font-medium text-gray-700 mb-1">Safe Space Location</label>
+                    <input id="crisis-plan-safe-space-location" type="text" value={planForm.safe_space_location}
                       onChange={(e) => setPlanForm({ ...planForm, safe_space_location: e.target.value })}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500"
                       placeholder="e.g., Bedroom, sensory corner" />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">When to Call 911</label>
+                    <label htmlFor="crisis-plan-medication-instructions" className="block text-sm font-medium text-gray-700 mb-1">
+                      {t('Medication Instructions', 'Instrucciones de medicamentos')}
+                    </label>
+                    <textarea id="crisis-plan-medication-instructions" value={planForm.medication_instructions}
+                      onChange={(e) => setPlanForm({ ...planForm, medication_instructions: e.target.value })}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500" rows={3}
+                      placeholder={t('e.g., Medication name, dose, and when to give it, as directed by your child\'s doctor', 'p. ej., nombre del medicamento, dosis y cuándo darlo, según las indicaciones del médico de su hijo')} />
+                  </div>
+                  <div>
+                    <p className="block text-sm font-medium text-gray-700 mb-1">When to Call 911</p>
                     {planForm.when_to_call_911.map((situation, idx) => (
-                      <input key={idx} type="text" value={situation}
+                      <input key={idx} aria-label={`When to call 911 ${idx + 1}`} type="text" value={situation}
                         onChange={(e) => updateArrayField(setPlanForm, 'when_to_call_911', idx, e.target.value, planForm.when_to_call_911)}
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 mb-2"
                         placeholder="e.g., Risk of self-harm, seizure" />
@@ -353,17 +393,17 @@ export default function CrisisPlanComponent() {
                       className="text-red-600 hover:text-red-700 text-sm font-semibold">+ Add Situation</button>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Additional Notes</label>
-                    <textarea value={planForm.additional_notes}
+                    <label htmlFor="crisis-plan-additional-notes" className="block text-sm font-medium text-gray-700 mb-1">Additional Notes</label>
+                    <textarea id="crisis-plan-additional-notes" value={planForm.additional_notes}
                       onChange={(e) => setPlanForm({ ...planForm, additional_notes: e.target.value })}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500" rows={3} />
                   </div>
-                  <div className="flex gap-3">
-                    <button type="submit" className="flex-1 bg-red-600 text-white py-2 rounded-lg hover:bg-red-700 transition">
+                  <div className="modal-footer flex gap-3">
+                    <button type="submit" className="flex-1 bg-red-600 text-white py-2.5 rounded-lg hover:bg-red-700 transition">
                       {editingPlan ? 'Update Crisis Plan' : 'Save Crisis Plan'}
                     </button>
                     <button type="button" onClick={() => { setShowPlanForm(false); setEditingPlan(null); }}
-                      className="flex-1 bg-gray-200 text-gray-700 py-2 rounded-lg hover:bg-gray-300 transition">Cancel</button>
+                      className="flex-1 bg-gray-200 text-gray-700 py-2.5 rounded-lg hover:bg-gray-300 transition">Cancel</button>
                   </div>
                 </form>
               </div>
@@ -372,14 +412,14 @@ export default function CrisisPlanComponent() {
 
           <div className="space-y-6">
             {crisisPlans.map((plan) => (
-              <div key={plan.id} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-2xl font-bold text-gray-900">{plan.child_name}'s Crisis Plan</h2>
+              <div key={plan.id} className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
+                <div className="flex items-start justify-between gap-2 mb-6">
+                  <h2 className="text-xl sm:text-2xl font-bold text-gray-900">{plan.child_name}'s Crisis Plan</h2>
                   <div className="flex gap-2">
-                    <button onClick={() => openEditPlan(plan)} className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition" title="Edit">
+                    <button onClick={() => openEditPlan(plan)} className="p-2.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition" title="Edit" aria-label="Edit crisis plan">
                       <Edit2 className="w-4 h-4" />
                     </button>
-                    <button onClick={() => handleDeletePlan(plan.id)} className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition" title="Delete">
+                    <button onClick={() => handleDeletePlan(plan.id)} className="p-2.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition" title="Delete" aria-label="Delete crisis plan">
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
@@ -404,6 +444,12 @@ export default function CrisisPlanComponent() {
                 )}
                 {plan.safe_space_location && (
                   <div className="mb-6"><h3 className="font-bold text-blue-800 mb-2">Safe Space</h3><p className="text-gray-700">{plan.safe_space_location}</p></div>
+                )}
+                {plan.medication_instructions && (
+                  <div className="mb-6">
+                    <h3 className="font-bold text-purple-800 mb-2">{t('Medication Instructions', 'Instrucciones de medicamentos')}</h3>
+                    <p className="text-gray-700 whitespace-pre-line">{plan.medication_instructions}</p>
+                  </div>
                 )}
                 {plan.when_to_call_911.length > 0 && (
                   <div className="bg-red-50 p-4 rounded-lg">
@@ -432,43 +478,43 @@ export default function CrisisPlanComponent() {
       {activeTab === 'contacts' && (
         <div>
           <div className="mb-6 flex justify-end">
-            <button onClick={openNewContact} className="flex items-center gap-2 bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition">
+            <button onClick={openNewContact} className="flex items-center gap-2 bg-red-600 text-white px-4 py-2.5 sm:px-6 sm:py-3 whitespace-nowrap rounded-lg hover:bg-red-700 transition">
               <Plus className="w-5 h-5" /> Add Contact
             </button>
           </div>
 
           {showContactForm && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-              <div className="bg-white rounded-xl p-6 max-w-lg w-full">
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-2xl font-bold">{editingContact ? 'Edit Contact' : 'New Emergency Contact'}</h2>
-                  <button onClick={() => { setShowContactForm(false); setEditingContact(null); }} className="text-gray-500 hover:text-gray-700"><X className="w-6 h-6" /></button>
+            <div className="modal-overlay">
+              <div className="modal-panel max-w-lg">
+                <div className="flex items-start justify-between gap-2 mb-6">
+                  <h2 className="text-xl sm:text-2xl font-bold">{editingContact ? 'Edit Contact' : 'New Emergency Contact'}</h2>
+                  <button onClick={() => { setShowContactForm(false); setEditingContact(null); }} type="button" aria-label="Close" className="p-2 -m-2 flex-shrink-0 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100"><X className="w-6 h-6" /></button>
                 </div>
                 <form onSubmit={handleContactSubmit} className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
-                      <input type="text" required value={contactForm.contact_name}
+                      <label htmlFor="crisis-plan-name" className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                      <input id="crisis-plan-name" type="text" required value={contactForm.contact_name}
                         onChange={(e) => setContactForm({ ...contactForm, contact_name: e.target.value })}
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500" />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Relationship</label>
-                      <input type="text" required value={contactForm.relationship}
+                      <label htmlFor="crisis-plan-relationship" className="block text-sm font-medium text-gray-700 mb-1">Relationship</label>
+                      <input id="crisis-plan-relationship" type="text" required value={contactForm.relationship}
                         onChange={(e) => setContactForm({ ...contactForm, relationship: e.target.value })}
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500" />
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-                      <input type="tel" required value={contactForm.phone_number}
+                      <label htmlFor="crisis-plan-phone" className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                      <input id="crisis-plan-phone" type="tel" required value={contactForm.phone_number}
                         onChange={(e) => setContactForm({ ...contactForm, phone_number: e.target.value })}
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500" />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Contact Type</label>
-                      <select value={contactForm.contact_type}
+                      <label htmlFor="crisis-plan-contact-type" className="block text-sm font-medium text-gray-700 mb-1">Contact Type</label>
+                      <select id="crisis-plan-contact-type" value={contactForm.contact_type}
                         onChange={(e) => setContactForm({ ...contactForm, contact_type: e.target.value })}
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500">
                         {contactTypes.map(type => <option key={type} value={type.toLowerCase()}>{type}</option>)}
@@ -476,23 +522,23 @@ export default function CrisisPlanComponent() {
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Email (optional)</label>
-                    <input type="email" value={contactForm.email}
+                    <label htmlFor="crisis-plan-email-optional" className="block text-sm font-medium text-gray-700 mb-1">Email (optional)</label>
+                    <input id="crisis-plan-email-optional" type="email" value={contactForm.email}
                       onChange={(e) => setContactForm({ ...contactForm, email: e.target.value })}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500" />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
-                    <textarea value={contactForm.notes}
+                    <label htmlFor="crisis-plan-notes" className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                    <textarea id="crisis-plan-notes" value={contactForm.notes}
                       onChange={(e) => setContactForm({ ...contactForm, notes: e.target.value })}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500" rows={2} />
                   </div>
-                  <div className="flex gap-3">
-                    <button type="submit" className="flex-1 bg-red-600 text-white py-2 rounded-lg hover:bg-red-700 transition">
+                  <div className="modal-footer flex gap-3">
+                    <button type="submit" className="flex-1 bg-red-600 text-white py-2.5 rounded-lg hover:bg-red-700 transition">
                       {editingContact ? 'Update Contact' : 'Save Contact'}
                     </button>
                     <button type="button" onClick={() => { setShowContactForm(false); setEditingContact(null); }}
-                      className="flex-1 bg-gray-200 text-gray-700 py-2 rounded-lg hover:bg-gray-300 transition">Cancel</button>
+                      className="flex-1 bg-gray-200 text-gray-700 py-2.5 rounded-lg hover:bg-gray-300 transition">Cancel</button>
                   </div>
                 </form>
               </div>
@@ -501,7 +547,7 @@ export default function CrisisPlanComponent() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {contacts.map((contact) => (
-              <div key={contact.id} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+              <div key={contact.id} className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
                 <div className="flex items-start justify-between mb-4">
                   <div>
                     <h3 className="text-xl font-bold text-gray-900">{contact.contact_name}</h3>
@@ -509,8 +555,8 @@ export default function CrisisPlanComponent() {
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="px-3 py-1 bg-red-100 text-red-800 rounded-full text-sm font-semibold">{contact.contact_type}</span>
-                    <button onClick={() => openEditContact(contact)} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition" title="Edit"><Edit2 className="w-4 h-4" /></button>
-                    <button onClick={() => handleDeleteContact(contact.id)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition" title="Delete"><Trash2 className="w-4 h-4" /></button>
+                    <button onClick={() => openEditContact(contact)} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition" title="Edit" aria-label="Edit contact"><Edit2 className="w-4 h-4" /></button>
+                    <button onClick={() => handleDeleteContact(contact.id)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition" title="Delete" aria-label="Delete contact"><Trash2 className="w-4 h-4" /></button>
                   </div>
                 </div>
                 <div className="space-y-2">
@@ -538,36 +584,36 @@ export default function CrisisPlanComponent() {
       {activeTab === 'strategies' && (
         <div>
           <div className="mb-6 flex justify-end">
-            <button onClick={openNewStrategy} className="flex items-center gap-2 bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition">
+            <button onClick={openNewStrategy} className="flex items-center gap-2 bg-red-600 text-white px-4 py-2.5 sm:px-6 sm:py-3 whitespace-nowrap rounded-lg hover:bg-red-700 transition">
               <Plus className="w-5 h-5" /> Add Strategy
             </button>
           </div>
 
           {showStrategyForm && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-              <div className="bg-white rounded-xl p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto">
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-2xl font-bold">{editingStrategy ? 'Edit Strategy' : 'New Calming Strategy'}</h2>
-                  <button onClick={() => { setShowStrategyForm(false); setEditingStrategy(null); }} className="text-gray-500 hover:text-gray-700"><X className="w-6 h-6" /></button>
+            <div className="modal-overlay">
+              <div className="modal-panel max-w-lg">
+                <div className="flex items-start justify-between gap-2 mb-6">
+                  <h2 className="text-xl sm:text-2xl font-bold">{editingStrategy ? 'Edit Strategy' : 'New Calming Strategy'}</h2>
+                  <button onClick={() => { setShowStrategyForm(false); setEditingStrategy(null); }} type="button" aria-label="Close" className="p-2 -m-2 flex-shrink-0 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100"><X className="w-6 h-6" /></button>
                 </div>
                 <form onSubmit={handleStrategySubmit} className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Child Name</label>
-                      <input type="text" required value={strategyForm.child_name}
+                      <label htmlFor="crisis-plan-child-name-2" className="block text-sm font-medium text-gray-700 mb-1">Child Name</label>
+                      <input id="crisis-plan-child-name-2" type="text" required value={strategyForm.child_name}
                         onChange={(e) => setStrategyForm({ ...strategyForm, child_name: e.target.value })}
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500" />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Strategy Name</label>
-                      <input type="text" required value={strategyForm.strategy_name}
+                      <label htmlFor="crisis-plan-strategy-name" className="block text-sm font-medium text-gray-700 mb-1">Strategy Name</label>
+                      <input id="crisis-plan-strategy-name" type="text" required value={strategyForm.strategy_name}
                         onChange={(e) => setStrategyForm({ ...strategyForm, strategy_name: e.target.value })}
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500" />
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Strategy Type</label>
-                    <select required value={strategyForm.strategy_type}
+                    <label htmlFor="crisis-plan-strategy-type" className="block text-sm font-medium text-gray-700 mb-1">Strategy Type</label>
+                    <select id="crisis-plan-strategy-type" required value={strategyForm.strategy_type}
                       onChange={(e) => setStrategyForm({ ...strategyForm, strategy_type: e.target.value })}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500">
                       <option value="">Select type</option>
@@ -575,15 +621,15 @@ export default function CrisisPlanComponent() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                    <textarea required value={strategyForm.description}
+                    <label htmlFor="crisis-plan-description" className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                    <textarea id="crisis-plan-description" required value={strategyForm.description}
                       onChange={(e) => setStrategyForm({ ...strategyForm, description: e.target.value })}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500" rows={3} />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Instructions</label>
+                    <p className="block text-sm font-medium text-gray-700 mb-1">Instructions</p>
                     {strategyForm.instructions.map((instruction, idx) => (
-                      <input key={idx} type="text" value={instruction}
+                      <input key={idx} aria-label={`Instruction step ${idx + 1}`} type="text" value={instruction}
                         onChange={(e) => updateArrayField(setStrategyForm, 'instructions', idx, e.target.value, strategyForm.instructions)}
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 mb-2"
                         placeholder={`Step ${idx + 1}`} />
@@ -591,26 +637,37 @@ export default function CrisisPlanComponent() {
                     <button type="button" onClick={() => addArrayField(setStrategyForm, 'instructions', strategyForm.instructions)}
                       className="text-red-600 hover:text-red-700 text-sm font-semibold">+ Add Step</button>
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="block text-sm font-medium text-gray-700 mb-1">{t('Materials Needed', 'Materiales necesarios')}</p>
+                    {strategyForm.materials_needed.map((material, idx) => (
+                      <input key={idx} aria-label={`Material needed ${idx + 1}`} type="text" value={material}
+                        onChange={(e) => updateArrayField(setStrategyForm, 'materials_needed', idx, e.target.value, strategyForm.materials_needed)}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 mb-2"
+                        placeholder={t('e.g., Weighted blanket, headphones', 'p. ej., manta con peso, audífonos')} />
+                    ))}
+                    <button type="button" onClick={() => addArrayField(setStrategyForm, 'materials_needed', strategyForm.materials_needed)}
+                      className="text-red-600 hover:text-red-700 text-sm font-semibold">{t('+ Add Item', '+ Agregar elemento')}</button>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Effectiveness (1-5)</label>
-                      <input type="number" min="1" max="5" value={strategyForm.effectiveness_rating}
+                      <label htmlFor="crisis-plan-effectiveness-1-5" className="block text-sm font-medium text-gray-700 mb-1">Effectiveness (1-5)</label>
+                      <input id="crisis-plan-effectiveness-1-5" type="number" min="1" max="5" value={strategyForm.effectiveness_rating}
                         onChange={(e) => setStrategyForm({ ...strategyForm, effectiveness_rating: e.target.value })}
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500" />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Duration (minutes)</label>
-                      <input type="number" value={strategyForm.duration_minutes}
+                      <label htmlFor="crisis-plan-duration-minutes" className="block text-sm font-medium text-gray-700 mb-1">Duration (minutes)</label>
+                      <input id="crisis-plan-duration-minutes" type="number" value={strategyForm.duration_minutes}
                         onChange={(e) => setStrategyForm({ ...strategyForm, duration_minutes: e.target.value })}
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500" />
                     </div>
                   </div>
-                  <div className="flex gap-3">
-                    <button type="submit" className="flex-1 bg-red-600 text-white py-2 rounded-lg hover:bg-red-700 transition">
+                  <div className="modal-footer flex gap-3">
+                    <button type="submit" className="flex-1 bg-red-600 text-white py-2.5 rounded-lg hover:bg-red-700 transition">
                       {editingStrategy ? 'Update Strategy' : 'Save Strategy'}
                     </button>
                     <button type="button" onClick={() => { setShowStrategyForm(false); setEditingStrategy(null); }}
-                      className="flex-1 bg-gray-200 text-gray-700 py-2 rounded-lg hover:bg-gray-300 transition">Cancel</button>
+                      className="flex-1 bg-gray-200 text-gray-700 py-2.5 rounded-lg hover:bg-gray-300 transition">Cancel</button>
                   </div>
                 </form>
               </div>
@@ -619,7 +676,7 @@ export default function CrisisPlanComponent() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {strategies.map((strategy) => (
-              <div key={strategy.id} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+              <div key={strategy.id} className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
                 <div className="flex items-start justify-between mb-4">
                   <div>
                     <h3 className="text-xl font-bold text-gray-900">{strategy.strategy_name}</h3>
@@ -627,11 +684,19 @@ export default function CrisisPlanComponent() {
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm font-semibold">{strategy.strategy_type}</span>
-                    <button onClick={() => openEditStrategy(strategy)} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition" title="Edit"><Edit2 className="w-4 h-4" /></button>
-                    <button onClick={() => handleDeleteStrategy(strategy.id)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition" title="Delete"><Trash2 className="w-4 h-4" /></button>
+                    <button onClick={() => openEditStrategy(strategy)} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition" title="Edit" aria-label="Edit strategy"><Edit2 className="w-4 h-4" /></button>
+                    <button onClick={() => handleDeleteStrategy(strategy.id)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition" title="Delete" aria-label="Delete strategy"><Trash2 className="w-4 h-4" /></button>
                   </div>
                 </div>
                 <p className="text-gray-700 mb-4">{strategy.description}</p>
+                {(strategy.materials_needed ?? []).length > 0 && (
+                  <div className="mb-4">
+                    <h4 className="font-semibold text-gray-800 mb-2">{t('Materials needed:', 'Materiales necesarios:')}</h4>
+                    <ul className="list-disc list-inside space-y-1 text-sm text-gray-700">
+                      {(strategy.materials_needed ?? []).map((material, idx) => <li key={idx}>{material}</li>)}
+                    </ul>
+                  </div>
+                )}
                 {strategy.instructions.length > 0 && (
                   <div className="mb-4">
                     <h4 className="font-semibold text-gray-800 mb-2">Steps:</h4>

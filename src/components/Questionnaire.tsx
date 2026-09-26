@@ -10,7 +10,7 @@ import { getQuestionsForCondition } from '../lib/database';
 interface QuestionnaireProps {
   condition: Condition;
   childAgeMonths: number;
-  onComplete: (responses: Record<string, boolean>, childName: string) => void;
+  onComplete: (responses: Record<string, boolean>, childName: string) => Promise<void> | void;
   onBack: () => void;
 }
 
@@ -23,6 +23,8 @@ export function Questionnaire({ condition, childAgeMonths, onComplete, onBack }:
   const [error, setError] = useState<string | null>(null);
   const [childName, setChildName] = useState('');
   const [showNameInput, setShowNameInput] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   useEffect(() => {
     loadQuestions();
@@ -38,13 +40,19 @@ export function Questionnaire({ condition, childAgeMonths, onComplete, onBack }:
       );
 
       if (filtered.length === 0) {
-        setError('No questions available for this age range. Please try a different condition or age.');
+        setError(t(
+          'No questions available for this age range. Please try a different condition or age.',
+          'No hay preguntas disponibles para este rango de edad. Por favor, pruebe con otra condición u otra edad.'
+        ));
       } else {
         setQuestions(filtered);
       }
     } catch (err) {
       logger.error('Failed to load screening questions', err);
-      setError('Unable to load screening questions. Please check your connection and try again.');
+      setError(t(
+        'Unable to load screening questions. Please check your connection and try again.',
+        'No se pudieron cargar las preguntas de la evaluación. Revise su conexión e intente de nuevo.'
+      ));
     } finally {
       setLoading(false);
     }
@@ -65,8 +73,19 @@ export function Questionnaire({ condition, childAgeMonths, onComplete, onBack }:
     }
   }
 
-  function handleSubmit() {
-    onComplete(responses, childName || 'Child');
+  async function handleSubmit() {
+    setSubmitting(true);
+    setSubmitError(null);
+    try {
+      await onComplete(responses, childName || 'Child');
+    } catch (err) {
+      logger.error('Failed to save screening result', err);
+      setSubmitError(t(
+        'We could not save your screening. Please check your connection and try again.',
+        'No pudimos guardar su evaluación. Verifique su conexión e intente de nuevo.'
+      ));
+      setSubmitting(false);
+    }
   }
 
   function handleNameSubmit(e: React.FormEvent) {
@@ -88,8 +107,8 @@ export function Questionnaire({ condition, childAgeMonths, onComplete, onBack }:
 
   if (showNameInput) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-teal-50 via-white to-blue-50 flex items-center justify-center px-4">
-        <div className="bg-white rounded-2xl shadow-lg p-8 max-w-md w-full">
+      <div className="min-h-[calc(100vh-3.5rem)] bg-gradient-to-br from-teal-50 via-white to-blue-50 flex items-start sm:items-center justify-center px-4 py-6">
+        <div className="bg-white rounded-2xl shadow-lg p-6 sm:p-8 max-w-md w-full">
           <h2 className="text-2xl font-bold text-gray-900 mb-4">
             {t("Child's Name", "Nombre del Niño")}
           </h2>
@@ -118,7 +137,7 @@ export function Questionnaire({ condition, childAgeMonths, onComplete, onBack }:
               <button
                 type="submit"
                 disabled={!childName.trim()}
-                className="flex-1 px-6 py-3 bg-teal-600 text-white rounded-lg font-medium hover:bg-teal-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 px-4 py-3 bg-teal-600 text-white rounded-lg font-medium hover:bg-teal-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 aria-label="Continue to questions"
               >
                 {translations.next[language]}
@@ -132,7 +151,7 @@ export function Questionnaire({ condition, childAgeMonths, onComplete, onBack }:
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-teal-50 via-white to-blue-50 flex items-center justify-center">
+      <div className="min-h-[calc(100vh-3.5rem)] bg-gradient-to-br from-teal-50 via-white to-blue-50 flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-teal-600" />
       </div>
     );
@@ -140,7 +159,7 @@ export function Questionnaire({ condition, childAgeMonths, onComplete, onBack }:
 
   if (questions.length === 0) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-teal-50 via-white to-blue-50 flex items-center justify-center px-4">
+      <div className="min-h-[calc(100vh-3.5rem)] bg-gradient-to-br from-teal-50 via-white to-blue-50 flex items-start sm:items-center justify-center px-4 py-6">
         <div className="bg-white rounded-2xl shadow-lg p-8 max-w-md w-full text-center">
           <p className="text-gray-700 mb-4">
             {t('No questions available for this age range', 'No hay preguntas disponibles para este rango de edad')}
@@ -162,7 +181,7 @@ export function Questionnaire({ condition, childAgeMonths, onComplete, onBack }:
   const progress = ((currentIndex + 1) / questions.length) * 100;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-teal-50 via-white to-blue-50 px-4 py-8">
+    <div className="min-h-[calc(100vh-3.5rem)] bg-gradient-to-br from-teal-50 via-white to-blue-50 px-4 py-4 sm:py-8">
       <div className="max-w-3xl mx-auto">
         <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
           <div className="bg-teal-600 px-6 py-4">
@@ -180,24 +199,15 @@ export function Questionnaire({ condition, childAgeMonths, onComplete, onBack }:
             </div>
           </div>
 
-          <div className="p-8">
-            {currentQuestion.is_red_flag && (
-              <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg px-4 py-2 mb-6">
-                <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0" />
-                <span className="text-sm text-red-800 font-medium">
-                  {t('Urgent Indicator', 'Indicador Urgente')}
-                </span>
-              </div>
-            )}
-
-            <h3 className="text-2xl font-semibold text-gray-900 mb-8 leading-relaxed">
+          <div className="p-5 sm:p-8">
+            <h3 className="text-xl sm:text-2xl font-semibold text-gray-900 mb-6 sm:mb-8 leading-relaxed">
               {language === 'es' ? currentQuestion.question_es : currentQuestion.question_en}
             </h3>
 
-            <div className="grid grid-cols-2 gap-4 mb-8" role="group" aria-label="Answer options">
+            <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-6 sm:mb-8" role="group" aria-label="Answer options">
               <button
                 onClick={() => handleAnswer(true)}
-                className={`py-6 px-8 rounded-xl border-2 font-semibold text-lg transition-all focus:outline-none focus:ring-4 focus:ring-teal-200 ${
+                className={`py-5 sm:py-6 px-4 sm:px-8 rounded-xl border-2 font-semibold text-lg transition-all focus:outline-none focus:ring-4 focus:ring-teal-200 ${
                   responses[currentQuestion.id] === true
                     ? 'bg-teal-600 border-teal-600 text-white shadow-lg'
                     : 'bg-white border-gray-300 text-gray-700 hover:border-teal-500 hover:bg-teal-50'
@@ -209,7 +219,7 @@ export function Questionnaire({ condition, childAgeMonths, onComplete, onBack }:
               </button>
               <button
                 onClick={() => handleAnswer(false)}
-                className={`py-6 px-8 rounded-xl border-2 font-semibold text-lg transition-all focus:outline-none focus:ring-4 focus:ring-gray-200 ${
+                className={`py-5 sm:py-6 px-4 sm:px-8 rounded-xl border-2 font-semibold text-lg transition-all focus:outline-none focus:ring-4 focus:ring-gray-200 ${
                   responses[currentQuestion.id] === false
                     ? 'bg-gray-600 border-gray-600 text-white shadow-lg'
                     : 'bg-white border-gray-300 text-gray-700 hover:border-gray-500 hover:bg-gray-50'
@@ -221,10 +231,17 @@ export function Questionnaire({ condition, childAgeMonths, onComplete, onBack }:
               </button>
             </div>
 
+            {submitError && (
+              <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3" role="alert">
+                <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                <p className="text-sm text-red-800">{submitError}</p>
+              </div>
+            )}
+
             <div className="flex gap-3">
               <button
                 onClick={currentIndex === 0 ? onBack : handlePrevious}
-                className="flex items-center gap-2 px-6 py-3 bg-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-300 transition-colors"
+                className="flex items-center gap-2 px-4 sm:px-6 py-3 bg-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-300 transition-colors"
               >
                 <ArrowLeft className="w-5 h-5" />
                 {translations.previous[language]}
@@ -233,16 +250,18 @@ export function Questionnaire({ condition, childAgeMonths, onComplete, onBack }:
               {isLastQuestion && hasAnswered && (
                 <button
                   onClick={handleSubmit}
-                  className="flex-1 px-6 py-3 bg-teal-600 text-white rounded-lg font-medium hover:bg-teal-700 transition-colors"
+                  disabled={submitting}
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-teal-600 text-white rounded-lg font-medium hover:bg-teal-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {translations.submit[language]}
+                  {submitting && <Loader2 className="w-5 h-5 animate-spin" />}
+                  {submitting ? t('Saving...', 'Guardando...') : translations.submit[language]}
                 </button>
               )}
 
               {!isLastQuestion && hasAnswered && (
                 <button
                   onClick={() => setCurrentIndex(currentIndex + 1)}
-                  className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-teal-600 text-white rounded-lg font-medium hover:bg-teal-700 transition-colors"
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-teal-600 text-white rounded-lg font-medium hover:bg-teal-700 transition-colors"
                 >
                   {translations.next[language]}
                   <ArrowRight className="w-5 h-5" />

@@ -2,10 +2,10 @@
   "name": "childneuroscan",
   "private": true,
   "version": "2.1.0",
-  "description": "Comprehensive child development screening and tracking platform",
+  "description": "Parent-reported child development screening and care-tracking web app (not a diagnostic tool)",
   "type": "module",
   "author": "ChildNeuroScan Team",
-  "license": "MIT",
+  "license": "UNLICENSED",
   "keywords": [
     "child development",
     "autism screening",
@@ -18,6 +18,9 @@
     "type": "git",
     "url": "https://github.com/dianarocha26/child-neuroscan.git"
   },
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -26,12 +29,11 @@
     "lint:fix": "eslint . --fix",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.app.json",
-    "format": "prettier --write \"src/**/*.{ts,tsx,css,json}\"",
-    "analyze": "vite build --mode analyze",
-    "prepare": "echo 'Ready for deployment'",
+    "test": "vitest run",
     "clean": "rm -rf dist node_modules"
   },
   "dependencies": {
+    "@fontsource/inter": "^5.3.0",
     "@supabase/supabase-js": "^2.57.4",
     "lucide-react": "^0.344.0",
     "react": "^18.3.1",
@@ -51,6 +53,7 @@
     "tailwindcss": "^3.4.1",
     "typescript": "^5.5.3",
     "typescript-eslint": "^8.3.0",
-    "vite": "^5.4.2"
+    "vite": "^5.4.2",
+    "vitest": "^3.2.7"
   }
 }

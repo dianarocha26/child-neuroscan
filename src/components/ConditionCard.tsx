@@ -26,30 +26,22 @@ export function ConditionCard({ condition, onClick }: ConditionCardProps) {
   const displayName = language === 'es' ? condition.name_es : condition.name_en;
   const displayDescription = language === 'es' ? condition.description_es : condition.description_en;
 
-  console.log('🎴 ConditionCard rendering:', {
-    condition,
-    language,
-    displayName,
-    displayDescription,
-    hasName: !!displayName,
-    hasDescription: !!displayDescription
-  });
 
   return (
     <button
       onClick={onClick}
-      className={`w-full text-left p-6 rounded-xl border-2 ${colors.border} ${colors.bg} ${colors.hover} hover:shadow-lg transition-all duration-200 hover:scale-[1.02] active:scale-100`}
+      className={`w-full h-full text-left p-4 sm:p-6 rounded-xl border-2 ${colors.border} ${colors.bg} ${colors.hover} hover:shadow-lg transition-all duration-200 hover:scale-[1.02] active:scale-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-offset-2`}
     >
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1">
-          <h3 className="text-xl font-bold text-gray-900 mb-2">
+          <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-1 sm:mb-2">
             {displayName}
           </h3>
           <p className="text-gray-700 text-sm">
             {displayDescription}
           </p>
         </div>
-        <ChevronRight className="w-5 h-5 text-gray-400 flex-shrink-0 mt-1" />
+        <ChevronRight className="w-5 h-5 text-gray-400 flex-shrink-0 mt-1" aria-hidden="true" />
       </div>
     </button>
   );

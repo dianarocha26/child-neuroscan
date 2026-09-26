@@ -4,6 +4,7 @@ import type {
   Question,
   FunctionalDomain,
   ScreeningResult,
+  ScreeningResultWithCondition,
   RiskLevel,
   Language,
   DomainScore,
@@ -12,8 +13,6 @@ import type {
 } from '../types/database';
 
 export async function getConditions(): Promise<Condition[]> {
-  console.log('>>> getConditions: Starting query...');
-  console.log('>>> Supabase client:', supabase);
 
   const { data, error } = await supabase
     .from('conditions')
@@ -21,14 +20,11 @@ export async function getConditions(): Promise<Condition[]> {
     .eq('is_active', true)
     .order('order_index');
 
-  console.log('>>> getConditions: Query result:', { data, error });
 
   if (error) {
-    console.error('>>> getConditions: ERROR', error);
     throw error;
   }
 
-  console.log('>>> getConditions: Returning data:', data);
   return data || [];
 }
 
@@ -68,7 +64,7 @@ export async function getQuestionsForCondition(conditionId: string): Promise<Que
 }
 
 export async function calculateScreeningScore(
-  conditionId: string,
+  _conditionId: string,
   responses: Record<string, boolean>,
   questions: Question[],
   childAgeMonths: number
@@ -163,6 +159,7 @@ export async function saveScreeningResult(
   language: Language,
   responses: Record<string, boolean>,
   totalScore: number,
+  maxScore: number,
   riskLevel: RiskLevel,
   hasRedFlags: boolean,
   domainScores: Record<string, DomainScore>,
@@ -188,6 +185,7 @@ export async function saveScreeningResult(
       language,
       responses,
       total_score: totalScore,
+      max_score: maxScore,
       risk_level: riskLevel,
       has_red_flags: hasRedFlags,
       domain_scores: domainScores
@@ -199,7 +197,7 @@ export async function saveScreeningResult(
   return data;
 }
 
-export async function getUserScreeningResults(userId: string): Promise<ScreeningResult[]> {
+export async function getUserScreeningResults(userId: string): Promise<ScreeningResultWithCondition[]> {
   const { data, error } = await supabase
     .from('screening_results')
     .select(`
@@ -213,7 +211,7 @@ export async function getUserScreeningResults(userId: string): Promise<Screening
   return data || [];
 }
 
-export async function getScreeningResultById(id: string): Promise<ScreeningResult | null> {
+export async function getScreeningResultById(id: string): Promise<ScreeningResultWithCondition | null> {
   const { data, error } = await supabase
     .from('screening_results')
     .select(`

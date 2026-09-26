@@ -9,8 +9,18 @@ interface LanguageContextType {
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
+/**
+ * The app ships English-only for now. Spanish strings stay in place (t() and
+ * translations.ts); flip this to true to bring back ES and the header switch.
+ */
+export const SPANISH_ENABLED = false;
+
 export function LanguageProvider({ children }: { children: ReactNode }) {
-  const [language, setLanguage] = useState<Language>('en');
+  const [selected, setSelected] = useState<Language>('en');
+  const language: Language = SPANISH_ENABLED ? selected : 'en';
+  const setLanguage = (lang: Language) => {
+    if (SPANISH_ENABLED) setSelected(lang);
+  };
 
   const t = (en: string, es: string): string => {
     return language === 'es' ? es : en;

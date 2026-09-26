@@ -1,4 +1,3 @@
-import React from 'react';
 import { UserPlus, Lock, TrendingUp, Shield, X } from 'lucide-react';
 
 interface AccountPromptProps {
@@ -27,13 +26,14 @@ export function AccountPrompt({ onCreateAccount, onLogin, onClose, context = 'sa
   const message = messages[context];
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-8 relative animate-fade-in">
+    <div className="modal-overlay" role="dialog" aria-modal="true">
+      <div className="modal-panel max-w-lg sm:px-8 sm:pt-8 sm:[--modal-pb:2rem] animate-fade-in">
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition"
+          className="absolute top-2 right-2 p-2.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition"
+          aria-label="Close"
         >
-          <X className="w-6 h-6" />
+          <X className="w-6 h-6" aria-hidden="true" />
         </button>
 
         <div className="text-center mb-6">
@@ -44,7 +44,7 @@ export function AccountPrompt({ onCreateAccount, onLogin, onClose, context = 'sa
           <p className="text-gray-600">{message.description}</p>
         </div>
 
-        <div className="space-y-3 mb-6">
+        <div className="space-y-3">
           <div className="flex items-start gap-3 p-3 bg-teal-50 rounded-lg">
             <Shield className="w-5 h-5 text-teal-600 flex-shrink-0 mt-0.5" />
             <div>
@@ -70,7 +70,7 @@ export function AccountPrompt({ onCreateAccount, onLogin, onClose, context = 'sa
           </div>
         </div>
 
-        <div className="space-y-3">
+        <div className="modal-footer sm:-mx-8 sm:px-8 space-y-3">
           <button
             onClick={onCreateAccount}
             className="w-full bg-teal-600 text-white py-3 rounded-lg font-semibold hover:bg-teal-700 transition"
@@ -84,11 +84,11 @@ export function AccountPrompt({ onCreateAccount, onLogin, onClose, context = 'sa
           >
             I Already Have an Account
           </button>
-        </div>
 
-        <p className="text-center text-xs text-gray-500 mt-4">
-          No credit card required. Free forever.
-        </p>
+          <p className="text-center text-xs text-gray-500">
+            No credit card required. Free forever.
+          </p>
+        </div>
       </div>
     </div>
   );

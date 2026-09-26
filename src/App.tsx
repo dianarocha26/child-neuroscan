@@ -1,20 +1,23 @@
 import { useState, useEffect, lazy, Suspense } from 'react';
-import { Search } from 'lucide-react';
 import { useAuth } from './contexts/AuthContext';
-import { ThemeSwitch } from './components/ThemeSwitch';
+import { useLanguage } from './contexts/LanguageContext';
 import { GlobalSearch } from './components/GlobalSearch';
 import { Login } from './components/Login';
 import { SignUp } from './components/SignUp';
+import { ForgotPassword } from './components/ForgotPassword';
+import { ResetPassword } from './components/ResetPassword';
 import { AccountPrompt } from './components/AccountPrompt';
 import { LandingPage } from './components/LandingPage';
 import { AgeInput } from './components/AgeInput';
 import { Questionnaire } from './components/Questionnaire';
 import { Results } from './components/Results';
 import { MobileNavigation } from './components/MobileNavigation';
+import { AppHeader } from './components/AppHeader';
 import LoadingSpinner from './components/LoadingSpinner';
 import { OfflineIndicator } from './components/OfflineIndicator';
 import { SkipLink } from './components/SkipLink';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { logger } from './lib/logger';
 
 const ProgressDashboard = lazy(() => import('./components/ProgressDashboard'));
 const ReportGenerator = lazy(() => import('./components/ReportGenerator'));
@@ -35,24 +38,21 @@ const AnalyticsDashboard = lazy(() => import('./components/AnalyticsDashboard'))
 const ComprehensiveReportGenerator = lazy(() => import('./components/ComprehensiveReportGenerator'));
 const ScreenWrapper = lazy(() => import('./components/ScreenWrapper'));
 import { calculateScreeningScore, saveScreeningResult, getQuestionsForCondition } from './lib/database';
-import type { Condition, Question, RiskLevel, DomainScore } from './types/database';
+import type { Condition, RiskLevel, DomainScore } from './types/database';
 
-type Screen = 'login' | 'signup' | 'landing' | 'age-input' | 'questionnaire' | 'results' | 'dashboard' | 'report' | 'resources' | 'community' | 'videos' | 'appointments' | 'photos' | 'goals' | 'medications' | 'behavior' | 'crisis' | 'rewards' | 'reminders' | 'schedule' | 'sensory' | 'analytics' | 'reports';
+export type Screen = 'login' | 'signup' | 'forgot-password' | 'landing' | 'age-input' | 'questionnaire' | 'results' | 'dashboard' | 'report' | 'resources' | 'community' | 'videos' | 'appointments' | 'photos' | 'goals' | 'medications' | 'behavior' | 'crisis' | 'rewards' | 'reminders' | 'schedule' | 'sensory' | 'analytics' | 'reports';
 
 function AppContent() {
-  const { user, loading } = useAuth();
+  const { user, loading, passwordRecovery, clearPasswordRecovery, signOut } = useAuth();
+  const { language } = useLanguage();
   const [currentScreen, setCurrentScreen] = useState<Screen>('landing');
   const [selectedCondition, setSelectedCondition] = useState<Condition | null>(null);
   const [childAgeMonths, setChildAgeMonths] = useState<number>(0);
-  const [childName, setChildName] = useState<string>('');
-  const [responses, setResponses] = useState<Record<string, boolean>>({});
-  const [questions, setQuestions] = useState<Question[]>([]);
   const [riskLevel, setRiskLevel] = useState<RiskLevel>('low');
   const [hasRedFlags, setHasRedFlags] = useState(false);
   const [domainScores, setDomainScores] = useState<Record<string, DomainScore>>({});
   const [totalScore, setTotalScore] = useState(0);
   const [maxScore, setMaxScore] = useState(0);
-  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [selectedReportSessionId, setSelectedReportSessionId] = useState<string | null>(null);
   const [showAuthPrompt, setShowAuthPrompt] = useState(false);
   const [pendingSaveAction, setPendingSaveAction] = useState<'results' | 'dashboard' | null>(null);
@@ -64,8 +64,13 @@ function AppContent() {
     }
   }, [user, currentScreen]);
 
+  // Every screen change is a page navigation: start the new screen at the top.
   useEffect(() => {
-    const handleKeyPress = (e: KeyboardEvent) => {
+    window.scrollTo(0, 0);
+  }, [currentScreen]);
+
+  useEffect(() => {
+    const handleKeyPress =(e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault();
         setIsSearchOpen(true);
@@ -89,11 +94,7 @@ function AppContent() {
   async function handleQuestionnaireComplete(questionResponses: Record<string, boolean>, name: string) {
     if (!selectedCondition) return;
 
-    setResponses(questionResponses);
-    setChildName(name);
-
     const fetchedQuestions = await getQuestionsForCondition(selectedCondition.id);
-    setQuestions(fetchedQuestions);
 
     const scoring = await calculateScreeningScore(
       selectedCondition.id,
@@ -109,26 +110,24 @@ function AppContent() {
     setMaxScore(scoring.maxScore);
 
     if (user) {
-      const result = await saveScreeningResult(
+      await saveScreeningResult(
         selectedCondition.id,
         childAgeMonths,
-        'en',
+        language,
         questionResponses,
         scoring.totalScore,
+        scoring.maxScore,
         scoring.riskLevel,
         scoring.hasRedFlags,
         scoring.domainScores,
         name
       );
-
-      if (result) {
-        setCurrentSessionId(result.id);
-      }
     } else {
       localStorage.setItem('guestScreeningData', JSON.stringify({
         condition: selectedCondition,
         childName: name,
         childAgeMonths,
+        language,
         responses: questionResponses,
         scoring,
         timestamp: new Date().toISOString()
@@ -140,18 +139,16 @@ function AppContent() {
 
 
   function handleStartNew() {
+    // Don't keep a child's unsaved answers on a shared device
+    localStorage.removeItem('guestScreeningData');
     setCurrentScreen('landing');
     setSelectedCondition(null);
     setChildAgeMonths(0);
-    setChildName('');
-    setResponses({});
-    setQuestions([]);
     setRiskLevel('low');
     setHasRedFlags(false);
     setDomainScores({});
     setTotalScore(0);
     setMaxScore(0);
-    setCurrentSessionId(null);
   }
 
   function handleViewDashboard() {
@@ -286,38 +283,52 @@ function AppContent() {
     }
   }
 
-  async function handleAuthSuccess() {
+  // Finish what a guest asked for (save results / open dashboard) once they
+  // have logged in. Must run after `user` is set, not from the login
+  // callback, which still sees the pre-login state.
+  useEffect(() => {
+    if (!user || !pendingSaveAction) return;
+
+    const action = pendingSaveAction;
+    setPendingSaveAction(null);
     setShowAuthPrompt(false);
 
-    if (pendingSaveAction === 'results' && selectedCondition) {
-      const guestData = localStorage.getItem('guestScreeningData');
-      if (guestData && user) {
-        const parsed = JSON.parse(guestData);
+    if (action === 'dashboard') {
+      setCurrentScreen('dashboard');
+      return;
+    }
 
-        const result = await saveScreeningResult(
+    // Stay on (or return to) results while saving; the login effect just
+    // sent us to landing
+    if (selectedCondition) setCurrentScreen('results');
+
+    const guestData = localStorage.getItem('guestScreeningData');
+    if (!guestData) return;
+
+    (async () => {
+      try {
+        const parsed = JSON.parse(guestData);
+        await saveScreeningResult(
           parsed.condition.id,
           parsed.childAgeMonths,
-          'en',
+          parsed.language || language,
           parsed.responses,
           parsed.scoring.totalScore,
+          parsed.scoring.maxScore,
           parsed.scoring.riskLevel,
           parsed.scoring.hasRedFlags,
           parsed.scoring.domainScores,
           parsed.childName
         );
-
-        if (result) {
-          setCurrentSessionId(result.id);
-        }
-
         localStorage.removeItem('guestScreeningData');
+      } catch (err) {
+        logger.error('Failed to save guest screening after login', err);
+        alert(language === 'es'
+          ? 'No pudimos guardar su evaluación. Intente de nuevo más tarde.'
+          : 'We could not save your screening. Please try again later.');
       }
-    } else if (pendingSaveAction === 'dashboard') {
-      setCurrentScreen('dashboard');
-    }
-
-    setPendingSaveAction(null);
-  }
+    })();
+  }, [user, pendingSaveAction, selectedCondition, language]);
 
   function handleGenerateReport(sessionId: string) {
     setSelectedReportSessionId(sessionId);
@@ -335,14 +346,36 @@ function AppContent() {
     );
   }
 
-  const showMobileNav = user && !['login', 'signup'].includes(currentScreen);
+  if (passwordRecovery) {
+    return (
+      <ResetPassword
+        onComplete={() => {
+          clearPasswordRecovery();
+          setCurrentScreen('landing');
+        }}
+      />
+    );
+  }
+
+  const isAuthScreen = ['login', 'signup', 'forgot-password'].includes(currentScreen);
+  const showMobileNav = user && !isAuthScreen;
 
   return (
     <>
       <SkipLink />
       <OfflineIndicator />
-      <div className={showMobileNav ? 'pb-16' : ''} id="main-content">
-        <GlobalSearch
+      <AppHeader
+        isLoggedIn={!!user}
+        hideSignIn={isAuthScreen}
+        onHome={() => setCurrentScreen('landing')}
+        onSearch={() => setIsSearchOpen(true)}
+        onLogin={() => setCurrentScreen('login')}
+        onLogout={() => {
+          setCurrentScreen('landing');
+          void signOut();
+        }}
+      />
+      <GlobalSearch
         isOpen={isSearchOpen}
         onClose={() => setIsSearchOpen(false)}
         onNavigate={{
@@ -364,40 +397,6 @@ function AppContent() {
         }}
       />
 
-      {user && currentScreen !== 'login' && currentScreen !== 'signup' && (
-        <button
-          onClick={() => setIsSearchOpen(true)}
-          className="fixed top-4 right-20 z-40 p-3 bg-white dark:bg-gray-800 rounded-full shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-110 active:scale-95 border border-gray-200 dark:border-gray-700"
-          title="Search (Cmd/Ctrl+K)"
-          aria-label="Open search"
-        >
-          <Search className="w-5 h-5 text-gray-600 dark:text-gray-300" aria-hidden="true" />
-        </button>
-      )}
-
-      {currentScreen !== 'login' && currentScreen !== 'signup' && (
-        <div className="fixed top-4 right-4 z-40">
-          <ThemeSwitch />
-        </div>
-      )}
-
-      {currentScreen === 'login' && (
-        <Login
-          onSwitchToSignUp={() => setCurrentScreen('signup')}
-          onLoginSuccess={() => {
-            handleAuthSuccess();
-            setCurrentScreen('landing');
-          }}
-        />
-      )}
-
-      {currentScreen === 'signup' && (
-        <SignUp
-          onSwitchToLogin={() => setCurrentScreen('login')}
-          onSignUpSuccess={() => setCurrentScreen('login')}
-        />
-      )}
-
       {showAuthPrompt && (
         <AccountPrompt
           onCreateAccount={() => {
@@ -413,6 +412,31 @@ function AppContent() {
             setPendingSaveAction(null);
           }}
           context={pendingSaveAction === 'results' ? 'save' : 'dashboard'}
+        />
+      )}
+
+      <main
+        id="main-content"
+        tabIndex={-1}
+        className={`focus:outline-none ${showMobileNav ? 'pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0' : ''}`}
+      >
+      {currentScreen === 'login' && (
+        <Login
+          onSwitchToSignUp={() => setCurrentScreen('signup')}
+          onForgotPassword={() => setCurrentScreen('forgot-password')}
+          // Redirect happens in the effects above once `user` is set
+          onLoginSuccess={() => {}}
+        />
+      )}
+
+      {currentScreen === 'forgot-password' && (
+        <ForgotPassword onBackToLogin={() => setCurrentScreen('login')} />
+      )}
+
+      {currentScreen === 'signup' && (
+        <SignUp
+          onSwitchToLogin={() => setCurrentScreen('login')}
+          onSignUpSuccess={() => setCurrentScreen(s => (s === 'signup' ? 'login' : s))}
         />
       )}
 
@@ -514,6 +538,7 @@ function AppContent() {
         <Suspense fallback={<LoadingSpinner />}>
           <VideoLibrary
             userId={user?.id}
+            onBack={() => setCurrentScreen('landing')}
           />
         </Suspense>
       )}
@@ -615,24 +640,14 @@ function AppContent() {
         </Suspense>
       )}
 
+      </main>
+
       {showMobileNav && (
         <MobileNavigation
           currentView={currentScreen}
-          onNavigate={(view) => {
-            const screenMap: Record<string, Screen> = {
-              'dashboard': 'dashboard',
-              'screening': 'questionnaire',
-              'resources': 'resources',
-              'community': 'community',
-              'progress': 'progress',
-              'profile': 'analytics'
-            };
-            const targetScreen = screenMap[view] || 'landing';
-            setCurrentScreen(targetScreen);
-          }}
+          onNavigate={(screen) => setCurrentScreen(screen)}
         />
       )}
-      </div>
     </>
   );
 }

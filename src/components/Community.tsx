@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { MessageSquare, Heart, Send, Filter, Plus, TrendingUp, Clock, Award, X, ArrowLeft } from 'lucide-react';
+import { MessageSquare, Heart, Send, Filter, Plus, TrendingUp, Clock, Award, ArrowLeft } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useLanguage } from '../contexts/LanguageContext';
 import { logger } from '../lib/logger';
+import { PageHeader } from './PageHeader';
 
 interface Post {
   id: string;
@@ -232,53 +233,39 @@ export default function Community({ userId, onBack }: CommunityProps) {
   }
 
   return (
-    <div className="max-w-6xl mx-auto p-6">
-      <div className="mb-8">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-4">
-            {onBack && (
-              <button
-                onClick={onBack}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <ArrowLeft className="w-5 h-5" />
-              </button>
-            )}
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">
-                {t('Parent Support Community', 'Comunidad de Apoyo para Padres')}
-              </h1>
-              <p className="text-gray-600">
-                {t('Connect, share, and support each other', 'Conéctate, comparte y apóyense mutuamente')}
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={() => setShowNewPost(true)}
-            className="flex items-center gap-2 px-4 py-3 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors font-medium"
-          >
-            <Plus className="w-5 h-5" />
-            {t('New Post', 'Nueva Publicación')}
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-2 sm:pt-4 pb-8">
+      <div>
+        {onBack && (
+          <button onClick={onBack} className="no-print inline-flex items-center gap-1.5 -ml-2 mb-2 sm:mb-4 px-2 min-h-[44px] rounded-lg text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors">
+            <ArrowLeft className="w-4 h-4" aria-hidden="true" />
+            {t('Back to Home', 'Volver al inicio')}
           </button>
-        </div>
+        )}
+        <PageHeader
+          icon={MessageSquare}
+          tone="teal"
+          title={t('Parent Community', 'Comunidad de Padres')}
+          subtitle={t('Connect, share, and support each other', 'Conéctate, comparte y apóyense mutuamente')}
+          action={{ label: t('New Post', 'Nueva Publicación'), icon: Plus, onClick: () => setShowNewPost(true) }}
+        />
       </div>
 
-      <div className="mb-6 flex items-center gap-3">
+      <div className="mb-6 flex flex-wrap items-center gap-2 sm:gap-3">
         <button
           onClick={() => setShowFilters(!showFilters)}
-          className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 ${
+          className={`px-3 sm:px-4 py-2 min-h-[40px] rounded-lg font-medium transition-colors flex items-center gap-2 ${
             showFilters ? 'bg-teal-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
           }`}
         >
-          <Filter className="w-5 h-5" />
+          <Filter className="w-4 h-4 sm:w-5 sm:h-5" />
           {t('Filters', 'Filtros')}
         </button>
 
         <div className="flex gap-2">
           <button
             onClick={() => setSortBy('recent')}
-            className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 ${
-              sortBy === 'recent' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            className={`px-3 sm:px-4 py-2 min-h-[40px] rounded-lg font-medium transition-colors flex items-center gap-2 ${
+              sortBy === 'recent' ? 'bg-teal-700 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
           >
             <Clock className="w-4 h-4" />
@@ -286,8 +273,8 @@ export default function Community({ userId, onBack }: CommunityProps) {
           </button>
           <button
             onClick={() => setSortBy('popular')}
-            className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 ${
-              sortBy === 'popular' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            className={`px-3 sm:px-4 py-2 min-h-[40px] rounded-lg font-medium transition-colors flex items-center gap-2 ${
+              sortBy === 'popular' ? 'bg-teal-700 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
           >
             <TrendingUp className="w-4 h-4" />
@@ -367,9 +354,9 @@ export default function Community({ userId, onBack }: CommunityProps) {
 
               <div className="flex items-start justify-between mb-3">
                 <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-2">
+                  <div className="flex flex-wrap items-center gap-2 mb-2">
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${getCategoryColor(post.category)}`}>
-                      {post.category}
+                      {categories.find(c => c.id === post.category)?.label ?? post.category}
                     </span>
                     {post.condition_tags.map(tag => (
                       <span key={tag} className="px-2 py-1 bg-gray-100 text-gray-700 rounded-full text-xs">
@@ -481,16 +468,16 @@ function PostDetail({
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-6">
+    <div className="max-w-4xl mx-auto px-4 sm:px-6 pt-2 sm:pt-4 pb-8">
       <button
         onClick={onBack}
-        className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6"
+        className="no-print inline-flex items-center gap-1.5 -ml-2 px-2 min-h-[44px] rounded-lg text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors mb-2 sm:mb-4"
       >
-        <ArrowLeft className="w-5 h-5" />
+        <ArrowLeft className="w-4 h-4" aria-hidden="true" />
         {t('Back to community', 'Volver a la comunidad')}
       </button>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 mb-6">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-8 mb-6">
         <div className="flex items-center gap-2 mb-4">
           <span className={`px-3 py-1 rounded-full text-sm font-medium ${getCategoryColor(post.category)}`}>
             {post.category}
@@ -502,7 +489,7 @@ function PostDetail({
           ))}
         </div>
 
-        <h1 className="text-3xl font-bold text-gray-900 mb-4">{post.title}</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-4">{post.title}</h1>
 
         <div className="flex items-center gap-4 text-sm text-gray-500 mb-6">
           <span className="font-medium">{post.author_name}</span>
@@ -526,7 +513,7 @@ function PostDetail({
         </div>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
         <h2 className="text-xl font-bold text-gray-900 mb-4">
           {t('Comments', 'Comentarios')} ({comments.length})
         </h2>
@@ -647,17 +634,17 @@ function NewPostForm({ userId, onBack, onPostCreated, categories, conditions }: 
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-6">
+    <div className="max-w-4xl mx-auto px-4 sm:px-6 pt-2 sm:pt-4 pb-8">
       <button
         onClick={onBack}
-        className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6"
+        className="no-print inline-flex items-center gap-1.5 -ml-2 px-2 min-h-[44px] rounded-lg text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors mb-2 sm:mb-4"
       >
-        <ArrowLeft className="w-5 h-5" />
+        <ArrowLeft className="w-4 h-4" aria-hidden="true" />
         {t('Back', 'Atrás')}
       </button>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-6">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-8">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-6">
           {t('Create New Post', 'Crear Nueva Publicación')}
         </h1>
 

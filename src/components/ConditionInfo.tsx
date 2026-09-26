@@ -21,17 +21,20 @@ export function ConditionInfo({ condition }: ConditionInfoProps) {
         </div>
         <div>
           <h3 className="text-2xl font-bold text-gray-900">
-            {t('Understanding the Condition', 'Comprendiendo la Condición')}
+            {t('About this condition', 'Acerca de esta condición')}
           </h3>
           <p className="text-sm text-gray-600">
-            {t('A parent-friendly explanation', 'Una explicación para padres')}
+            {t(
+              'General information for parents. It does not mean your child has this condition.',
+              'Información general para padres. No significa que su hijo tenga esta condición.'
+            )}
           </p>
         </div>
       </div>
 
       <div className="bg-white rounded-lg p-6 shadow-sm">
         <h4 className="text-lg font-semibold text-gray-900 mb-3">
-          {t('What is it?', '¿Qué es?')}
+          {t('What is this condition?', '¿Qué es esta condición?')}
         </h4>
         <p className="text-gray-700 leading-relaxed">
           {language === 'es' ? condition.explanation_es : condition.explanation_en}
@@ -43,7 +46,7 @@ export function ConditionInfo({ condition }: ConditionInfoProps) {
           <div className="flex items-center gap-2 mb-3">
             <Eye className="w-5 h-5 text-teal-600" />
             <h4 className="text-lg font-semibold text-gray-900">
-              {t('What you might notice', 'Qué puede notar')}
+              {t('Signs parents sometimes notice', 'Señales que los padres a veces notan')}
             </h4>
           </div>
           <p className="text-gray-700 leading-relaxed">
@@ -57,7 +60,7 @@ export function ConditionInfo({ condition }: ConditionInfoProps) {
           <div className="flex items-center gap-2 mb-3">
             <Heart className="w-5 h-5 text-rose-600" />
             <h4 className="text-lg font-semibold text-gray-900">
-              {t('How you can help', 'Cómo puede ayudar')}
+              {t('Ways to support development', 'Formas de apoyar el desarrollo')}
             </h4>
           </div>
           <p className="text-gray-700 leading-relaxed">
