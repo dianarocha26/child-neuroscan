@@ -13,17 +13,19 @@ Read CLAUDE.md first, then this file. Don't re-audit the repo; PHASE3.md has the
 - **Owner check**: confirm the prod `conditions` SELECT policy is `USING (true)`.
 
 ## Phase 4 scope (in priority order)
-1. **Mentorship match lock**: `parent_mentorship_matches` lets either side update `match_status`, so a mentee can set their own request to `active` without the mentor accepting. Only the mentor should move `pending → active/declined`; the mentee may only cancel. Needs a migration (trigger or split UPDATE policies). No app code writes this table yet.
-2. **Reminders when the app is closed**: phase 3 only alerts while the app is open. Real push needs Web Push (VAPID keys), a subscriptions table and a scheduled Edge Function. Build only if parents ask; otherwise skip.
-3. **Condition content review**: content for the 4 new conditions was written without clinical review. Get a reviewer if possible; until then keep wording conservative (see phase 3 owner decisions).
-4. **Router** (optional, bigger): replace the `currentScreen` state machine with a router so URLs and the back button work.
-5. **Small cleanups** (only alongside related work): goals/medications/photos still call `requireUserId()` instead of taking `userId`; report types still live in `src/types/components.ts`; the video view counter never worked (videos has no UPDATE policy; fix or remove it).
+1. **Reminders when the app is closed**: phase 3 only alerts while the app is open. Real push needs Web Push (VAPID keys), a subscriptions table and a scheduled Edge Function. Build only if parents ask; otherwise skip.
+2. **Condition content review**: content for the 4 new conditions was written without clinical review. Get a reviewer if possible; until then keep wording conservative (see phase 3 owner decisions).
+3. **Router** (optional, bigger): replace the `currentScreen` state machine with a router so URLs and the back button work.
+4. **Small cleanups** (only alongside related work): goals/medications/photos still call `requireUserId()` instead of taking `userId`; report types still live in `src/types/components.ts`; the video view counter never worked (videos has no UPDATE policy; fix or remove it).
+
+## Deferred
+- **Mentorship match lock**: a mentee can set their own match to `active` in `parent_mentorship_matches` without the mentor accepting. No screen uses mentoring yet, so only needed if mentoring is ever built (owner, 2026-09-26).
 
 ## Out of scope unless the owner asks
 - Schedule icons and `alert()`/`confirm()` replacement: done in phase 3.
 - Spanish and dark mode: hidden/removed. Dark mode would need every screen styled.
 
 ## Open questions for the owner
-- Push reminders (item 2): build now, or wait for parent feedback?
-- Router (item 4): in phase 4 or later?
-- Any clinical reviewer available for item 3?
+- Push reminders (item 1): build now, or wait for parent feedback?
+- Router (item 3): in phase 4 or later?
+- Any clinical reviewer available for item 2?
