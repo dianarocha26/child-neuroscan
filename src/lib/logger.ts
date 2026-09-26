@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import type { Json } from '../types/supabase';
+import { toJson } from './json';
 
 const isDevelopment = import.meta.env.DEV;
 
@@ -9,12 +9,6 @@ interface LogEntry {
   timestamp: string;
   data?: unknown;
   user_id?: string;
-}
-
-// Same serialization the Supabase client applies to the request body.
-function toJson(value: unknown): Json | undefined {
-  if (value === undefined) return undefined;
-  return JSON.parse(JSON.stringify(value)) as Json;
 }
 
 async function logToDatabase(entry: LogEntry) {

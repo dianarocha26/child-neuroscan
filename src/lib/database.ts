@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { logger } from './logger';
 import type { Tables } from '../types/supabase';
 import type {
   Condition,
@@ -270,5 +271,10 @@ function toScreeningResultWithCondition(
   row: Tables<'screening_results'> & { condition: Condition | null }
 ): ScreeningResultWithCondition | null {
   const { condition, ...rest } = row;
-  return condition ? { ...toScreeningResult(rest), condition } : null;
+  if (!condition) {
+    // Condition hidden (e.g. by RLS) or missing; the result can't be shown without it.
+    logger.warn('Screening result has no readable condition:', row.id);
+    return null;
+  }
+  return { ...toScreeningResult(rest), condition };
 }

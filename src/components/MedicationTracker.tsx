@@ -101,6 +101,7 @@ export default function MedicationTracker() {
         ...medForm,
         user_id: user.id,
         schedule_times: scheduleArray,
+        start_date: medForm.start_date || null,
         end_date: medForm.end_date || null,
         active: editingMed ? editingMed.active : true
       };

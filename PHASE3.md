@@ -31,3 +31,17 @@ Read CLAUDE.md first. This file is the starting point for the phase 3 session; d
 ## Known gaps
 - Reminders are in-app only (no push/email).
 - Supabase default SMTP is rate-limited; set up custom SMTP before real users sign up.
+
+## Progress
+### Task 1: generated DB types (done, branch `claude/phase-3-78iozs`)
+- `src/types/supabase.ts` is generated from `supabase/migrations` with a local DB (no project token needed):
+  `npx supabase db start && npx supabase gen types typescript --local --schema public > src/types/supabase.ts`.
+  Needs Docker. `supabase/config.toml` is committed for this.
+- Shared row types in `src/types/components.ts` and `src/types/database.ts` are aliases of generated `Tables<...>`; JSON columns are mapped in `src/lib/database.ts` (screening results) and `src/lib/reports.ts` (report templates/generated reports), trusting shapes this app writes.
+- Behavior change: a screening result whose condition can't be read (e.g. RLS) is now skipped with a `logger.warn` instead of crashing the page.
+- tsc 22 → 0, eslint errors 9 → 0 (26 warnings). CI typecheck and lint are now blocking.
+- Follow-ups (task 2): several components still keep local copies of row types (GoalTracker, MedicationTracker, NotificationCenter, Community, ResourceFinder, AppointmentPrep, VideoLibrary); move them to shared aliases along with the data-layer move.
+
+### Open questions for the owner
+- Text columns that used to be literal unions in the code (goal status/priority, medication type, reminder type) are plain `text` in the DB. Add CHECK constraints or enums so the generated types narrow again?
+- What is the prod RLS policy on `conditions`? If it filters `is_active`, deactivating a condition hides parents' past screenings.
