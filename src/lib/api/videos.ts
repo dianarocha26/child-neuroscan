@@ -99,9 +99,9 @@ export async function listVideoCategories(): Promise<VideoCategory[]> {
   }));
 }
 
-export async function recordVideoView(videoId: string, currentViews: number): Promise<void> {
+export async function recordVideoView(videoId: string): Promise<void> {
   check(
-    await supabase.from('videos').update({ views: currentViews + 1 }).eq('id', videoId),
+    await supabase.rpc('increment_video_views', { p_video_id: videoId }),
     'record the video view'
   );
 }
