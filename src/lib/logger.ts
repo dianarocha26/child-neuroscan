@@ -1,97 +1,44 @@
 import { supabase } from './supabase';
-import { toJson } from './json';
+import { sanitizeLogEntry, shouldPersist, type LogLevel } from './logSanitizer';
 
 const isDevelopment = import.meta.env.DEV;
 
-interface LogEntry {
-  level: 'log' | 'error' | 'warn' | 'info';
-  message: string;
-  timestamp: string;
-  data?: unknown;
-  user_id?: string;
-}
-
-async function logToDatabase(entry: LogEntry) {
-  if (!isDevelopment) {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      await supabase.from('app_logs').insert({
-        level: entry.level,
-        message: entry.message,
-        timestamp: entry.timestamp,
-        data: toJson(entry.data),
-        user_id: user?.id,
-      });
-    } catch (error) {
-      console.error('Failed to log to database:', error);
-    }
+// Stores a sanitized entry only: see logSanitizer for what is kept.
+async function logToDatabase(level: LogLevel, args: unknown[]) {
+  if (isDevelopment || !shouldPersist(level)) return;
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    const entry = sanitizeLogEntry(level, args);
+    await supabase.from('app_logs').insert({
+      level: entry.level,
+      message: entry.message,
+      timestamp: new Date().toISOString(),
+      data: entry.data,
+      user_id: session?.user.id ?? null,
+    });
+  } catch (error) {
+    console.error('Failed to log to database:', error);
   }
 }
 
 export const logger = {
   log: (...args: unknown[]) => {
-    const message = args.map(arg =>
-      typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
-    ).join(' ');
-
-    if (isDevelopment) {
-      console.log(...args);
-    }
-
-    logToDatabase({
-      level: 'log',
-      message,
-      timestamp: new Date().toISOString(),
-      data: args.length > 0 ? args[0] : undefined,
-    });
+    if (isDevelopment) console.log(...args);
+    logToDatabase('log', args);
   },
 
   error: (...args: unknown[]) => {
-    const message = args.map(arg =>
-      typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
-    ).join(' ');
-
     console.error(...args);
-
-    logToDatabase({
-      level: 'error',
-      message,
-      timestamp: new Date().toISOString(),
-      data: args.length > 0 ? args[0] : undefined,
-    });
+    logToDatabase('error', args);
   },
 
   warn: (...args: unknown[]) => {
-    const message = args.map(arg =>
-      typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
-    ).join(' ');
-
-    if (isDevelopment) {
-      console.warn(...args);
-    }
-
-    logToDatabase({
-      level: 'warn',
-      message,
-      timestamp: new Date().toISOString(),
-      data: args.length > 0 ? args[0] : undefined,
-    });
+    if (isDevelopment) console.warn(...args);
+    logToDatabase('warn', args);
   },
 
   info: (...args: unknown[]) => {
-    const message = args.map(arg =>
-      typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
-    ).join(' ');
-
-    if (isDevelopment) {
-      console.info(...args);
-    }
-
-    logToDatabase({
-      level: 'info',
-      message,
-      timestamp: new Date().toISOString(),
-      data: args.length > 0 ? args[0] : undefined,
-    });
-  }
+    if (isDevelopment) console.info(...args);
+    logToDatabase('info', args);
+  },
 };
