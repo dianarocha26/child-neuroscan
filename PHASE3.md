@@ -81,3 +81,10 @@ Read CLAUDE.md first. This file is the starting point for the phase 3 session; d
 - Removed (found with `npx knip`, each checked by grep): `FormField.tsx`, `ThemeContext` (dark mode was hard-disabled; provider was inert), every `dark:` class, unused exports in `exportUtils` (exportToPDF, shareReport, copyToClipboard, exportMultipleFormats), `serviceWorker` (clearServiceWorkerCache), `FriendlyIllustrations` (Celebration, Error, Meditation), duplicate default exports of `ErrorState`/`ResponsiveModal`. No unused dependencies. No visible change.
 - Kept on purpose: `public/sw.js` (registered by URL), `scripts/export-questions.mjs` (manual tool), exports used inside their own module or tests (`unwrapMaybe`, `UnexpectedError`, report mappers, reminderAlerts constants), unused exported types, generated `src/types/supabase.ts`. `tailwind.config.js` still has `darkMode: 'class'` (harmless; keeps OS dark mode from applying if `dark:` classes come back).
 - Checks: tsc 0 errors, eslint 0 errors (24 → 23 warnings), 134 tests pass, build OK.
+
+### Task 0: auth emails and messages (branch `claude/phase-3-auth-emails-ew1dcb`)
+- Sign-up: when Supabase returns no session (confirmation required), the form stays and says "Check your email to confirm your account" with a link to sign in. If confirmation is off, the user is signed in directly.
+- Login: `email_not_confirmed` shows "Your account needs verification. Check your email." plus a "Resend confirmation email" button (`supabase.auth.resend`, type `signup`). Every other failure shows one generic message (no account enumeration).
+- `signUp` and `resend` pass `emailRedirectTo: window.location.origin`, so preview deploys need their URL in Supabase redirect URLs to confirm there.
+- Branded templates are in `supabase/templates/` (`confirmation.html`, `recovery.html`), pasted by the owner into the dashboard. Custom SMTP (Resend) and DNS are owner setup; not in `config.toml`.
+- SignUp now sends the full name as `full_name` user metadata; the existing `handle_new_user` trigger copies it into `profiles.full_name`.
