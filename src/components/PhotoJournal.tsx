@@ -1,14 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Camera, Upload, X, Search, Calendar, Tag } from 'lucide-react';
 import { useLoadingState } from '../hooks/useLoadingState';
-import { supabase } from '../lib/supabase';
 import { logger } from '../lib/logger';
 import { PageHeader } from './PageHeader';
-import type { Tables } from '../types/supabase';
-
-type PhotoEntry = Tables<'photo_journal_entries'> & {
-  display_url?: string;
-};
+import {
+  createPhotoEntry, deletePhotoEntry, listPhotoEntries, updatePhotoEntry,
+  type PhotoEntry
+} from '../lib/api/photos';
 
 export default function PhotoJournal() {
   const [entries, setEntries] = useState<PhotoEntry[]>([]);
@@ -49,15 +47,6 @@ export default function PhotoJournal() {
     };
   }, [previewUrl]);
 
-  // photo_url holds the storage path; older rows hold a full public URL.
-  const storagePath = (photoUrl: string) => {
-    const marker = '/photo-journal/';
-    const i = photoUrl.indexOf(marker);
-    if (i === -1) return photoUrl;
-    const path = photoUrl.slice(i + marker.length).split('?')[0];
-    try { return decodeURIComponent(path); } catch { return path; }
-  };
-
   const resetForm = () => {
     setEditingEntry(null);
     setFormData({
@@ -86,29 +75,7 @@ export default function PhotoJournal() {
 
   const loadEntries = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data, error } = await supabase
-        .from('photo_journal_entries')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-
-      // Bucket is private: resolve short-lived signed URLs for display
-      const rows: PhotoEntry[] = data || [];
-      const paths = rows.map(r => storagePath(r.photo_url));
-      if (paths.length > 0) {
-        const { data: signed, error: signError } = await supabase.storage
-          .from('photo-journal')
-          .createSignedUrls(paths, 60 * 60);
-        if (signError) logger.error('Failed to sign photo URLs', signError);
-        const byPath = new Map((signed || []).map(s => [s.path, s.signedUrl]));
-        rows.forEach(r => { r.display_url = byPath.get(storagePath(r.photo_url)) || undefined; });
-      }
-      setEntries(rows);
+      setEntries(await listPhotoEntries());
     } catch (error) {
       logger.error('Failed to load photo journal entries', error);
     } finally {
@@ -164,44 +131,8 @@ export default function PhotoJournal() {
 
     setUploading(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
-
-      const fileExt = selectedFile.name.split('.').pop();
-      const fileName = `${user.id}/${Date.now()}.${fileExt}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from('photo-journal')
-        .upload(fileName, selectedFile);
-
-      if (uploadError) throw uploadError;
-
       const tagsArray = formData.tags.split(',').map(t => t.trim()).filter(t => t);
-      const mediaType = selectedFile.type.startsWith('video/') ? 'video' : 'photo';
-
-      const { error: insertError } = await supabase
-        .from('photo_journal_entries')
-        .insert({
-          user_id: user.id,
-          child_name: formData.child_name,
-          title: formData.title,
-          description: formData.description,
-          photo_url: fileName,
-          media_type: mediaType,
-          milestone_type: formData.milestone_type,
-          age_at_capture: formData.age_at_capture,
-          linked_condition: formData.linked_condition,
-          tags: tagsArray
-        });
-
-      if (insertError) {
-        // Don't leave an orphaned file in storage if the row insert failed
-        const { error: cleanupError } = await supabase.storage
-          .from('photo-journal')
-          .remove([fileName]);
-        if (cleanupError) logger.error('Failed to remove orphaned upload', cleanupError);
-        throw insertError;
-      }
+      await createPhotoEntry(selectedFile, { ...formData, tags: tagsArray });
 
       closeForm();
       loadEntries();
@@ -217,17 +148,7 @@ export default function PhotoJournal() {
     if (!confirm('Are you sure you want to delete this entry?')) return;
 
     try {
-      const { error: storageError } = await supabase.storage
-        .from('photo-journal')
-        .remove([storagePath(entry.photo_url)]);
-      if (storageError) logger.error('Failed to remove photo journal file from storage', storageError);
-
-      const { error } = await supabase
-        .from('photo_journal_entries')
-        .delete()
-        .eq('id', entry.id);
-
-      if (error) throw error;
+      await deletePhotoEntry(entry);
       loadEntries();
       setSelectedEntry(null);
     } catch (error) {
@@ -258,21 +179,7 @@ export default function PhotoJournal() {
     setUploading(true);
     try {
       const tagsArray = formData.tags.split(',').map(t => t.trim()).filter(t => t);
-
-      const { error } = await supabase
-        .from('photo_journal_entries')
-        .update({
-          child_name: formData.child_name,
-          title: formData.title,
-          description: formData.description,
-          milestone_type: formData.milestone_type,
-          age_at_capture: formData.age_at_capture,
-          linked_condition: formData.linked_condition,
-          tags: tagsArray
-        })
-        .eq('id', editingEntry.id);
-
-      if (error) throw error;
+      await updatePhotoEntry(editingEntry.id, { ...formData, tags: tagsArray });
 
       closeForm();
       loadEntries();

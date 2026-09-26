@@ -139,7 +139,9 @@ export default function ReportGenerator({ sessionId, onBack }: ReportGeneratorPr
 
   const riskConfig = getRiskConfig(result.risk_level);
   const RiskIcon = riskConfig.icon;
-  const conditionName = language === 'es' ? result.condition.name_es : result.condition.name_en;
+  const conditionName = result.condition
+    ? (language === 'es' ? result.condition.name_es : result.condition.name_en)
+    : 'Screening';
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-2 sm:pt-4 pb-8">

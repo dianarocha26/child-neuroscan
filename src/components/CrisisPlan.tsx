@@ -1,11 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { AlertTriangle, Phone, Heart, Shield, Plus, Edit2, Trash2, Users, X } from 'lucide-react';
-import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useLoadingState } from '../hooks/useLoadingState';
 import { logger } from '../lib/logger';
-import type { CrisisPlan, CrisisContact, CalmingStrategy } from '../types/components';
+import {
+  createCalmingStrategy, createCrisisContact, createCrisisPlan, deleteCalmingStrategy,
+  deleteCrisisContact, deleteCrisisPlan, listCalmingStrategies, listCrisisContacts, listCrisisPlans,
+  updateCalmingStrategy, updateCrisisContact,
+  updateCrisisPlan, type CalmingStrategy, type CrisisContact, type CrisisPlan
+} from '../lib/api/crisis';
 import { PageHeader } from './PageHeader';
 
 export default function CrisisPlanComponent() {
@@ -49,20 +53,32 @@ export default function CrisisPlanComponent() {
 
   const loadData = async () => {
     if (!user) { setLoading(false); return; }
-    try {
-      const [plansRes, contactsRes, strategiesRes] = await Promise.all([
-        supabase.from('crisis_plans').select('*').eq('user_id', user.id),
-        supabase.from('crisis_contacts').select('*').eq('user_id', user.id).order('priority_order'),
-        supabase.from('calming_strategies').select('*').eq('user_id', user.id)
-      ]);
-      if (plansRes.data) setCrisisPlans(plansRes.data);
-      if (contactsRes.data) setContacts(contactsRes.data);
-      if (strategiesRes.data) setStrategies(strategiesRes.data);
-    } catch (error) {
-      logger.error('Error loading crisis plan data:', error);
-    } finally {
-      setLoading(false);
+
+    const [plansResult, contactsResult, strategiesResult] = await Promise.allSettled([
+      listCrisisPlans(user.id),
+      listCrisisContacts(user.id),
+      listCalmingStrategies(user.id)
+    ]);
+
+    if (plansResult.status === 'rejected') {
+      logger.error('Error loading crisis plans:', plansResult.reason);
+    } else {
+      setCrisisPlans(plansResult.value);
     }
+
+    if (contactsResult.status === 'rejected') {
+      logger.error('Error loading emergency contacts:', contactsResult.reason);
+    } else {
+      setContacts(contactsResult.value);
+    }
+
+    if (strategiesResult.status === 'rejected') {
+      logger.error('Error loading calming strategies:', strategiesResult.reason);
+    } else {
+      setStrategies(strategiesResult.value);
+    }
+
+    setLoading(false);
   };
 
   // --- Plan handlers ---
@@ -87,7 +103,6 @@ export default function CrisisPlanComponent() {
     if (!user) return;
     try {
       const payload = {
-        user_id: user.id,
         child_name: planForm.child_name,
         warning_signs: planForm.warning_signs.filter(s => s.trim()),
         immediate_actions: planForm.immediate_actions.filter(s => s.trim()),
@@ -98,26 +113,23 @@ export default function CrisisPlanComponent() {
         additional_notes: planForm.additional_notes || null
       };
       if (editingPlan) {
-        const { error } = await supabase.from('crisis_plans').update(payload).eq('id', editingPlan.id);
-        if (error) throw error;
+        await updateCrisisPlan(editingPlan.id, payload);
       } else {
-        const { error } = await supabase.from('crisis_plans').insert(payload);
-        if (error) throw error;
+        await createCrisisPlan(user.id, payload);
       }
       setShowPlanForm(false); setEditingPlan(null); setPlanForm(emptyPlanForm); loadData();
     } catch (error) {
       logger.error('Error saving crisis plan:', error);
-      alert('Failed to save crisis plan');
+      alert('Failed to save crisis plan. Please try again.');
     }
   };
 
   const handleDeletePlan = async (id: string) => {
     if (!confirm('Delete this crisis plan?')) return;
     try {
-      const { error } = await supabase.from('crisis_plans').delete().eq('id', id);
-      if (error) throw error;
+      await deleteCrisisPlan(id);
       loadData();
-    } catch (error) { logger.error('Error deleting plan:', error); alert('Failed to delete plan'); }
+    } catch (error) { logger.error('Error deleting plan:', error); alert('Failed to delete plan. Please try again.'); }
   };
 
   // --- Contact handlers ---
@@ -141,7 +153,6 @@ export default function CrisisPlanComponent() {
     if (!user) return;
     try {
       const payload = {
-        user_id: user.id,
         contact_name: contactForm.contact_name,
         relationship: contactForm.relationship,
         phone_number: contactForm.phone_number,
@@ -151,26 +162,23 @@ export default function CrisisPlanComponent() {
         notes: contactForm.notes || null
       };
       if (editingContact) {
-        const { error } = await supabase.from('crisis_contacts').update(payload).eq('id', editingContact.id);
-        if (error) throw error;
+        await updateCrisisContact(editingContact.id, payload);
       } else {
-        const { error } = await supabase.from('crisis_contacts').insert(payload);
-        if (error) throw error;
+        await createCrisisContact(user.id, payload);
       }
       setShowContactForm(false); setEditingContact(null); setContactForm(emptyContactForm); loadData();
     } catch (error) {
       logger.error('Error saving contact:', error);
-      alert('Failed to save contact');
+      alert('Failed to save contact. Please try again.');
     }
   };
 
   const handleDeleteContact = async (id: string) => {
     if (!confirm('Delete this contact?')) return;
     try {
-      const { error } = await supabase.from('crisis_contacts').delete().eq('id', id);
-      if (error) throw error;
+      await deleteCrisisContact(id);
       loadData();
-    } catch (error) { logger.error('Error deleting contact:', error); alert('Failed to delete contact'); }
+    } catch (error) { logger.error('Error deleting contact:', error); alert('Failed to delete contact. Please try again.'); }
   };
 
   // --- Strategy handlers ---
@@ -195,7 +203,6 @@ export default function CrisisPlanComponent() {
     if (!user) return;
     try {
       const payload = {
-        user_id: user.id,
         child_name: strategyForm.child_name,
         strategy_name: strategyForm.strategy_name,
         strategy_type: strategyForm.strategy_type,
@@ -206,26 +213,23 @@ export default function CrisisPlanComponent() {
         instructions: strategyForm.instructions.filter(s => s.trim())
       };
       if (editingStrategy) {
-        const { error } = await supabase.from('calming_strategies').update(payload).eq('id', editingStrategy.id);
-        if (error) throw error;
+        await updateCalmingStrategy(editingStrategy.id, payload);
       } else {
-        const { error } = await supabase.from('calming_strategies').insert(payload);
-        if (error) throw error;
+        await createCalmingStrategy(user.id, payload);
       }
       setShowStrategyForm(false); setEditingStrategy(null); setStrategyForm(emptyStrategyForm); loadData();
     } catch (error) {
       logger.error('Error saving strategy:', error);
-      alert('Failed to save calming strategy');
+      alert('Failed to save calming strategy. Please try again.');
     }
   };
 
   const handleDeleteStrategy = async (id: string) => {
     if (!confirm('Delete this calming strategy?')) return;
     try {
-      const { error } = await supabase.from('calming_strategies').delete().eq('id', id);
-      if (error) throw error;
+      await deleteCalmingStrategy(id);
       loadData();
-    } catch (error) { logger.error('Error deleting strategy:', error); alert('Failed to delete strategy'); }
+    } catch (error) { logger.error('Error deleting strategy:', error); alert('Failed to delete strategy. Please try again.'); }
   };
 
   const addArrayField = <T extends object>(setter: React.Dispatch<React.SetStateAction<T>>, field: string, currentArray: string[]) => {
