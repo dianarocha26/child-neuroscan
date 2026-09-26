@@ -30,7 +30,7 @@ export function handleError(error: Error | AppError, context?: Record<string, un
     return new UnexpectedError(error.message, undefined, context);
   }
 
-  logger.error(error.message, {
+  logger.error('Handled error', error, {
     ...context,
     ...appError.context,
     severity: appError.severity,

@@ -71,3 +71,8 @@ Read CLAUDE.md first. This file is the starting point for the phase 3 session; d
 - Reminders "today"/overdue now use the local date instead of UTC.
 - Visual schedule shows the activity icon (`icon_name`, lucide names from `src/components/scheduleIcons.ts`; unknown → Circle) and the activity form has an icon picker.
 
+
+### Task 6: content for the 4 remaining conditions (branch `claude/phase-3-task-6-content-a7gogl`)
+- Migration `20260926030000_seed_remaining_condition_content.sql` adds explanations (EN+ES), 7 recommendations and 5 daily tips each for cerebral palsy, epilepsy, intellectual disability and Tourette. Generated from a script; each condition has at least one recommendation for every risk level (incl. "talk to your pediatrician"). Epilepsy includes standard seizure first aid and the 5-minute emergency rule.
+- Re-runnable: explanations only fill empty columns; rows use fixed ids + `ON CONFLICT (id) DO NOTHING`. Tested twice on a local Postgres 16 against the earlier seed migrations. No code change: tip categories reuse existing `HomeProgramTips` labels.
+- Owner: apply the migration manually in prod. No clinical review yet (see owner decisions).
