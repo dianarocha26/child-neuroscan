@@ -10,6 +10,7 @@ import {
   type Activity, type ActivityTemplate, type VisualSchedule
 } from '../lib/api/schedules';
 import { PageHeader } from './PageHeader';
+import { ChildPicker } from './ChildPicker';
 
 export default function VisualSchedule() {
   const { user } = useAuth();
@@ -347,13 +348,8 @@ export default function VisualSchedule() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label htmlFor="visual-schedule-child-name" className="block text-sm font-medium text-gray-700 mb-1">Child Name</label>
-                <input id="visual-schedule-child-name"
-                  type="text"
-                  required
-                  value={scheduleForm.child_name}
-                  onChange={(e) => setScheduleForm({ ...scheduleForm, child_name: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                />
+                <ChildPicker id="visual-schedule-child-name" required value={scheduleForm.child_name} onChange={(name) => setScheduleForm({ ...scheduleForm, child_name: name })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" />
               </div>
               <div>
                 <label htmlFor="visual-schedule-schedule-name" className="block text-sm font-medium text-gray-700 mb-1">Schedule Name</label>

@@ -16,6 +16,7 @@ import {
   type Appointment, type AppointmentChildTable,
   type NewObservation, type NewQuestion, type NewDocument, type NewFollowup
 } from '../lib/api/appointments';
+import { ChildPicker } from './ChildPicker';
 
 interface AppointmentPrepProps {
   userId: string;
@@ -346,13 +347,8 @@ export default function AppointmentPrep({ userId, onBack }: AppointmentPrepProps
                 <label htmlFor="appointment-prep-child-name" className="block text-sm font-medium text-gray-700 mb-2">
                   {t('Child Name', 'Nombre del Niño')}
                 </label>
-                <input id="appointment-prep-child-name"
-                  type="text"
-                  required
-                  value={formData.child_name}
-                  onChange={(e) => setFormData({ ...formData, child_name: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
+                <ChildPicker id="appointment-prep-child-name" required value={formData.child_name} onChange={(name) => setFormData({ ...formData, child_name: name })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
               </div>
 
               <div>

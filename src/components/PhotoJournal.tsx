@@ -7,6 +7,7 @@ import {
   createPhotoEntry, deletePhotoEntry, listPhotoEntries, updatePhotoEntry,
   type PhotoEntry
 } from '../lib/api/photos';
+import { ChildPicker } from './ChildPicker';
 
 export default function PhotoJournal() {
   const [entries, setEntries] = useState<PhotoEntry[]>([]);
@@ -301,13 +302,8 @@ export default function PhotoJournal() {
                   <label htmlFor="photo-journal-child-s-name" className="block text-sm font-medium text-gray-700 mb-2">
                     Child's Name *
                   </label>
-                  <input id="photo-journal-child-s-name"
-                    type="text"
-                    value={formData.child_name}
-                    onChange={(e) => setFormData({ ...formData, child_name: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    required
-                  />
+                  <ChildPicker id="photo-journal-child-s-name" required value={formData.child_name} onChange={(name) => setFormData({ ...formData, child_name: name })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" />
                 </div>
                 <div>
                   <label htmlFor="photo-journal-age-at-time" className="block text-sm font-medium text-gray-700 mb-2">

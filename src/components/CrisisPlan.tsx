@@ -11,6 +11,7 @@ import {
   updateCrisisPlan, type CalmingStrategy, type CrisisContact, type CrisisPlan
 } from '../lib/api/crisis';
 import { PageHeader } from './PageHeader';
+import { ChildPicker } from './ChildPicker';
 
 export default function CrisisPlanComponent() {
   const { user } = useAuth();
@@ -332,9 +333,8 @@ export default function CrisisPlanComponent() {
                 <form onSubmit={handlePlanSubmit} className="space-y-6">
                   <div>
                     <label htmlFor="crisis-plan-child-name" className="block text-sm font-medium text-gray-700 mb-1">Child Name</label>
-                    <input id="crisis-plan-child-name" type="text" required value={planForm.child_name}
-                      onChange={(e) => setPlanForm({ ...planForm, child_name: e.target.value })}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500" />
+                    <ChildPicker id="crisis-plan-child-name" required value={planForm.child_name} onChange={(name) => setPlanForm({ ...planForm, child_name: name })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500" />
                   </div>
                   <div>
                     <p className="block text-sm font-medium text-gray-700 mb-1">Warning Signs</p>
@@ -604,9 +604,8 @@ export default function CrisisPlanComponent() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label htmlFor="crisis-plan-child-name-2" className="block text-sm font-medium text-gray-700 mb-1">Child Name</label>
-                      <input id="crisis-plan-child-name-2" type="text" required value={strategyForm.child_name}
-                        onChange={(e) => setStrategyForm({ ...strategyForm, child_name: e.target.value })}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500" />
+                      <ChildPicker id="crisis-plan-child-name-2" required value={strategyForm.child_name} onChange={(name) => setStrategyForm({ ...strategyForm, child_name: name })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500" />
                     </div>
                     <div>
                       <label htmlFor="crisis-plan-strategy-name" className="block text-sm font-medium text-gray-700 mb-1">Strategy Name</label>

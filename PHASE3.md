@@ -52,3 +52,10 @@ Read CLAUDE.md first. This file is the starting point for the phase 3 session; d
 ### Decisions (owner delegated, 2026-09-26)
 - Allowed values: goals and medications already had CHECK constraints; only `reminders.reminder_type` lacked one, added in `20260926010000_reminders_type_check.sql` (NOT VALID, safe on existing data). Postgres CHECKs don't narrow generated types, so the literal unions are applied in code when rows are mapped in `src/lib/` (task 2).
 - `conditions` read policy on prod: unknown (baseline migration only creates one if missing). The app no longer depends on it: results with an unreadable condition still show. **Owner: still check the policy in the Supabase dashboard** (it should be `USING (true)` for SELECT).
+
+### Child profiles (branch `claude/child-profiles-ylz3ky`, off phase 3)
+- Uses the existing `children` table (name, date of birth; RLS per parent). No migration. Data calls in `src/lib/api/children.ts`, list shared via `ChildrenContext`.
+- Owner chose option A: pickers fill the existing `child_name` text columns; no `child_id` links. Renaming a child does not update old entries.
+- First sign-in with no children shows a skippable "Your children" screen once per browser (`childrenSetupSeen:<userId>` in localStorage). Header "Children" button reopens it.
+- `ChildPicker` replaces the 11 free-text name fields; free text stays available ("Someone else…") and for names not in the list.
+- Screening: signed-in parents pick a child on the age step; age comes from date of birth and the name step is skipped. Guests unchanged.
