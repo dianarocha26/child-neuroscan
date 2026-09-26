@@ -8,8 +8,10 @@ import {
   type PhotoEntry
 } from '../lib/api/photos';
 import { ChildPicker } from './ChildPicker';
+import { useDialog } from '../contexts/DialogContext';
 
 export default function PhotoJournal() {
+  const { notify, confirm } = useDialog();
   const [entries, setEntries] = useState<PhotoEntry[]>([]);
   const [filteredEntries, setFilteredEntries] = useState<PhotoEntry[]>([]);
   const { loading, setLoading } = useLoadingState();
@@ -107,13 +109,13 @@ export default function PhotoJournal() {
     if (file) {
       const maxSize = 50 * 1024 * 1024; // 50MB
       if (file.size > maxSize) {
-        alert('File size must be less than 50MB');
+        notify('File size must be less than 50MB');
         return;
       }
 
       const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'video/mp4', 'video/webm', 'video/quicktime'];
       if (!validTypes.includes(file.type)) {
-        alert('Please select a valid image or video file');
+        notify('Please select a valid image or video file');
         return;
       }
 
@@ -139,14 +141,14 @@ export default function PhotoJournal() {
       loadEntries();
     } catch (error) {
       logger.error('Error uploading photo/video', error);
-      alert('Failed to upload photo. Please try again.');
+      notify('Failed to upload photo. Please try again.');
     } finally {
       setUploading(false);
     }
   };
 
   const handleDelete = async (entry: PhotoEntry) => {
-    if (!confirm('Are you sure you want to delete this entry?')) return;
+    if (!(await confirm('Are you sure you want to delete this entry?'))) return;
 
     try {
       await deletePhotoEntry(entry);
@@ -154,7 +156,7 @@ export default function PhotoJournal() {
       setSelectedEntry(null);
     } catch (error) {
       logger.error('Error deleting photo journal entry', error);
-      alert('Failed to delete entry. Please try again.');
+      notify('Failed to delete entry. Please try again.');
     }
   };
 
@@ -186,7 +188,7 @@ export default function PhotoJournal() {
       loadEntries();
     } catch (error) {
       logger.error('Error updating photo journal entry', error);
-      alert('Failed to update entry. Please try again.');
+      notify('Failed to update entry. Please try again.');
     } finally {
       setUploading(false);
     }

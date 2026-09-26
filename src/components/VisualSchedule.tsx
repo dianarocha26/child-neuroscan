@@ -11,8 +11,10 @@ import {
 } from '../lib/api/schedules';
 import { PageHeader } from './PageHeader';
 import { ChildPicker } from './ChildPicker';
+import { useDialog } from '../contexts/DialogContext';
 
 export default function VisualSchedule() {
+  const { notify, confirm } = useDialog();
   const { user } = useAuth();
   const [schedules, setSchedules] = useState<VisualSchedule[]>([]);
   const [activities, setActivities] = useState<{ [key: string]: Activity[] }>({});
@@ -94,7 +96,7 @@ export default function VisualSchedule() {
     e.preventDefault();
 
     if (!user) {
-      alert('You must be logged in to create a visual schedule');
+      notify('You must be logged in to create a visual schedule');
       return;
     }
 
@@ -120,7 +122,7 @@ export default function VisualSchedule() {
       loadData();
     } catch (error) {
       logger.error('Error saving schedule:', error);
-      alert('Failed to save schedule');
+      notify('Failed to save schedule');
     }
   };
 
@@ -135,7 +137,7 @@ export default function VisualSchedule() {
   };
 
   const handleDeleteSchedule = async (scheduleId: string) => {
-    if (!confirm('Delete this schedule and all its activities? This cannot be undone.')) return;
+    if (!(await confirm('Delete this schedule and all its activities? This cannot be undone.'))) return;
 
     try {
       await deleteSchedule(scheduleId);
@@ -144,7 +146,7 @@ export default function VisualSchedule() {
       loadData();
     } catch (error) {
       logger.error('Error deleting schedule:', error);
-      alert('Failed to delete schedule');
+      notify('Failed to delete schedule');
     }
   };
 
@@ -183,7 +185,7 @@ export default function VisualSchedule() {
       loadData();
     } catch (error) {
       logger.error('Error saving activity:', error);
-      alert('Failed to save activity');
+      notify('Failed to save activity');
     }
   };
 
@@ -242,14 +244,14 @@ export default function VisualSchedule() {
   };
 
   const handleDeleteActivity = async (activityId: string) => {
-    if (!confirm('Are you sure you want to delete this activity?')) return;
+    if (!(await confirm('Are you sure you want to delete this activity?'))) return;
 
     try {
       await deleteActivity(activityId);
       loadData();
     } catch (error) {
       logger.error('Error deleting activity:', error);
-      alert('Failed to delete activity');
+      notify('Failed to delete activity');
     }
   };
 
@@ -286,7 +288,7 @@ export default function VisualSchedule() {
       loadData();
     } catch (error) {
       logger.error('Error quick-saving activity:', error);
-      alert('Failed to save changes');
+      notify('Failed to save changes');
     }
   };
 

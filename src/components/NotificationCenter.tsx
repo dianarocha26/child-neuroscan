@@ -9,6 +9,7 @@ import {
   type Reminder, type ReminderType
 } from '../lib/api/reminders';
 import { ChildPicker } from './ChildPicker';
+import { useDialog } from '../contexts/DialogContext';
 
 const REMINDER_TYPES: { value: ReminderType; label: string; icon: typeof Pill; color: string }[] = [
   { value: 'medication', label: 'Medication', icon: Pill, color: 'bg-purple-100 text-purple-700' },
@@ -23,6 +24,7 @@ const typeInfo = (type: string) => REMINDER_TYPES.find(t => t.value === type) ||
 const today = () => new Date().toISOString().split('T')[0];
 
 export default function NotificationCenter() {
+  const { notify, confirm } = useDialog();
   const { user } = useAuth();
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const { loading, setLoading } = useLoadingState();
@@ -80,22 +82,22 @@ export default function NotificationCenter() {
         await createReminder(user.id, payload);
       }
       closeForm(); loadData();
-    } catch (error) { logger.error('Error saving reminder:', error); alert('Failed to save reminder'); }
+    } catch (error) { logger.error('Error saving reminder:', error); notify('Failed to save reminder'); }
   };
 
   const handleToggleDone = async (r: Reminder) => {
     try {
       await setReminderActive(r.id, !r.is_active);
       setReminders(prev => prev.map(x => (x.id === r.id ? { ...x, is_active: !r.is_active } : x)));
-    } catch (error) { logger.error('Error updating reminder:', error); alert('Failed to update reminder'); }
+    } catch (error) { logger.error('Error updating reminder:', error); notify('Failed to update reminder'); }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Delete this reminder?')) return;
+    if (!(await confirm('Delete this reminder?'))) return;
     try {
       await deleteReminder(id);
       setReminders(prev => prev.filter(r => r.id !== id));
-    } catch (error) { logger.error('Error deleting reminder:', error); alert('Failed to delete reminder'); }
+    } catch (error) { logger.error('Error deleting reminder:', error); notify('Failed to delete reminder'); }
   };
 
   const formatDate = (d: string) =>

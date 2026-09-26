@@ -12,6 +12,7 @@ import {
   listReportTemplates, listGeneratedReports, createGeneratedReport, compileReportSourceData
 } from '../lib/api/reports';
 import { PageHeader } from './PageHeader';
+import { useDialog } from '../contexts/DialogContext';
 
 // Matches the behavior type saved by BehaviorDiary; every other type counts as challenging.
 const POSITIVE_BEHAVIOR_TYPE = 'Positive Behavior';
@@ -90,6 +91,7 @@ const toReportContent = (report: GeneratedReport): ReportContent => {
 };
 
 export default function ComprehensiveReportGenerator() {
+  const { notify } = useDialog();
   const { user } = useAuth();
   const { t } = useLanguage();
 
@@ -137,12 +139,12 @@ export default function ComprehensiveReportGenerator() {
 
   const generateReport = async () => {
     if (!selectedTemplate || !dateRangeStart || !dateRangeEnd || !reportTitle) {
-      alert('Please fill in all required fields');
+      notify('Please fill in all required fields');
       return;
     }
 
     if (!user) {
-      alert('You must be logged in to generate reports');
+      notify('You must be logged in to generate reports');
       return;
     }
 
@@ -171,7 +173,7 @@ export default function ComprehensiveReportGenerator() {
       setTimeout(() => setShowSuccess(false), 4000);
     } catch (error) {
       logger.error('Error generating report:', error);
-      alert('Failed to generate report. Please try again.');
+      notify('Failed to generate report. Please try again.');
     } finally {
       setGenerating(false);
     }

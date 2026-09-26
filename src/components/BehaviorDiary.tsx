@@ -9,8 +9,10 @@ import {
 } from '../lib/api/behavior';
 import { PageHeader } from './PageHeader';
 import { ChildPicker } from './ChildPicker';
+import { useDialog } from '../contexts/DialogContext';
 
 export default function BehaviorDiary() {
+  const { notify, confirm } = useDialog();
   const { user } = useAuth();
   const [entries, setEntries] = useState<BehaviorEntry[]>([]);
   const [triggers, setTriggers] = useState<BehaviorTrigger[]>([]);
@@ -111,7 +113,7 @@ export default function BehaviorDiary() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) {
-      alert('You must be logged in');
+      notify('You must be logged in');
       return;
     }
 
@@ -144,18 +146,18 @@ export default function BehaviorDiary() {
       loadData();
     } catch (error) {
       logger.error('Error saving behavior entry:', error);
-      alert('Failed to save entry. Please try again.');
+      notify('Failed to save entry. Please try again.');
     }
   };
 
   const handleDelete = async (entryId: string) => {
-    if (!confirm('Are you sure you want to delete this entry?')) return;
+    if (!(await confirm('Are you sure you want to delete this entry?'))) return;
     try {
       await deleteBehaviorEntry(entryId);
       loadData();
     } catch (error) {
       logger.error('Error deleting entry:', error);
-      alert('Failed to delete entry. Please try again.');
+      notify('Failed to delete entry. Please try again.');
     }
   };
 
