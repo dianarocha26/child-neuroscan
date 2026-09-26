@@ -162,8 +162,8 @@ export function GlobalSearch({ isOpen, onClose, onNavigate }: GlobalSearchProps)
       aria-modal="true"
       aria-label="Search dialog"
     >
-      <div className="w-full max-w-2xl bg-white dark:bg-gray-800 rounded-2xl shadow-2xl overflow-hidden animate-in">
-        <div className="flex items-center gap-3 p-4 border-b border-gray-200 dark:border-gray-700">
+      <div className="w-full max-w-2xl bg-white rounded-2xl shadow-2xl overflow-hidden animate-in">
+        <div className="flex items-center gap-3 p-4 border-b border-gray-200">
           <Search className="w-5 h-5 text-gray-400" aria-hidden="true" />
           <input
             ref={inputRef}
@@ -172,13 +172,13 @@ export function GlobalSearch({ isOpen, onClose, onNavigate }: GlobalSearchProps)
             onChange={e => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Search tools and help"
-            className="flex-1 min-w-0 bg-transparent border-none outline-none rounded-md px-2 py-1 text-lg text-gray-900 dark:text-white placeholder-gray-500 focus-visible:ring-2 focus-visible:ring-teal-500"
+            className="flex-1 min-w-0 bg-transparent border-none outline-none rounded-md px-2 py-1 text-lg text-gray-900 placeholder-gray-500 focus-visible:ring-2 focus-visible:ring-teal-500"
             aria-label="Search tools and help"
             autoComplete="off"
           />
           <button
             onClick={onClose}
-            className="p-2.5 -mr-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500"
+            className="p-2.5 -mr-1 hover:bg-gray-100 rounded-lg transition focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500"
             aria-label="Close search"
           >
             <X className="w-5 h-5 text-gray-500" aria-hidden="true" />
@@ -187,7 +187,7 @@ export function GlobalSearch({ isOpen, onClose, onNavigate }: GlobalSearchProps)
 
         <div className="max-h-[calc(100dvh-9rem)] sm:max-h-96 overflow-y-auto overscroll-contain">
           {results.length === 0 ? (
-            <div className="p-8 text-center text-gray-500 dark:text-gray-400">
+            <div className="p-8 text-center text-gray-500">
               <Search className="w-12 h-12 mx-auto mb-3 opacity-50" />
               <p>No results found for "{query}"</p>
             </div>
@@ -199,21 +199,21 @@ export function GlobalSearch({ isOpen, onClose, onNavigate }: GlobalSearchProps)
                   <button
                     key={result.id}
                     onClick={result.action}
-                    className={`w-full flex items-start gap-4 p-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition ${
-                      index === selectedIndex ? 'bg-gray-50 dark:bg-gray-700' : ''
+                    className={`w-full flex items-start gap-4 p-4 hover:bg-gray-50 transition ${
+                      index === selectedIndex ? 'bg-gray-50' : ''
                     }`}
                   >
                     <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center flex-shrink-0">
                       <Icon className="w-5 h-5 text-white" />
                     </div>
                     <div className="flex-1 text-left">
-                      <div className="font-semibold text-gray-900 dark:text-white">
+                      <div className="font-semibold text-gray-900">
                         {result.title}
                       </div>
-                      <div className="text-sm text-gray-600 dark:text-gray-400">
+                      <div className="text-sm text-gray-600">
                         {result.description}
                       </div>
-                      <div className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                      <div className="text-xs text-gray-500 mt-1">
                         {result.category}
                       </div>
                     </div>
@@ -224,11 +224,11 @@ export function GlobalSearch({ isOpen, onClose, onNavigate }: GlobalSearchProps)
           )}
         </div>
 
-        <div className="hidden sm:flex p-3 bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 text-xs text-gray-600 dark:text-gray-400 items-center justify-between">
+        <div className="hidden sm:flex p-3 bg-gray-50 border-t border-gray-200 text-xs text-gray-600 items-center justify-between">
           <div className="flex gap-4">
-            <span><kbd className="px-2 py-1 bg-white dark:bg-gray-800 rounded border border-gray-300 dark:border-gray-600">↑↓</kbd> Navigate</span>
-            <span><kbd className="px-2 py-1 bg-white dark:bg-gray-800 rounded border border-gray-300 dark:border-gray-600">Enter</kbd> Select</span>
-            <span><kbd className="px-2 py-1 bg-white dark:bg-gray-800 rounded border border-gray-300 dark:border-gray-600">Esc</kbd> Close</span>
+            <span><kbd className="px-2 py-1 bg-white rounded border border-gray-300">↑↓</kbd> Navigate</span>
+            <span><kbd className="px-2 py-1 bg-white rounded border border-gray-300">Enter</kbd> Select</span>
+            <span><kbd className="px-2 py-1 bg-white rounded border border-gray-300">Esc</kbd> Close</span>
           </div>
         </div>
       </div>

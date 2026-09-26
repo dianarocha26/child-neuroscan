@@ -10,6 +10,7 @@ import {
   type Activity, type ActivityTemplate, type VisualSchedule
 } from '../lib/api/schedules';
 import { PageHeader } from './PageHeader';
+import { ErrorState, LOAD_ERROR_MESSAGE } from './ErrorState';
 import { SCHEDULE_ICONS, scheduleIcon } from './scheduleIcons';
 import { ChildPicker } from './ChildPicker';
 import { useDialog } from '../contexts/DialogContext';
@@ -21,6 +22,7 @@ export default function VisualSchedule() {
   const [activities, setActivities] = useState<{ [key: string]: Activity[] }>({});
   const [templates, setTemplates] = useState<ActivityTemplate[]>([]);
   const { loading, setLoading } = useLoadingState();
+  const [loadFailed, setLoadFailed] = useState(false);
   const [showScheduleForm, setShowScheduleForm] = useState(false);
   const [selectedSchedule, setSelectedSchedule] = useState<string | null>(null);
   const [showActivityForm, setShowActivityForm] = useState(false);
@@ -51,6 +53,7 @@ export default function VisualSchedule() {
   }, [user]);
 
   const loadData = async () => {
+    setLoadFailed(false);
     if (!user) {
       logger.error('Cannot load data: user is null');
       setLoading(false);
@@ -72,6 +75,7 @@ export default function VisualSchedule() {
 
       if (templatesResult.status === 'rejected') {
         logger.error('Error loading activity templates:', templatesResult.reason);
+        setLoadFailed(true);
       } else {
         setTemplates(templatesResult.value);
       }
@@ -81,6 +85,7 @@ export default function VisualSchedule() {
         const schedule = schedulesData[index];
         if (result.status === 'rejected') {
           logger.error('Error loading schedule activities:', result.reason);
+          setLoadFailed(true);
         } else {
           activitiesMap[schedule.id] = result.value;
         }
@@ -88,6 +93,7 @@ export default function VisualSchedule() {
       setActivities(activitiesMap);
     } catch (error) {
       logger.error('Error loading visual schedules:', error);
+      setLoadFailed(true);
     } finally {
       setLoading(false);
     }
@@ -315,6 +321,10 @@ export default function VisualSchedule() {
   const currentActivities = selectedSchedule ? (activities[selectedSchedule] || []) : [];
   const completedCount = currentActivities.filter(a => a.is_completed).length;
   const totalCount = currentActivities.length;
+
+  if (loadFailed) {
+    return <ErrorState inline message={LOAD_ERROR_MESSAGE} onRetry={() => { setLoadFailed(false); setLoading(true); loadData(); }} />;
+  }
 
   if (loading) {
     return (

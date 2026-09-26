@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { LogIn, Mail, Lock, AlertCircle } from 'lucide-react';
+import { LogIn, Mail, Lock, AlertCircle, CheckCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { validation } from '../lib/validation';
 
@@ -10,15 +10,25 @@ interface LoginProps {
 }
 
 export function Login({ onSwitchToSignUp, onLoginSuccess, onForgotPassword }: LoginProps) {
-  const { signIn } = useAuth();
+  const { signIn, resendConfirmation } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [unconfirmed, setUnconfirmed] = useState(false);
+  const [resendState, setResendState] = useState<'idle' | 'sending' | 'sent' | 'failed'>('idle');
+
+  const handleResend = async () => {
+    setResendState('sending');
+    const { error } = await resendConfirmation(email);
+    setResendState(error ? 'failed' : 'sent');
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setUnconfirmed(false);
+    setResendState('idle');
     setLoading(true);
 
     const emailValidation = validation.email(email);
@@ -38,7 +48,12 @@ export function Login({ onSwitchToSignUp, onLoginSuccess, onForgotPassword }: Lo
     const { error } = await signIn(email, password);
 
     if (error) {
-      setError(error.message || 'Invalid email or password');
+      if (error.code === 'email_not_confirmed') {
+        setUnconfirmed(true);
+        setError('Your account needs verification. Check your email.');
+      } else {
+        setError('Email or password is incorrect. If you just signed up, confirm your email first.');
+      }
       setLoading(false);
     } else {
       onLoginSuccess();
@@ -59,7 +74,29 @@ export function Login({ onSwitchToSignUp, onLoginSuccess, onForgotPassword }: Lo
         {error && (
           <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
             <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-            <p className="text-sm text-red-800">{error}</p>
+            <div className="text-sm text-red-800">
+              <p>{error}</p>
+              {unconfirmed && resendState !== 'sent' && (
+                <button
+                  type="button"
+                  onClick={handleResend}
+                  disabled={resendState === 'sending'}
+                  className="mt-2 font-semibold underline hover:text-red-900 disabled:opacity-60"
+                >
+                  {resendState === 'sending' ? 'Sending...' : 'Resend confirmation email'}
+                </button>
+              )}
+              {resendState === 'failed' && (
+                <p className="mt-1">Couldn't send the email. Please wait a minute and try again.</p>
+              )}
+            </div>
+          </div>
+        )}
+
+        {resendState === 'sent' && (
+          <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg flex items-start gap-3">
+            <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+            <p className="text-sm text-green-800">Confirmation email sent to {email}. Check your inbox and spam folder.</p>
           </div>
         )}
 

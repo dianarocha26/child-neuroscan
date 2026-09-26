@@ -8,11 +8,13 @@ import { ThinkingIllustration, EmptyStateIllustration } from './FriendlyIllustra
 import type { BehaviorPattern, Correlation, WeeklySummary, TriggerAnalysis } from '../types/components';
 import { listBehaviorPatterns, listCorrelations, listWeeklySummaries, listTriggerAnalysis } from '../lib/api/analytics';
 import { PageHeader } from './PageHeader';
+import { ErrorState, LOAD_ERROR_MESSAGE } from './ErrorState';
 
 export default function AnalyticsDashboard() {
   const { user } = useAuth();
   const { t } = useLanguage();
   const { loading, setLoading } = useLoadingState();
+  const [loadFailed, setLoadFailed] = useState(false);
   const [timeRange, setTimeRange] = useState('30days');
 
   const [patterns, setPatterns] = useState<BehaviorPattern[]>([]);
@@ -27,6 +29,7 @@ export default function AnalyticsDashboard() {
   }, [user, timeRange]);
 
   const loadAnalytics = async () => {
+    setLoadFailed(false);
     if (!user) {
       logger.error('Cannot load analytics: user is null');
       setLoading(false);
@@ -62,29 +65,34 @@ export default function AnalyticsDashboard() {
 
       if (patternsResult.status === 'rejected') {
         logger.error('Error loading behavior patterns:', patternsResult.reason);
+        setLoadFailed(true);
       } else {
         setPatterns(patternsResult.value);
       }
 
       if (correlationsResult.status === 'rejected') {
         logger.error('Error loading correlations:', correlationsResult.reason);
+        setLoadFailed(true);
       } else {
         setCorrelations(correlationsResult.value);
       }
 
       if (summariesResult.status === 'rejected') {
         logger.error('Error loading weekly summaries:', summariesResult.reason);
+        setLoadFailed(true);
       } else {
         setWeeklySummaries(summariesResult.value);
       }
 
       if (triggersResult.status === 'rejected') {
         logger.error('Error loading trigger analysis:', triggersResult.reason);
+        setLoadFailed(true);
       } else {
         setTriggerAnalysis(triggersResult.value);
       }
     } catch (error) {
       logger.error('Error loading analytics:', error);
+      setLoadFailed(true);
     } finally {
       setLoading(false);
     }
@@ -100,6 +108,10 @@ export default function AnalyticsDashboard() {
   const formatCorrelationText = (factorA: string, factorB: string) => {
     return `${factorA.replace(/_/g, ' ')} → ${factorB.replace(/_/g, ' ')}`;
   };
+
+  if (loadFailed) {
+    return <ErrorState inline message={LOAD_ERROR_MESSAGE} onRetry={() => { setLoadFailed(false); setLoading(true); loadAnalytics(); }} />;
+  }
 
   if (loading) {
     return (

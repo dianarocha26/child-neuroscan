@@ -11,6 +11,7 @@ import {
   updateCrisisPlan, type CalmingStrategy, type CrisisContact, type CrisisPlan
 } from '../lib/api/crisis';
 import { PageHeader } from './PageHeader';
+import { ErrorState, LOAD_ERROR_MESSAGE } from './ErrorState';
 import { ChildPicker } from './ChildPicker';
 import { useDialog } from '../contexts/DialogContext';
 
@@ -22,6 +23,7 @@ export default function CrisisPlanComponent() {
   const [contacts, setContacts] = useState<CrisisContact[]>([]);
   const [strategies, setStrategies] = useState<CalmingStrategy[]>([]);
   const { loading, setLoading } = useLoadingState();
+  const [loadFailed, setLoadFailed] = useState(false);
   const [activeTab, setActiveTab] = useState<'plan' | 'contacts' | 'strategies'>('plan');
 
   const [showPlanForm, setShowPlanForm] = useState(false);
@@ -55,6 +57,7 @@ export default function CrisisPlanComponent() {
   useEffect(() => { if (user) loadData(); }, [user]);
 
   const loadData = async () => {
+    setLoadFailed(false);
     if (!user) { setLoading(false); return; }
 
     const [plansResult, contactsResult, strategiesResult] = await Promise.allSettled([
@@ -65,18 +68,21 @@ export default function CrisisPlanComponent() {
 
     if (plansResult.status === 'rejected') {
       logger.error('Error loading crisis plans:', plansResult.reason);
+      setLoadFailed(true);
     } else {
       setCrisisPlans(plansResult.value);
     }
 
     if (contactsResult.status === 'rejected') {
       logger.error('Error loading emergency contacts:', contactsResult.reason);
+      setLoadFailed(true);
     } else {
       setContacts(contactsResult.value);
     }
 
     if (strategiesResult.status === 'rejected') {
       logger.error('Error loading calming strategies:', strategiesResult.reason);
+      setLoadFailed(true);
     } else {
       setStrategies(strategiesResult.value);
     }
@@ -244,6 +250,10 @@ export default function CrisisPlanComponent() {
     newArray[index] = value;
     setter((prev) => ({ ...prev, [field]: newArray }));
   };
+
+  if (loadFailed) {
+    return <ErrorState inline message={LOAD_ERROR_MESSAGE} onRetry={() => { setLoadFailed(false); setLoading(true); loadData(); }} />;
+  }
 
   if (loading) {
     return (
