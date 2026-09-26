@@ -89,42 +89,6 @@ export const ThinkingIllustration = () => (
   </svg>
 );
 
-export const CelebrationIllustration = () => (
-  <svg viewBox="0 0 300 300" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
-    <circle cx="150" cy="150" r="100" fill="#FEF3C7" opacity="0.5"/>
-
-    <circle cx="150" cy="160" r="50" fill="#FED7AA"/>
-    <circle cx="150" cy="130" r="35" fill="#FED7AA"/>
-
-    <circle cx="138" cy="125" r="6" fill="#1F2937"/>
-    <circle cx="162" cy="125" r="6" fill="#1F2937"/>
-    <path d="M 138 140 Q 150 155 162 140" stroke="#1F2937" strokeWidth="3" strokeLinecap="round" fill="none"/>
-
-    <path d="M 120 145 Q 115 135 110 140" stroke="#0EA5E9" strokeWidth="8" strokeLinecap="round" fill="none"/>
-    <path d="M 190 140 Q 185 135 180 145" stroke="#0EA5E9" strokeWidth="8" strokeLinecap="round" fill="none"/>
-
-    <circle cx="200" cy="80" r="6" fill="#FBBF24">
-      <animate attributeName="cy" values="80;60;80" dur="1s" repeatCount="indefinite"/>
-      <animate attributeName="opacity" values="1;0;1" dur="1s" repeatCount="indefinite"/>
-    </circle>
-    <circle cx="220" cy="100" r="5" fill="#F472B6">
-      <animate attributeName="cy" values="100;80;100" dur="1.2s" repeatCount="indefinite"/>
-      <animate attributeName="opacity" values="1;0;1" dur="1.2s" repeatCount="indefinite"/>
-    </circle>
-    <circle cx="100" cy="80" r="6" fill="#34D399">
-      <animate attributeName="cy" values="80;60;80" dur="1.1s" repeatCount="indefinite"/>
-      <animate attributeName="opacity" values="1;0;1" dur="1.1s" repeatCount="indefinite"/>
-    </circle>
-    <circle cx="80" cy="95" r="5" fill="#A78BFA">
-      <animate attributeName="cy" values="95;75;95" dur="1.3s" repeatCount="indefinite"/>
-      <animate attributeName="opacity" values="1;0;1" dur="1.3s" repeatCount="indefinite"/>
-    </circle>
-
-    <path d="M 210 120 L 220 110 M 215 120 L 215 105" stroke="#FBBF24" strokeWidth="3" strokeLinecap="round"/>
-    <path d="M 90 120 L 80 110 M 85 120 L 85 105" stroke="#34D399" strokeWidth="3" strokeLinecap="round"/>
-  </svg>
-);
-
 export const LoadingIllustration = () => (
   <svg viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
     <circle cx="100" cy="100" r="70" fill="#DBEAFE" opacity="0.3">
@@ -143,57 +107,6 @@ export const LoadingIllustration = () => (
     </circle>
     <circle cx="130" cy="100" r="10" fill="#0EA5E9">
       <animate attributeName="cy" values="100;90;100" dur="1s" begin="0.4s" repeatCount="indefinite"/>
-    </circle>
-  </svg>
-);
-
-export const ErrorIllustration = () => (
-  <svg viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
-    <circle cx="100" cy="100" r="80" fill="#FEE2E2"/>
-
-    <circle cx="100" cy="100" r="45" fill="#FED7AA"/>
-
-    <circle cx="85" cy="95" r="5" fill="#1F2937">
-      <animate attributeName="cy" values="95;97;95" dur="0.5s" repeatCount="1"/>
-    </circle>
-    <circle cx="115" cy="95" r="5" fill="#1F2937">
-      <animate attributeName="cy" values="95;97;95" dur="0.5s" repeatCount="1"/>
-    </circle>
-
-    <path d="M 80 120 Q 100 110 120 120" stroke="#1F2937" strokeWidth="3" strokeLinecap="round" fill="none"/>
-
-    <path d="M 70 75 L 75 70 M 75 75 L 70 70" stroke="#EF4444" strokeWidth="3" strokeLinecap="round"/>
-    <path d="M 125 70 L 130 75 M 125 75 L 130 70" stroke="#EF4444" strokeWidth="3" strokeLinecap="round"/>
-  </svg>
-);
-
-export const MeditationIllustration = () => (
-  <svg viewBox="0 0 250 250" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
-    <circle cx="125" cy="125" r="100" fill="#E0E7FF" opacity="0.3">
-      <animate attributeName="r" values="100;105;100" dur="4s" repeatCount="indefinite"/>
-      <animate attributeName="opacity" values="0.3;0.5;0.3" dur="4s" repeatCount="indefinite"/>
-    </circle>
-
-    <ellipse cx="125" cy="180" rx="40" ry="15" fill="#A78BFA" opacity="0.4"/>
-
-    <circle cx="125" cy="100" r="30" fill="#FED7AA"/>
-
-    <circle cx="115" cy="95" r="3" fill="#1F2937"/>
-    <circle cx="135" cy="95" r="3" fill="#1F2937"/>
-
-    <ellipse cx="125" cy="105" rx="6" ry="3" fill="#1F2937" opacity="0.4"/>
-
-    <path d="M 95 130 Q 90 120 85 125 L 80 155 Q 90 160 95 150 Z" fill="#A78BFA"/>
-    <path d="M 155 125 Q 160 120 165 125 L 170 155 Q 160 160 155 150 Z" fill="#A78BFA"/>
-
-    <ellipse cx="125" cy="140" rx="25" ry="30" fill="#C4B5FD"/>
-    <ellipse cx="125" cy="165" rx="35" ry="20" fill="#C4B5FD"/>
-
-    <circle cx="180" cy="80" r="4" fill="#A78BFA" opacity="0.6">
-      <animate attributeName="cy" values="80;75;80" dur="3s" repeatCount="indefinite"/>
-    </circle>
-    <circle cx="70" cy="90" r="3" fill="#A78BFA" opacity="0.6">
-      <animate attributeName="cy" values="90;85;90" dur="3.5s" repeatCount="indefinite"/>
     </circle>
   </svg>
 );

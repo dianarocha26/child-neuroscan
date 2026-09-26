@@ -36,7 +36,7 @@ src/
   App.tsx           Screen state machine, screening flow state, app header, global search, mobile nav
   components/       Screens (Login, LandingPage, Questionnaire, Results, BehaviorDiary, ...)
                     and shared UI (ErrorBoundary, LoadingSpinner, OfflineIndicator, ...)
-  contexts/         AuthContext, LanguageContext, ThemeContext
+  contexts/         AuthContext, LanguageContext, ChildrenContext, DialogContext
   hooks/            Small shared hooks (e.g. online status, loading state)
   lib/
     supabase.ts     The single Supabase client; throws if env vars are missing
@@ -117,10 +117,9 @@ Database content has parallel columns (`name_en` / `name_es`,
 
 ## Theming
 
-`ThemeContext` supports light/dark/system, but dark mode is switched off
-(`DARK_MODE_ENABLED = false`) because most screens have no `dark:` styles and
-became unreadable. The app is light-only for now, and `index.html` declares
-`color-scheme: light` so native form controls match.
+The app is light-only. The unused dark-mode code (`ThemeContext`, `dark:`
+classes) was removed in phase 3; `index.html` declares `color-scheme: light` so
+native form controls match. Adding dark mode back means styling every screen.
 
 ## Service worker
 

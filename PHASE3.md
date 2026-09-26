@@ -6,7 +6,7 @@ Read CLAUDE.md first. This file is the starting point for the phase 3 session; d
 - Supabase project: **gzzknitztrtifhyciqit** (fresh, built with `supabase db push` from `supabase/migrations/`). The old project `bmgbpnwheaalmalyusep` had no real users and is retired; nobody on the team has dashboard access to it.
 - Vercel env points at gzz… (Production + Preview). Auth Site URL and redirect URLs set for childneuroscan.com and www.
 - ASD questions copied from the old project into `20260926000000_seed_asd_questions.sql` (15 questions) via `scripts/export-questions.mjs`.
-- App is English-only (`SPANISH_ENABLED` in LanguageContext) and light-only (`DARK_MODE_ENABLED` in ThemeContext).
+- App is English-only (`SPANISH_ENABLED` in LanguageContext) and light-only (dark-mode code removed in task 7).
 - Baselines: `tsc` 22 errors, `eslint src` 9 errors, 122 unit tests passing.
 
 ## Phase 3 scope (in priority order)
@@ -76,3 +76,8 @@ Read CLAUDE.md first. This file is the starting point for the phase 3 session; d
 - Migration `20260926030000_seed_remaining_condition_content.sql` adds explanations (EN+ES), 7 recommendations and 5 daily tips each for cerebral palsy, epilepsy, intellectual disability and Tourette. Generated from a script; each condition has at least one recommendation for every risk level (incl. "talk to your pediatrician"). Epilepsy includes standard seizure first aid and the 5-minute emergency rule.
 - Re-runnable: explanations only fill empty columns; rows use fixed ids + `ON CONFLICT (id) DO NOTHING`. Tested twice on a local Postgres 16 against the earlier seed migrations. No code change: tip categories reuse existing `HomeProgramTips` labels.
 - Owner: apply the migration manually in prod. No clinical review yet (see owner decisions).
+
+### Task 7: dead code (branch `claude/phase-3-task-7-dead-code-onxm2t`)
+- Removed (found with `npx knip`, each checked by grep): `FormField.tsx`, `ThemeContext` (dark mode was hard-disabled; provider was inert), every `dark:` class, unused exports in `exportUtils` (exportToPDF, shareReport, copyToClipboard, exportMultipleFormats), `serviceWorker` (clearServiceWorkerCache), `FriendlyIllustrations` (Celebration, Error, Meditation), duplicate default exports of `ErrorState`/`ResponsiveModal`. No unused dependencies. No visible change.
+- Kept on purpose: `public/sw.js` (registered by URL), `scripts/export-questions.mjs` (manual tool), exports used inside their own module or tests (`unwrapMaybe`, `UnexpectedError`, report mappers, reminderAlerts constants), unused exported types, generated `src/types/supabase.ts`. `tailwind.config.js` still has `darkMode: 'class'` (harmless; keeps OS dark mode from applying if `dark:` classes come back).
+- Checks: tsc 0 errors, eslint 0 errors (24 → 23 warnings), 134 tests pass, build OK.

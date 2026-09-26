@@ -115,7 +115,7 @@ and shows a blank page.
 │   ├── main.tsx               Entry: providers + service worker registration
 │   ├── App.tsx                Screen state machine (all navigation lives here)
 │   ├── components/            One component per screen/feature, plus shared UI
-│   ├── contexts/              AuthContext, LanguageContext, ThemeContext
+│   ├── contexts/              AuthContext, LanguageContext, ChildrenContext, DialogContext
 │   ├── hooks/                 Small shared hooks
 │   ├── lib/                   Supabase client, data helpers, export, logging, dates
 │   └── types/                 Shared TypeScript types
