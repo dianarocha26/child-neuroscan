@@ -38,10 +38,10 @@ Read CLAUDE.md first. This file is the starting point for the phase 3 session; d
   `npx supabase db start && npx supabase gen types typescript --local --schema public > src/types/supabase.ts`.
   Needs Docker. `supabase/config.toml` is committed for this.
 - Shared row types in `src/types/components.ts` and `src/types/database.ts` are aliases of generated `Tables<...>`; JSON columns are mapped in `src/lib/database.ts` (screening results) and `src/lib/reports.ts` (report templates/generated reports), trusting shapes this app writes.
-- Behavior change: a screening result whose condition can't be read (e.g. RLS) is now skipped with a `logger.warn` instead of crashing the page.
+- Behavior change: a screening result whose condition can't be read (e.g. RLS) is kept and shown as "Screening" with a `logger.warn`, instead of crashing the page.
 - tsc 22 → 0, eslint errors 9 → 0 (26 warnings). CI typecheck and lint are now blocking.
 - Follow-ups (task 2): several components still keep local copies of row types (GoalTracker, MedicationTracker, NotificationCenter, Community, ResourceFinder, AppointmentPrep, VideoLibrary); move them to shared aliases along with the data-layer move.
 
-### Open questions for the owner
-- Text columns that used to be literal unions in the code (goal status/priority, medication type, reminder type) are plain `text` in the DB. Add CHECK constraints or enums so the generated types narrow again?
-- What is the prod RLS policy on `conditions`? If it filters `is_active`, deactivating a condition hides parents' past screenings.
+### Decisions (owner delegated, 2026-09-26)
+- Allowed values: goals and medications already had CHECK constraints; only `reminders.reminder_type` lacked one, added in `20260926010000_reminders_type_check.sql` (NOT VALID, safe on existing data). Postgres CHECKs don't narrow generated types, so the literal unions are applied in code when rows are mapped in `src/lib/` (task 2).
+- `conditions` read policy on prod: unknown (baseline migration only creates one if missing). The app no longer depends on it: results with an unreadable condition still show. **Owner: still check the policy in the Supabase dashboard** (it should be `USING (true)` for SELECT).

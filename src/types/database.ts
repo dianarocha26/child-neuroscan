@@ -31,8 +31,11 @@ export type ScreeningResult = Omit<
   domain_scores: Record<string, DomainScore>;
 };
 
-/** Screening result as read back with its condition embedded */
-export type ScreeningResultWithCondition = ScreeningResult & { condition: Condition };
+/**
+ * Screening result as read back with its condition embedded. condition is null
+ * when the conditions row can't be read (e.g. hidden by RLS); the result is kept.
+ */
+export type ScreeningResultWithCondition = ScreeningResult & { condition: Condition | null };
 
 export type RecommendationCategory = Tables<'recommendation_categories'>;
 

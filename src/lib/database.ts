@@ -197,9 +197,7 @@ export async function getUserScreeningResults(userId: string): Promise<Screening
     .order('created_at', { ascending: false });
 
   if (error) throw error;
-  return (data || [])
-    .map(toScreeningResultWithCondition)
-    .filter((r): r is ScreeningResultWithCondition => r !== null);
+  return (data || []).map(toScreeningResultWithCondition);
 }
 
 export async function getScreeningResultById(id: string): Promise<ScreeningResultWithCondition | null> {
@@ -269,12 +267,11 @@ function toScreeningResult(row: Tables<'screening_results'>): ScreeningResult {
 
 function toScreeningResultWithCondition(
   row: Tables<'screening_results'> & { condition: Condition | null }
-): ScreeningResultWithCondition | null {
+): ScreeningResultWithCondition {
   const { condition, ...rest } = row;
   if (!condition) {
-    // Condition hidden (e.g. by RLS) or missing; the result can't be shown without it.
+    // Condition hidden (e.g. by RLS on conditions); keep the result, the UI shows a fallback name.
     logger.warn('Screening result has no readable condition:', row.id);
-    return null;
   }
   return { ...toScreeningResult(rest), condition };
 }
