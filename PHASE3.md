@@ -10,6 +10,10 @@ Read CLAUDE.md first. This file is the starting point for the phase 3 session; d
 - Baselines: `tsc` 22 errors, `eslint src` 9 errors, 122 unit tests passing.
 
 ## Phase 3 scope (in priority order)
+0. **Auth emails and messages (do first)**:
+   - After sign-up, show "Check your email to confirm your account".
+   - On login failure, handle `email_not_confirmed` ("Your account needs verification. Check your email.") and add a "Resend confirmation email" button (`supabase.auth.resend`). For other failures, say "Email or password is incorrect. If you just signed up, confirm your email first."
+   - Branded emails: custom SMTP (e.g. Resend) with sender `ChildNeuroScan <no-reply@childneuroscan.com>`, which needs owner DNS setup. Then rewrite the Supabase email templates (confirm, reset password) in the app's voice.
 1. **Generated DB types**: `npx supabase gen types typescript --project-id gzzknitztrtifhyciqit > src/types/supabase.ts`, wire into the Supabase client, fix the 22 tsc errors, then make typecheck and lint blocking in CI.
 2. **Data layer**: move ad-hoc `supabase.from(...)` calls in components into `src/lib/` functions with typed results and one error pattern.
 3. **Replace `alert()`/`confirm()`** (~56 places) with the existing Toast and ResponsiveModal components.
