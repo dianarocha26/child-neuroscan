@@ -43,7 +43,7 @@ export class ErrorBoundary extends Component<Props, State> {
       errorCount: this.state.errorCount + 1
     });
 
-    logger.error('Error caught by boundary', {
+    logger.error('Error caught by boundary', error, {
       error: error.message,
       stack: error.stack,
       componentStack: errorInfo?.componentStack,
