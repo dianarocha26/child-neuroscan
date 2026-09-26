@@ -61,7 +61,10 @@ export default function VideoLibrary({ userId, onBack }: VideoLibraryProps) {
     setSelectedVideo(video);
 
     try {
-      await recordVideoView(video.id, video.views || 0);
+      await recordVideoView(video.id);
+      const views = (video.views || 0) + 1;
+      setSelectedVideo(v => (v?.id === video.id ? { ...v, views } : v));
+      setVideos(vs => vs.map(v => (v.id === video.id ? { ...v, views } : v)));
     } catch (error) {
       logger.error('Error recording video view:', error);
     }

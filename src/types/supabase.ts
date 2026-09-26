@@ -4878,6 +4878,7 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      increment_video_views: { Args: { p_video_id: string }; Returns: undefined };
       is_group_member: { Args: { gid: string }; Returns: boolean };
     };
     Enums: {
