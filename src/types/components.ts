@@ -1,7 +1,17 @@
 import type { Tables } from './supabase';
+import type { CrisisPlan } from '../lib/api/crisis';
+
+export type { BehaviorPattern, Correlation, WeeklySummary, TriggerAnalysis } from '../lib/api/analytics';
+export type { CrisisPlan } from '../lib/api/crisis';
 
 // Row types come from the generated schema (src/types/supabase.ts).
 // Only JSON columns and joined relations are narrowed here.
+// Each api module now owns its own row type (Reminder, SensoryProfile,
+// VisualSchedule, Activity, ActivityTemplate, BehaviorTrigger,
+// BehaviorIntervention, RewardChart, RewardEntry, RewardGoal live in their
+// lib/api/*.ts modules, not here). CrisisPlan/BehaviorPattern/etc. above are
+// re-exported from their api modules because ReportData / AnalyticsDashboard
+// still reference them by these names.
 
 export type ReportTemplate = Omit<Tables<'report_templates'>, 'sections'> & {
   sections: Array<{
@@ -57,21 +67,3 @@ export interface ReportData {
 export type GeneratedReport = Omit<Tables<'generated_reports'>, 'report_data'> & {
   report_data: ReportData;
 };
-
-export type CrisisPlan = Tables<'crisis_plans'>;
-export type CrisisContact = Tables<'crisis_contacts'>;
-export type CalmingStrategy = Tables<'calming_strategies'>;
-export type BehaviorPattern = Tables<'analytics_behavior_patterns'>;
-export type Correlation = Tables<'analytics_correlations'>;
-export type WeeklySummary = Tables<'analytics_weekly_summaries'>;
-export type TriggerAnalysis = Tables<'analytics_trigger_analysis'>;
-export type BehaviorTrigger = Tables<'behavior_triggers'>;
-export type BehaviorIntervention = Tables<'behavior_interventions'>;
-export type Reminder = Tables<'reminders'>;
-export type RewardChart = Tables<'reward_charts'>;
-export type RewardEntry = Tables<'reward_entries'>;
-export type RewardGoal = Tables<'reward_goals'>;
-export type SensoryProfile = Tables<'sensory_profiles'>;
-export type VisualSchedule = Tables<'visual_schedules'>;
-export type Activity = Tables<'schedule_activities'>;
-export type ActivityTemplate = Tables<'activity_templates'>;

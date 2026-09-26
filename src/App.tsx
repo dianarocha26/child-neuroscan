@@ -11,7 +11,7 @@ import { LandingPage } from './components/LandingPage';
 import { AgeInput } from './components/AgeInput';
 import { ChildrenSetup } from './components/ChildrenSetup';
 import { useChildren } from './contexts/ChildrenContext';
-import type { Child } from './lib/children';
+import type { Child } from './lib/api/children';
 import { Questionnaire } from './components/Questionnaire';
 import { Results } from './components/Results';
 import { MobileNavigation } from './components/MobileNavigation';

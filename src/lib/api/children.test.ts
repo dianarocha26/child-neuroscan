@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 
-vi.mock('./supabase', () => ({ supabase: {} }));
+vi.mock('../supabase', () => ({ supabase: {} }));
 
 import { ageInMonths } from './children';
 

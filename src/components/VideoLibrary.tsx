@@ -1,29 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Play, Search, Filter, Clock, CheckCircle, Tag, ArrowLeft } from 'lucide-react';
-import { supabase } from '../lib/supabase';
-import type { Tables } from '../types/supabase';
 import { useLanguage } from '../contexts/LanguageContext';
 import { logger } from '../lib/logger';
 import { PageHeader } from './PageHeader';
-
-type Video = Tables<'videos'> & {
-  category: {
-    name: string;
-    icon: string | null;
-  } | null;
-  tags: string[];
-  progress?: {
-    watched: boolean;
-    progress_seconds: number;
-  };
-};
-
-interface VideoCategory {
-  id: string;
-  name: string;
-  description: string;
-  icon: string;
-}
+import {
+  listVideoCategories, listVideos, markVideoWatched, recordVideoView, startVideoProgress,
+  type Video, type VideoCategory
+} from '../lib/api/videos';
 
 interface VideoLibraryProps {
   userId?: string;
@@ -49,71 +32,21 @@ export default function VideoLibrary({ userId, onBack }: VideoLibraryProps) {
   const loadVideosAndCategories = async () => {
     setLoading(true);
 
-    let query = supabase
-      .from('videos')
-      .select(`
-        *,
-        category:video_categories(name, icon),
-        tags:video_tags(tag)
-      `)
-      .order('created_at', { ascending: false });
-
-    if (selectedCondition !== 'all') {
-      query = query.eq('condition_type', selectedCondition);
-    }
-
-    if (selectedCategory !== 'all') {
-      query = query.eq('category_id', selectedCategory);
-    }
-
-    if (selectedAgeGroup !== 'all') {
-      query = query.or(`age_group.eq.${selectedAgeGroup},age_group.eq.all`);
-    }
-
-    const [videosResult, categoriesResult] = await Promise.all([
-      query,
-      supabase.from('video_categories').select('*').order('name')
+    const [videosResult, categoriesResult] = await Promise.allSettled([
+      listVideos({ condition: selectedCondition, categoryId: selectedCategory, ageGroup: selectedAgeGroup }, userId),
+      listVideoCategories()
     ]);
 
-    if (videosResult.error) {
-      logger.error('Error loading videos:', videosResult.error);
+    if (videosResult.status === 'rejected') {
+      logger.error('Error loading videos:', videosResult.reason);
     } else {
-      const videosWithTags = videosResult.data.map((video) => ({
-        ...video,
-        tags: video.tags?.map((t) => t.tag) || []
-      }));
-
-      if (userId) {
-        const videoIds = videosWithTags.map((v: Video) => v.id);
-        const { data: progressData } = await supabase
-          .from('user_video_progress')
-          .select('video_id, watched, progress_seconds')
-          .eq('user_id', userId)
-          .in('video_id', videoIds);
-
-        const progressMap = new Map(
-          progressData?.map(p => [p.video_id, { watched: p.watched ?? false, progress_seconds: p.progress_seconds ?? 0 }])
-        );
-
-        videosWithTags.forEach((video: Video) => {
-          video.progress = progressMap.get(video.id);
-        });
-      }
-
-      setVideos(videosWithTags);
+      setVideos(videosResult.value);
     }
 
-    if (categoriesResult.error) {
-      logger.error('Error loading categories:', categoriesResult.error);
+    if (categoriesResult.status === 'rejected') {
+      logger.error('Error loading categories:', categoriesResult.reason);
     } else {
-      setCategories(
-        (categoriesResult.data || []).map((c) => ({
-          id: c.id,
-          name: c.name,
-          description: c.description ?? '',
-          icon: c.icon ?? '',
-        }))
-      );
+      setCategories(categoriesResult.value);
     }
 
     setLoading(false);
@@ -122,41 +55,29 @@ export default function VideoLibrary({ userId, onBack }: VideoLibraryProps) {
   const handleVideoClick = async (video: Video) => {
     setSelectedVideo(video);
 
-    await supabase
-      .from('videos')
-      .update({ views: (video.views || 0) + 1 })
-      .eq('id', video.id);
+    try {
+      await recordVideoView(video.id, video.views || 0);
+    } catch (error) {
+      logger.error('Error recording video view:', error);
+    }
 
     if (userId) {
-      await supabase
-        .from('user_video_progress')
-        .upsert({
-          user_id: userId,
-          video_id: video.id,
-          watched: false,
-          progress_seconds: 0,
-          updated_at: new Date().toISOString()
-        }, {
-          onConflict: 'user_id,video_id'
-        });
+      try {
+        await startVideoProgress(userId, video.id);
+      } catch (error) {
+        logger.error('Error starting video progress:', error);
+      }
     }
   };
 
   const handleMarkAsWatched = async (videoId: string) => {
     if (!userId) return;
 
-    await supabase
-      .from('user_video_progress')
-      .upsert({
-        user_id: userId,
-        video_id: videoId,
-        watched: true,
-        progress_seconds: 0,
-        completed_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      }, {
-        onConflict: 'user_id,video_id'
-      });
+    try {
+      await markVideoWatched(userId, videoId);
+    } catch (error) {
+      logger.error('Error marking video as watched:', error);
+    }
 
     await loadVideosAndCategories();
   };

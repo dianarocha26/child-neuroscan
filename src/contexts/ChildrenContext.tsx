@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { useAuth } from './AuthContext';
-import { getChildren, type Child } from '../lib/children';
+import { getChildren, type Child } from '../lib/api/children';
 import { logger } from '../lib/logger';
 
 type ChildrenContextType = {

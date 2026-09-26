@@ -1,39 +1,39 @@
-import { supabase } from './supabase';
-import type { Tables } from '../types/supabase';
+import { supabase } from '../supabase';
+import type { Tables } from '../../types/supabase';
+import { check, unwrap, unwrapList } from './client';
 
 export type Child = Tables<'children'>;
 
 export async function getChildren(userId: string): Promise<Child[]> {
-  const { data, error } = await supabase
-    .from('children')
-    .select('*')
-    .eq('user_id', userId)
-    .order('created_at');
-  if (error) throw error;
-  return data || [];
+  return unwrapList(
+    await supabase.from('children').select('*').eq('user_id', userId).order('created_at'),
+    'load children'
+  );
 }
 
 export async function addChild(userId: string, childName: string, dateOfBirth: string): Promise<Child> {
-  const { data, error } = await supabase
-    .from('children')
-    .insert({ user_id: userId, child_name: childName.trim(), date_of_birth: dateOfBirth })
-    .select()
-    .single();
-  if (error) throw error;
-  return data;
+  return unwrap(
+    await supabase
+      .from('children')
+      .insert({ user_id: userId, child_name: childName.trim(), date_of_birth: dateOfBirth })
+      .select()
+      .single(),
+    'add child'
+  );
 }
 
 export async function updateChild(id: string, childName: string, dateOfBirth: string): Promise<void> {
-  const { error } = await supabase
-    .from('children')
-    .update({ child_name: childName.trim(), date_of_birth: dateOfBirth, updated_at: new Date().toISOString() })
-    .eq('id', id);
-  if (error) throw error;
+  check(
+    await supabase
+      .from('children')
+      .update({ child_name: childName.trim(), date_of_birth: dateOfBirth, updated_at: new Date().toISOString() })
+      .eq('id', id),
+    'update child'
+  );
 }
 
 export async function deleteChild(id: string): Promise<void> {
-  const { error } = await supabase.from('children').delete().eq('id', id);
-  if (error) throw error;
+  check(await supabase.from('children').delete().eq('id', id), 'remove child');
 }
 
 /** Whole months between a 'YYYY-MM-DD' birth date and `today` (local). Null if unknown/future. */

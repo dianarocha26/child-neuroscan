@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Pill, Plus, Clock, X, Edit2, Trash2 } from 'lucide-react';
-import { supabase } from '../lib/supabase';
 import { logger } from '../lib/logger';
 import { PageHeader } from './PageHeader';
-import type { Tables } from '../types/supabase';
+import {
+  createMedication, deleteMedication, listMedicationLogs, listMedications, logMedicationDose,
+  setMedicationActive, updateMedication,
+  type Medication, type MedicationLog
+} from '../lib/api/medications';
 import { ChildPicker } from './ChildPicker';
-
-type Medication = Tables<'medications'>;
-type MedicationLog = Tables<'medication_logs'>;
 
 export default function MedicationTracker() {
   const [medications, setMedications] = useState<Medication[]>([]);
@@ -54,17 +54,7 @@ export default function MedicationTracker() {
 
   const loadMedications = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data, error } = await supabase
-        .from('medications')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setMedications(data || []);
+      setMedications(await listMedications());
     } catch (error) {
       logger.error('Error loading medications:', error);
     } finally {
@@ -74,18 +64,7 @@ export default function MedicationTracker() {
 
   const loadLogs = async (medId: string) => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data, error } = await supabase
-        .from('medication_logs')
-        .select('*')
-        .eq('medication_id', medId)
-        .order('taken_at', { ascending: false })
-        .limit(30);
-
-      if (error) throw error;
-      setLogs(data || []);
+      setLogs(await listMedicationLogs(medId));
     } catch (error) {
       logger.error('Error loading logs:', error);
     }
@@ -94,13 +73,9 @@ export default function MedicationTracker() {
   const handleSubmitMed = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
       const scheduleArray = medForm.schedule_times.split(',').map(t => t.trim()).filter(t => t);
       const medData = {
         ...medForm,
-        user_id: user.id,
         schedule_times: scheduleArray,
         start_date: medForm.start_date || null,
         end_date: medForm.end_date || null,
@@ -108,16 +83,9 @@ export default function MedicationTracker() {
       };
 
       if (editingMed) {
-        const { error } = await supabase
-          .from('medications')
-          .update(medData)
-          .eq('id', editingMed.id);
-        if (error) throw error;
+        await updateMedication(editingMed.id, medData);
       } else {
-        const { error } = await supabase
-          .from('medications')
-          .insert(medData);
-        if (error) throw error;
+        await createMedication(medData);
       }
 
       setShowMedForm(false);
@@ -135,20 +103,7 @@ export default function MedicationTracker() {
     if (!selectedMed) return;
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { error } = await supabase
-        .from('medication_logs')
-        .insert({
-          medication_id: selectedMed.id,
-          user_id: user.id,
-          taken_at: new Date().toISOString(),
-          scheduled_time: new Date().toTimeString().slice(0, 5),
-          ...logForm
-        });
-
-      if (error) throw error;
+      await logMedicationDose(selectedMed.id, logForm);
 
       setShowLogForm(false);
       setLogForm({
@@ -166,12 +121,7 @@ export default function MedicationTracker() {
 
   const handleToggleActive = async (med: Medication) => {
     try {
-      const { error } = await supabase
-        .from('medications')
-        .update({ active: !med.active })
-        .eq('id', med.id);
-
-      if (error) throw error;
+      await setMedicationActive(med.id, !med.active);
       loadMedications();
     } catch (error) {
       logger.error('Error toggling medication', error);
@@ -183,12 +133,7 @@ export default function MedicationTracker() {
     if (!confirm('Are you sure you want to delete this medication?')) return;
 
     try {
-      const { error } = await supabase
-        .from('medications')
-        .delete()
-        .eq('id', medId);
-
-      if (error) throw error;
+      await deleteMedication(medId);
       loadMedications();
       setSelectedMed(null);
     } catch (error) {

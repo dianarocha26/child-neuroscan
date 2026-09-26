@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Pencil, Trash2, Users } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useChildren } from '../contexts/ChildrenContext';
-import { addChild, updateChild, deleteChild, ageInMonths, type Child } from '../lib/children';
+import { addChild, updateChild, deleteChild, ageInMonths, type Child } from '../lib/api/children';
 import { localToday, formatDateOnly } from '../lib/dates';
 import { logger } from '../lib/logger';
 

@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { MessageSquare, Heart, Send, Filter, Plus, TrendingUp, Clock, Award, ArrowLeft } from 'lucide-react';
-import { supabase } from '../lib/supabase';
 import { useLanguage } from '../contexts/LanguageContext';
 import { logger } from '../lib/logger';
 import { PageHeader } from './PageHeader';
-import type { Tables } from '../types/supabase';
-
-type Post = Tables<'community_posts'>;
-type Comment = Tables<'community_comments'>;
+import {
+  addLike, createComment, createPost, getDisplayName, listComments, listPosts, listUserLikes, removeLike,
+  type Post, type Comment, type PostCategory
+} from '../lib/api/community';
 
 interface CommunityProps {
   userId: string;
@@ -40,55 +39,33 @@ export default function Community({ userId, onBack }: CommunityProps) {
 
   const loadPosts = async () => {
     setLoading(true);
-    let query = supabase
-      .from('community_posts')
-      .select('*');
-
-    if (sortBy === 'recent') {
-      query = query.order('is_pinned', { ascending: false }).order('created_at', { ascending: false });
-    } else {
-      query = query.order('is_pinned', { ascending: false }).order('likes_count', { ascending: false });
-    }
-
-    const { data, error } = await query;
-
-    if (error) {
+    try {
+      setPosts(await listPosts(sortBy));
+    } catch (error) {
       logger.error('Failed to load community posts', error);
-    } else {
-      setPosts(data || []);
     }
     setLoading(false);
   };
 
   const loadComments = async (postId: string) => {
-    const { data, error } = await supabase
-      .from('community_comments')
-      .select('*')
-      .eq('post_id', postId)
-      .order('created_at', { ascending: true });
-
-    if (error) {
+    try {
+      setComments(await listComments(postId));
+    } catch (error) {
       logger.error('Error loading comments:', error);
-    } else {
-      setComments(data || []);
     }
   };
 
   const loadUserLikes = async () => {
-    const { data, error } = await supabase
-      .from('community_likes')
-      .select('post_id, comment_id')
-      .eq('user_id', userId);
-
-    if (error) {
-      logger.error('Error loading likes:', error);
-    } else {
+    try {
+      const rows = await listUserLikes(userId);
       const likes = new Set<string>();
-      data?.forEach(like => {
+      rows.forEach(like => {
         if (like.post_id) likes.add(`post_${like.post_id}`);
         if (like.comment_id) likes.add(`comment_${like.comment_id}`);
       });
       setUserLikes(likes);
+    } catch (error) {
+      logger.error('Error loading likes:', error);
     }
   };
 
@@ -96,33 +73,22 @@ export default function Community({ userId, onBack }: CommunityProps) {
     const likeKey = postId ? `post_${postId}` : `comment_${commentId}`;
     const isLiked = userLikes.has(likeKey);
 
-    if (isLiked) {
-      let query = supabase.from('community_likes').delete().eq('user_id', userId);
-      if (postId) query = query.eq('post_id', postId);
-      if (commentId) query = query.eq('comment_id', commentId);
-
-      const { error } = await query;
-      if (!error) {
+    try {
+      if (isLiked) {
+        await removeLike(userId, postId, commentId);
         setUserLikes(prev => {
           const newLikes = new Set(prev);
           newLikes.delete(likeKey);
           return newLikes;
         });
-        await loadPosts();
-        if (selectedPost) await loadComments(selectedPost.id);
-      }
-    } else {
-      const { error } = await supabase.from('community_likes').insert({
-        user_id: userId,
-        post_id: postId || null,
-        comment_id: commentId || null
-      });
-
-      if (!error) {
+      } else {
+        await addLike(userId, postId, commentId);
         setUserLikes(prev => new Set(prev).add(likeKey));
-        await loadPosts();
-        if (selectedPost) await loadComments(selectedPost.id);
       }
+      await loadPosts();
+      if (selectedPost) await loadComments(selectedPost.id);
+    } catch (error) {
+      logger.error('Error toggling like:', error);
     }
   };
 
@@ -412,14 +378,11 @@ function PostDetail({
   }, []);
 
   const loadAuthorName = async () => {
-    const { data } = await supabase
-      .from('user_profiles')
-      .select('display_name')
-      .eq('user_id', userId)
-      .maybeSingle();
-
-    if (data) {
-      setAuthorName(data.display_name);
+    try {
+      const displayName = await getDisplayName(userId);
+      if (displayName) setAuthorName(displayName);
+    } catch (error) {
+      logger.error('Error loading display name:', error);
     }
   };
 
@@ -429,17 +392,18 @@ function PostDetail({
 
     setSubmitting(true);
 
-    const { error } = await supabase.from('community_comments').insert({
-      post_id: post.id,
-      user_id: userId,
-      author_name: authorName || 'Anonymous',
-      content: newComment.trim(),
-      is_anonymous: !authorName
-    });
-
-    if (!error) {
+    try {
+      await createComment({
+        post_id: post.id,
+        user_id: userId,
+        author_name: authorName || 'Anonymous',
+        content: newComment.trim(),
+        is_anonymous: !authorName
+      });
       setNewComment('');
       onCommentAdded();
+    } catch (error) {
+      logger.error('Error posting comment:', error);
     }
 
     setSubmitting(false);
@@ -565,15 +529,11 @@ function NewPostForm({ userId, onBack, onPostCreated, categories, conditions }: 
   }, []);
 
   const loadAuthorName = async () => {
-    const { data } = await supabase
-      .from('user_profiles')
-      .select('display_name')
-      .eq('user_id', userId)
-      .maybeSingle();
-
-    if (data) {
-      setAuthorName(data.display_name);
-    } else {
+    try {
+      const displayName = await getDisplayName(userId);
+      setAuthorName(displayName ?? 'Parent');
+    } catch (error) {
+      logger.error('Error loading display name:', error);
       setAuthorName('Parent');
     }
   };
@@ -592,19 +552,17 @@ function NewPostForm({ userId, onBack, onPostCreated, categories, conditions }: 
 
     setSubmitting(true);
 
-    const { error } = await supabase.from('community_posts').insert({
-      user_id: userId,
-      author_name: authorName,
-      title: title.trim(),
-      content: content.trim(),
-      category,
-      condition_tags: selectedConditions,
-      is_anonymous: false
-    });
-
-    if (!error) {
+    try {
+      await createPost({
+        user_id: userId,
+        author_name: authorName,
+        title: title.trim(),
+        content: content.trim(),
+        category: category as PostCategory,
+        condition_tags: selectedConditions
+      });
       onPostCreated();
-    } else {
+    } catch (error) {
       logger.error('Error creating post:', error);
     }
 

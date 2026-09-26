@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Sparkles, Plus, Eye, Ear, Hand, Aperture, Wind, Activity, Users } from 'lucide-react';
-import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useLoadingState } from '../hooks/useLoadingState';
 import { logger } from '../lib/logger';
-import type { SensoryProfile } from '../types/components';
+import { createSensoryProfile, listSensoryProfiles, type SensoryProfile } from '../lib/api/sensory';
 import { PageHeader } from './PageHeader';
 import { ChildPicker } from './ChildPicker';
 
@@ -112,17 +111,10 @@ export default function SensoryProfile() {
     }
 
     try {
-      const { data } = await supabase
-        .from('sensory_profiles')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
-
-      if (data) {
-        setProfiles(data);
-        if (data.length > 0 && !selectedProfile) {
-          setSelectedProfile(data[0].id);
-        }
+      const data = await listSensoryProfiles(user.id);
+      setProfiles(data);
+      if (data.length > 0 && !selectedProfile) {
+        setSelectedProfile(data[0].id);
       }
     } catch (error) {
       logger.error('Error loading sensory profiles:', error);
@@ -140,8 +132,7 @@ export default function SensoryProfile() {
     }
 
     try {
-      const { error } = await supabase.from('sensory_profiles').insert({
-        user_id: user.id,
+      await createSensoryProfile(user.id, {
         child_name: formData.child_name,
         visual_sensitivity: formData.visual_sensitivity,
         auditory_sensitivity: formData.auditory_sensitivity,
@@ -158,8 +149,6 @@ export default function SensoryProfile() {
         vestibular_notes: formData.vestibular_notes || null,
         proprioceptive_notes: formData.proprioceptive_notes || null
       });
-
-      if (error) throw error;
 
       setShowForm(false);
       setFormData({

@@ -38,17 +38,24 @@ Read CLAUDE.md first. This file is the starting point for the phase 3 session; d
   `npx supabase db start && npx supabase gen types typescript --local --schema public > src/types/supabase.ts`.
   Needs Docker. `supabase/config.toml` is committed for this.
 - Shared row types in `src/types/components.ts` and `src/types/database.ts` are aliases of generated `Tables<...>`; JSON columns are mapped in `src/lib/database.ts` (screening results) and `src/lib/reports.ts` (report templates/generated reports), trusting shapes this app writes.
-- Behavior change: a screening result whose condition can't be read (e.g. RLS) is now skipped with a `logger.warn` instead of crashing the page.
+- Behavior change: a screening result whose condition can't be read (e.g. RLS) is kept and shown as "Screening" with a `logger.warn`, instead of crashing the page.
 - tsc 22 → 0, eslint errors 9 → 0 (26 warnings). CI typecheck and lint are now blocking.
-- Follow-ups (task 2): several components still keep local copies of row types (GoalTracker, MedicationTracker, NotificationCenter, Community, ResourceFinder, AppointmentPrep, VideoLibrary); move them to shared aliases along with the data-layer move.
+
+### Task 2: data layer (done)
+- All component data access is in `src/lib/api/<domain>.ts`. Components never import `supabase` (AuthContext excepted).
+- One error pattern (`src/lib/api/client.ts`): functions throw `DataError(action, cause)`; helpers `unwrapList` (lists), `unwrap` (`.single()` / insert+select), `unwrapMaybe` (`.maybeSingle()`), `check` (writes), `requireUserId`.
+- Rule: the api module owns its row types. Text columns with a DB CHECK are narrowed to literal unions there (goals, medications, reminders, photos, community, resources).
+- Screens load secondary lists with `Promise.allSettled`, so one failed read doesn't hide the rest. Read errors are logged, not swallowed.
+- Behavior changes: deleting a photo entry keeps the row if the storage file can't be removed (retryable, no orphaned child photos); `listVideos` ignores an age-group value that isn't a plain slug.
+- Later: no screen has a load-error state (a failed load looks like "no data yet"); goals/medications/photos still call `requireUserId()` instead of taking `userId`; `src/types/components.ts` still holds report types used by ComprehensiveReportGenerator; the video view counter never worked (videos has no UPDATE policy).
+
+### Decisions (owner delegated, 2026-09-26)
+- Allowed values: goals and medications already had CHECK constraints; only `reminders.reminder_type` lacked one, added in `20260926010000_reminders_type_check.sql` (NOT VALID, safe on existing data). Postgres CHECKs don't narrow generated types, so the literal unions are applied in code when rows are mapped in `src/lib/` (task 2).
+- `conditions` read policy on prod: unknown (baseline migration only creates one if missing). The app no longer depends on it: results with an unreadable condition still show. **Owner: still check the policy in the Supabase dashboard** (it should be `USING (true)` for SELECT).
 
 ### Child profiles (branch `claude/child-profiles-ylz3ky`, off phase 3)
-- Uses the existing `children` table (name, date of birth; RLS per parent). No migration. Data calls in `src/lib/children.ts`, list shared via `ChildrenContext`.
+- Uses the existing `children` table (name, date of birth; RLS per parent). No migration. Data calls in `src/lib/api/children.ts`, list shared via `ChildrenContext`.
 - Owner chose option A: pickers fill the existing `child_name` text columns; no `child_id` links. Renaming a child does not update old entries.
 - First sign-in with no children shows a skippable "Your children" screen once per browser (`childrenSetupSeen:<userId>` in localStorage). Header "Children" button reopens it.
 - `ChildPicker` replaces the 11 free-text name fields; free text stays available ("Someone else…") and for names not in the list.
 - Screening: signed-in parents pick a child on the age step; age comes from date of birth and the name step is skipped. Guests unchanged.
-
-### Open questions for the owner
-- Text columns that used to be literal unions in the code (goal status/priority, medication type, reminder type) are plain `text` in the DB. Add CHECK constraints or enums so the generated types narrow again?
-- What is the prod RLS policy on `conditions`? If it filters `is_active`, deactivating a condition hides parents' past screenings.

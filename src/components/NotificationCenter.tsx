@@ -1,16 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { Bell, Plus, Edit2, Trash2, X, Check, RotateCcw, Calendar, Clock, Pill, Stethoscope, Activity, Target, Tag } from 'lucide-react';
-import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useLoadingState } from '../hooks/useLoadingState';
 import { logger } from '../lib/logger';
 import { PageHeader } from './PageHeader';
-import type { Tables } from '../types/supabase';
+import {
+  createReminder, deleteReminder, listReminders, setReminderActive, updateReminder,
+  type Reminder, type ReminderType
+} from '../lib/api/reminders';
 import { ChildPicker } from './ChildPicker';
-
-type ReminderType = 'medication' | 'appointment' | 'therapy' | 'goal' | 'other';
-
-type Reminder = Tables<'reminders'>;
 
 const REMINDER_TYPES: { value: ReminderType; label: string; icon: typeof Pill; color: string }[] = [
   { value: 'medication', label: 'Medication', icon: Pill, color: 'bg-purple-100 text-purple-700' },
@@ -41,12 +39,7 @@ export default function NotificationCenter() {
   const loadData = async () => {
     if (!user) return;
     try {
-      const { data, error } = await supabase
-        .from('reminders').select('*').eq('user_id', user.id)
-        .order('reminder_date', { ascending: true })
-        .order('reminder_time', { ascending: true });
-      if (error) throw error;
-      setReminders(data || []);
+      setReminders(await listReminders(user.id));
     } catch (error) {
       logger.error('Error loading reminders:', error);
     } finally {
@@ -58,7 +51,7 @@ export default function NotificationCenter() {
   const openEdit = (r: Reminder) => {
     setEditing(r);
     setForm({
-      reminder_type: r.reminder_type as ReminderType,
+      reminder_type: r.reminder_type,
       title: r.title,
       description: r.description || '',
       child_name: r.child_name || '',
@@ -80,14 +73,11 @@ export default function NotificationCenter() {
         child_name: form.child_name || null,
         reminder_date: form.reminder_date,
         reminder_time: form.reminder_time,
-        updated_at: new Date().toISOString(),
       };
       if (editing) {
-        const { error } = await supabase.from('reminders').update(payload).eq('id', editing.id);
-        if (error) throw error;
+        await updateReminder(editing.id, payload);
       } else {
-        const { error } = await supabase.from('reminders').insert({ user_id: user.id, ...payload, is_active: true });
-        if (error) throw error;
+        await createReminder(user.id, payload);
       }
       closeForm(); loadData();
     } catch (error) { logger.error('Error saving reminder:', error); alert('Failed to save reminder'); }
@@ -95,9 +85,7 @@ export default function NotificationCenter() {
 
   const handleToggleDone = async (r: Reminder) => {
     try {
-      const { error } = await supabase.from('reminders')
-        .update({ is_active: !r.is_active, updated_at: new Date().toISOString() }).eq('id', r.id);
-      if (error) throw error;
+      await setReminderActive(r.id, !r.is_active);
       setReminders(prev => prev.map(x => (x.id === r.id ? { ...x, is_active: !r.is_active } : x)));
     } catch (error) { logger.error('Error updating reminder:', error); alert('Failed to update reminder'); }
   };
@@ -105,8 +93,7 @@ export default function NotificationCenter() {
   const handleDelete = async (id: string) => {
     if (!confirm('Delete this reminder?')) return;
     try {
-      const { error } = await supabase.from('reminders').delete().eq('id', id);
-      if (error) throw error;
+      await deleteReminder(id);
       setReminders(prev => prev.filter(r => r.id !== id));
     } catch (error) { logger.error('Error deleting reminder:', error); alert('Failed to delete reminder'); }
   };

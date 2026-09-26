@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { translations } from '../lib/translations';
-import { ageInMonths, type Child } from '../lib/children';
+import { ageInMonths, type Child } from '../lib/api/children';
 
 interface AgeInputProps {
   onSubmit: (ageInMonths: number) => void;

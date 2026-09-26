@@ -1,15 +1,16 @@
 import { useState, useEffect } from 'react';
 import { FileText, Download, Calendar, CheckCircle, Printer, ChevronDown, ChevronUp, Sparkles } from 'lucide-react';
-import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useLoadingState } from '../hooks/useLoadingState';
 import { logger } from '../lib/logger';
 import { SuccessIllustration, LoadingIllustration, EmptyStateIllustration } from './FriendlyIllustrations';
 import { exportToJSON, exportToCSV, generateHTMLReport, printReport, downloadHTMLReport, type ExportData, type ReportContent } from '../lib/exportUtils';
-import type { ReportTemplate, GeneratedReport, ReportData, BehaviorEntry, MedicationLog, Goal, Appointment } from '../types/components';
+import type { ReportTemplate, GeneratedReport, ReportData, Goal } from '../types/components';
 import { toJson } from '../lib/json';
-import { toGeneratedReport, toReportTemplate } from '../lib/reports';
+import {
+  listReportTemplates, listGeneratedReports, createGeneratedReport, compileReportSourceData
+} from '../lib/api/reports';
 import { PageHeader } from './PageHeader';
 
 // Matches the behavior type saved by BehaviorDiary; every other type counts as challenging.
@@ -120,25 +121,13 @@ export default function ComprehensiveReportGenerator() {
 
     try {
       setLoading(true);
-      const [templatesRes, reportsRes] = await Promise.all([
-        supabase
-          .from('report_templates')
-          .select('*')
-          .eq('is_active', true)
-          .order('name'),
-
-        supabase
-          .from('generated_reports')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('generated_at', { ascending: false })
+      const [templates, reports] = await Promise.all([
+        listReportTemplates(),
+        listGeneratedReports(user.id)
       ]);
 
-      if (templatesRes.error) throw templatesRes.error;
-      if (reportsRes.error) throw reportsRes.error;
-
-      setTemplates((templatesRes.data || []).map(toReportTemplate));
-      setGeneratedReports((reportsRes.data || []).map(toGeneratedReport));
+      setTemplates(templates);
+      setGeneratedReports(reports);
     } catch (error) {
       logger.error('Error loading data:', error);
     } finally {
@@ -162,24 +151,17 @@ export default function ComprehensiveReportGenerator() {
 
       const reportData = await compileReportData(selectedTemplate.template_type, dateRangeStart, dateRangeEnd);
 
-      const { data, error } = await supabase
-        .from('generated_reports')
-        .insert({
-          user_id: user.id,
-          template_id: selectedTemplate.id,
-          report_type: selectedTemplate.template_type,
-          title: reportTitle,
-          date_range_start: dateRangeStart,
-          date_range_end: dateRangeEnd,
-          report_data: toJson(reportData),
-          notes: reportNotes
-        })
-        .select()
-        .single();
+      const created = await createGeneratedReport(user.id, {
+        template_id: selectedTemplate.id,
+        report_type: selectedTemplate.template_type,
+        title: reportTitle,
+        date_range_start: dateRangeStart,
+        date_range_end: dateRangeEnd,
+        report_data: toJson(reportData),
+        notes: reportNotes
+      });
 
-      if (error) throw error;
-
-      setGeneratedReports([toGeneratedReport(data), ...generatedReports]);
+      setGeneratedReports([created, ...generatedReports]);
 
       setReportTitle('');
       setReportNotes('');
@@ -205,51 +187,8 @@ export default function ComprehensiveReportGenerator() {
       dateRange: { start: startDate, end: endDate }
     };
 
-    // taken_at / appointment_date are timestamptz, so include the whole end day.
-    // Timestamp columns: use the user's local day boundaries
-    const startOfDay = new Date(`${startDate}T00:00:00`).toISOString();
-    const endOfDay = new Date(`${endDate}T23:59:59.999`).toISOString();
-
-    const [behaviors, medications, goals, appointments] = await Promise.all([
-      supabase
-        .from('behavior_entries')
-        .select('*')
-        .eq('user_id', user.id)
-        .gte('entry_date', startDate)
-        .lte('entry_date', endDate)
-        .order('entry_date', { ascending: true }),
-
-      supabase
-        .from('medication_logs')
-        .select('*, medications(name, dosage)')
-        .eq('user_id', user.id)
-        .gte('taken_at', startOfDay)
-        .lte('taken_at', endOfDay)
-        .order('taken_at', { ascending: true }),
-
-      supabase
-        .from('goals')
-        .select('*')
-        .eq('user_id', user.id),
-
-      supabase
-        .from('appointments')
-        .select('*')
-        .eq('user_id', user.id)
-        .gte('appointment_date', startOfDay)
-        .lte('appointment_date', endOfDay)
-        .order('appointment_date', { ascending: true })
-    ]);
-
-    const firstError = behaviors.error || medications.error || goals.error || appointments.error;
-    if (firstError) {
-      throw firstError;
-    }
-
-    const behaviorEntries: BehaviorEntry[] = behaviors.data || [];
-    const medicationLogs: MedicationLog[] = medications.data || [];
-    const goalRows: Goal[] = goals.data || [];
-    const appointmentRows: Appointment[] = appointments.data || [];
+    const { behaviorEntries, medicationLogs, goals: goalRows, appointments: appointmentRows, crisisPlans } =
+      await compileReportSourceData(user.id, startDate, endDate, reportType);
 
     data.behaviors = {
       total: behaviorEntries.length,
@@ -276,17 +215,8 @@ export default function ComprehensiveReportGenerator() {
       details: appointmentRows
     };
 
-    if (reportType === 'crisis') {
-      const crisisPlans = await supabase
-        .from('crisis_plans')
-        .select('*')
-        .eq('user_id', user.id);
-
-      if (crisisPlans.error) {
-        throw crisisPlans.error;
-      }
-
-      data.crisisPlans = crisisPlans.data || [];
+    if (crisisPlans) {
+      data.crisisPlans = crisisPlans;
     }
 
     return data;

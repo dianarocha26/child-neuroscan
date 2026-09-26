@@ -1,10 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, Plus, Clock, Check, Edit2, Trash2, ArrowUp, ArrowDown, Save, X, Settings } from 'lucide-react';
-import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useLoadingState } from '../hooks/useLoadingState';
 import { logger } from '../lib/logger';
-import type { VisualSchedule, Activity, ActivityTemplate } from '../types/components';
+import {
+  createActivity, createSchedule, deleteActivity, deleteSchedule,
+  listActivityTemplates, listScheduleActivities, listSchedules, resetScheduleActivities, setActivityCompleted,
+  swapActivityOrder, updateActivity, updateSchedule,
+  type Activity, type ActivityTemplate, type VisualSchedule
+} from '../lib/api/schedules';
 import { PageHeader } from './PageHeader';
 import { ChildPicker } from './ChildPicker';
 
@@ -51,39 +55,34 @@ export default function VisualSchedule() {
     }
 
     try {
-      const { data: schedulesData } = await supabase
-        .from('visual_schedules')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
+      const schedulesData = await listSchedules(user.id);
+      setSchedules(schedulesData);
 
-      const { data: templatesData } = await supabase
-        .from('activity_templates')
-        .select('*')
-        .eq('is_public', true)
-        .order('category', { ascending: true });
-
-      if (schedulesData) {
-        setSchedules(schedulesData);
-
-        const activitiesMap: { [key: string]: Activity[] } = {};
-        for (const schedule of schedulesData) {
-          const { data: activitiesData } = await supabase
-            .from('schedule_activities')
-            .select('*')
-            .eq('schedule_id', schedule.id)
-            .order('activity_order');
-
-          if (activitiesData) activitiesMap[schedule.id] = activitiesData;
-        }
-        setActivities(activitiesMap);
-
-        if (schedulesData.length > 0 && !selectedSchedule) {
-          setSelectedSchedule(schedulesData[0].id);
-        }
+      if (schedulesData.length > 0 && !selectedSchedule) {
+        setSelectedSchedule(schedulesData[0].id);
       }
 
-      if (templatesData) setTemplates(templatesData);
+      const [templatesResult, ...activityResults] = await Promise.allSettled([
+        listActivityTemplates(),
+        ...schedulesData.map((schedule) => listScheduleActivities(schedule.id))
+      ]);
+
+      if (templatesResult.status === 'rejected') {
+        logger.error('Error loading activity templates:', templatesResult.reason);
+      } else {
+        setTemplates(templatesResult.value);
+      }
+
+      const activitiesMap: { [key: string]: Activity[] } = {};
+      activityResults.forEach((result, index) => {
+        const schedule = schedulesData[index];
+        if (result.status === 'rejected') {
+          logger.error('Error loading schedule activities:', result.reason);
+        } else {
+          activitiesMap[schedule.id] = result.value;
+        }
+      });
+      setActivities(activitiesMap);
     } catch (error) {
       logger.error('Error loading visual schedules:', error);
     } finally {
@@ -101,25 +100,18 @@ export default function VisualSchedule() {
 
     try {
       if (editingScheduleId) {
-        const { error } = await supabase
-          .from('visual_schedules')
-          .update({
-            child_name: scheduleForm.child_name,
-            schedule_name: scheduleForm.schedule_name,
-            schedule_type: scheduleForm.schedule_type
-          })
-          .eq('id', editingScheduleId);
-        if (error) throw error;
-      } else {
-        const { data, error } = await supabase.from('visual_schedules').insert({
-          user_id: user.id,
+        await updateSchedule(editingScheduleId, {
           child_name: scheduleForm.child_name,
           schedule_name: scheduleForm.schedule_name,
           schedule_type: scheduleForm.schedule_type
-        }).select().single();
-
-        if (error) throw error;
-        if (data) setSelectedSchedule(data.id);
+        });
+      } else {
+        const created = await createSchedule(user.id, {
+          child_name: scheduleForm.child_name,
+          schedule_name: scheduleForm.schedule_name,
+          schedule_type: scheduleForm.schedule_type
+        });
+        setSelectedSchedule(created.id);
       }
 
       setShowScheduleForm(false);
@@ -146,9 +138,7 @@ export default function VisualSchedule() {
     if (!confirm('Delete this schedule and all its activities? This cannot be undone.')) return;
 
     try {
-      await supabase.from('schedule_activities').delete().eq('schedule_id', scheduleId);
-      const { error } = await supabase.from('visual_schedules').delete().eq('id', scheduleId);
-      if (error) throw error;
+      await deleteSchedule(scheduleId);
 
       if (selectedSchedule === scheduleId) setSelectedSchedule(null);
       loadData();
@@ -165,24 +155,19 @@ export default function VisualSchedule() {
 
     try {
       if (editingActivity) {
-        const { error } = await supabase
-          .from('schedule_activities')
-          .update({
-            activity_name: activityForm.activity_name,
-            activity_description: activityForm.activity_description || null,
-            icon_name: activityForm.icon_name,
-            icon_color: activityForm.icon_color,
-            start_time: activityForm.start_time || null,
-            duration_minutes: activityForm.duration_minutes ? parseInt(activityForm.duration_minutes) : null
-          })
-          .eq('id', editingActivity.id);
-
-        if (error) throw error;
+        await updateActivity(editingActivity.id, {
+          activity_name: activityForm.activity_name,
+          activity_description: activityForm.activity_description || null,
+          icon_name: activityForm.icon_name,
+          icon_color: activityForm.icon_color,
+          start_time: activityForm.start_time || null,
+          duration_minutes: activityForm.duration_minutes ? parseInt(activityForm.duration_minutes) : null
+        });
       } else {
         const currentActivities = activities[selectedSchedule] || [];
         const nextOrder = currentActivities.length + 1;
 
-        const { error } = await supabase.from('schedule_activities').insert({
+        await createActivity({
           schedule_id: selectedSchedule,
           activity_order: nextOrder,
           activity_name: activityForm.activity_name,
@@ -192,8 +177,6 @@ export default function VisualSchedule() {
           start_time: activityForm.start_time || null,
           duration_minutes: activityForm.duration_minutes ? parseInt(activityForm.duration_minutes) : null
         });
-
-        if (error) throw error;
       }
 
       handleCancelEdit();
@@ -211,7 +194,7 @@ export default function VisualSchedule() {
     const nextOrder = currentActivities.length + 1;
 
     try {
-      const { error } = await supabase.from('schedule_activities').insert({
+      await createActivity({
         schedule_id: selectedSchedule,
         activity_order: nextOrder,
         activity_name: template.template_name,
@@ -219,8 +202,6 @@ export default function VisualSchedule() {
         icon_color: template.icon_color,
         duration_minutes: template.typical_duration_minutes
       });
-
-      if (error) throw error;
       loadData();
     } catch (error) {
       logger.error('Error adding template activity:', error);
@@ -229,12 +210,7 @@ export default function VisualSchedule() {
 
   const toggleActivityCompletion = async (activityId: string, currentStatus: boolean) => {
     try {
-      const { error } = await supabase
-        .from('schedule_activities')
-        .update({ is_completed: !currentStatus })
-        .eq('id', activityId);
-
-      if (error) throw error;
+      await setActivityCompleted(activityId, !currentStatus);
       loadData();
     } catch (error) {
       logger.error('Error updating activity:', error);
@@ -245,12 +221,7 @@ export default function VisualSchedule() {
     if (!selectedSchedule) return;
 
     try {
-      const { error } = await supabase
-        .from('schedule_activities')
-        .update({ is_completed: false })
-        .eq('schedule_id', selectedSchedule);
-
-      if (error) throw error;
+      await resetScheduleActivities(selectedSchedule);
       loadData();
     } catch (error) {
       logger.error('Error resetting schedule:', error);
@@ -274,12 +245,7 @@ export default function VisualSchedule() {
     if (!confirm('Are you sure you want to delete this activity?')) return;
 
     try {
-      const { error } = await supabase
-        .from('schedule_activities')
-        .delete()
-        .eq('id', activityId);
-
-      if (error) throw error;
+      await deleteActivity(activityId);
       loadData();
     } catch (error) {
       logger.error('Error deleting activity:', error);
@@ -311,16 +277,11 @@ export default function VisualSchedule() {
 
   const saveQuickEdit = async (activityId: string) => {
     try {
-      const { error } = await supabase
-        .from('schedule_activities')
-        .update({
-          activity_name: quickEditValues.activity_name,
-          start_time: quickEditValues.start_time || null,
-          duration_minutes: quickEditValues.duration_minutes ? parseInt(quickEditValues.duration_minutes) : null
-        })
-        .eq('id', activityId);
-
-      if (error) throw error;
+      await updateActivity(activityId, {
+        activity_name: quickEditValues.activity_name,
+        start_time: quickEditValues.start_time || null,
+        duration_minutes: quickEditValues.duration_minutes ? parseInt(quickEditValues.duration_minutes) : null
+      });
       setQuickEditId(null);
       loadData();
     } catch (error) {
@@ -340,8 +301,7 @@ export default function VisualSchedule() {
     const b = list[swapIdx];
 
     try {
-      await supabase.from('schedule_activities').update({ activity_order: b.activity_order }).eq('id', a.id);
-      await supabase.from('schedule_activities').update({ activity_order: a.activity_order }).eq('id', b.id);
+      await swapActivityOrder(a, b);
       loadData();
     } catch (error) {
       logger.error('Error reordering activities:', error);
