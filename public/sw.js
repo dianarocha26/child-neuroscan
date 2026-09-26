@@ -101,3 +101,14 @@ self.addEventListener('message', (event) => {
     );
   }
 });
+
+// Reminder notifications (shown by the app while it is open): focus the app on click.
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
+      const client = clients.find((c) => 'focus' in c);
+      return client ? client.focus() : self.clients.openWindow('/');
+    })
+  );
+});

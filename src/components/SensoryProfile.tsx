@@ -217,8 +217,8 @@ export default function SensoryProfile() {
           <h2 className="text-xl sm:text-2xl font-bold mb-6">Create Sensory Profile</h2>
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Child Name</label>
-              <ChildPicker required value={formData.child_name} onChange={(name) => setFormData({ ...formData, child_name: name })}
+              <label htmlFor="sensory-child" className="block text-sm font-medium text-gray-700 mb-1">Child Name</label>
+              <ChildPicker id="sensory-child" required value={formData.child_name} onChange={(name) => setFormData({ ...formData, child_name: name })}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500" />
             </div>
 
@@ -241,12 +241,13 @@ export default function SensoryProfile() {
 
                     <div className="space-y-3">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Sensitivity Level</label>
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                        <p id={`${system.key}-sensitivity-label`} className="block text-sm font-medium text-gray-700 mb-2">Sensitivity Level</p>
+                        <div role="group" aria-labelledby={`${system.key}-sensitivity-label`} className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                           {sensitivityLevels.map((level) => (
                             <button
                               key={level.value}
                               type="button"
+                              aria-pressed={formData[sensitivityKey] === level.value}
                               onClick={() => setFormData({ ...formData, [sensitivityKey]: level.value })}
                               className={`p-3 rounded-lg border-2 transition text-sm ${
                                 formData[sensitivityKey] === level.value
@@ -261,8 +262,9 @@ export default function SensoryProfile() {
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Notes & Examples</label>
+                        <label htmlFor={`${system.key}-notes`} className="block text-sm font-medium text-gray-700 mb-1">Notes & Examples</label>
                         <textarea
+                          id={`${system.key}-notes`}
                           value={formData[notesKey] as string}
                           onChange={(e) => setFormData({ ...formData, [notesKey]: e.target.value })}
                           placeholder="Specific triggers, reactions, or helpful strategies..."
