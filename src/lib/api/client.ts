@@ -20,17 +20,27 @@ export class DataError extends Error {
   }
 }
 
-type Result<T> = { data: T; error: PostgrestError | null };
+// data is typed T | null (not T) so TS infers T correctly from a Supabase
+// response even though its real type is a { data: T; error: null } |
+// { data: null; error: PostgrestError } union (e.g. from .single()).
+type Result<T> = { data: T | null; error: PostgrestError | null };
 
-/** Returns data or throws a DataError. */
+/** For .single() and insert/update + select: the row, or a DataError. */
 export function unwrap<T>(result: Result<T>, action: string): T {
+  if (result.error) throw new DataError(action, result.error);
+  if (result.data === null) throw new DataError(action);
+  return result.data;
+}
+
+/** For .maybeSingle(): the row, null if there is none, or a DataError. */
+export function unwrapMaybe<T>(result: Result<T>, action: string): T | null {
   if (result.error) throw new DataError(action, result.error);
   return result.data;
 }
 
 /** For list queries: the rows (never null) or a DataError. */
-export function unwrapList<T>(result: Result<T[] | null>, action: string): T[] {
-  return unwrap(result, action) ?? [];
+export function unwrapList<T>(result: Result<T[]>, action: string): T[] {
+  return unwrapMaybe(result, action) ?? [];
 }
 
 /** Same as unwrap, for writes whose data isn't needed. */

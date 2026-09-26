@@ -5,35 +5,17 @@ import {
   ClipboardList, MessageSquare, FolderOpen, ListTodo,
   Download, X
 } from 'lucide-react';
-import { supabase } from '../lib/supabase';
 import { useLanguage } from '../contexts/LanguageContext';
 import { logger } from '../lib/logger';
 import { localToday, toLocalDateString, toDateTimeLocalInput, fromDateTimeLocalInput } from '../lib/dates';
 import { PageHeader } from './PageHeader';
-import type { Tables } from '../types/supabase';
-
-type AppointmentType = Tables<'appointment_types'>;
-type Observation = Tables<'appointment_observations'>;
-type Question = Tables<'appointment_questions'>;
-type Document = Tables<'appointment_documents'>;
-type Followup = Tables<'appointment_followups'>;
-
-interface Appointment extends Tables<'appointments'> {
-  appointment_type: AppointmentType | null;
-  observations: Observation[];
-  questions: Question[];
-  documents: Document[];
-  followups: Followup[];
-}
-
-// The child tables an appointment item can be deleted from.
-type AppointmentChildTable = 'appointment_observations' | 'appointment_questions' | 'appointment_documents' | 'appointment_followups';
-
-// Shapes used by the "add item" forms below, before the row has an id/appointment_id/created_at.
-type NewObservation = Pick<Observation, 'category' | 'observation' | 'date_observed' | 'frequency' | 'concern_level'>;
-type NewQuestion = Pick<Question, 'question' | 'priority' | 'answered' | 'answer'>;
-type NewDocument = Pick<Document, 'document_type' | 'document_name' | 'notes'>;
-type NewFollowup = Pick<Followup, 'followup_item' | 'due_date' | 'completed'>;
+import {
+  listAppointmentTypes, listAppointments, createAppointment, updateAppointment, deleteAppointment,
+  addObservation, addQuestion, addDocument, addFollowup, deleteAppointmentItem,
+  type AppointmentType, type Observation, type Question, type Document, type Followup,
+  type Appointment, type AppointmentChildTable,
+  type NewObservation, type NewQuestion, type NewDocument, type NewFollowup
+} from '../lib/api/appointments';
 
 interface AppointmentPrepProps {
   userId: string;
@@ -64,25 +46,15 @@ export default function AppointmentPrep({ userId, onBack }: AppointmentPrepProps
 
   const loadData = async () => {
     setLoading(true);
-    const [typesResult, appointmentsResult] = await Promise.all([
-      supabase.from('appointment_types').select('*').order('name'),
-      supabase
-        .from('appointments')
-        .select(`
-          *,
-          appointment_type:appointment_types(*),
-          observations:appointment_observations(*),
-          questions:appointment_questions(*),
-          documents:appointment_documents(*),
-          followups:appointment_followups(*)
-        `)
-        .eq('user_id', userId)
-        .order('appointment_date', { ascending: true })
-    ]);
-
-    if (typesResult.data) setAppointmentTypes(typesResult.data);
-    if (appointmentsResult.data) setAppointments(appointmentsResult.data);
-    setLoading(false);
+    try {
+      const [types, appts] = await Promise.all([listAppointmentTypes(), listAppointments(userId)]);
+      setAppointmentTypes(types);
+      setAppointments(appts);
+    } catch (error) {
+      logger.error('Error loading appointments:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleCreateAppointment = async (e: React.FormEvent) => {
@@ -96,21 +68,10 @@ export default function AppointmentPrep({ userId, onBack }: AppointmentPrepProps
 
     if (editingApt) {
       // Update existing appointment
-      const { data, error } = await supabase
-        .from('appointments')
-        .update(payload)
-        .eq('id', editingApt.id)
-        .select(`
-          *,
-          appointment_type:appointment_types(*),
-          observations:appointment_observations(*),
-          questions:appointment_questions(*),
-          documents:appointment_documents(*),
-          followups:appointment_followups(*)
-        `)
-        .single();
-
-      if (error || !data) {
+      let data: Appointment;
+      try {
+        data = await updateAppointment(editingApt.id, payload);
+      } catch (error) {
         logger.error('Error updating appointment:', error);
         alert(t('Failed to update appointment. Please try again.', 'No se pudo actualizar la cita. Inténtelo de nuevo.'));
         return;
@@ -123,20 +84,10 @@ export default function AppointmentPrep({ userId, onBack }: AppointmentPrepProps
       setView('detail');
     } else {
       // Create new appointment
-      const { data, error } = await supabase
-        .from('appointments')
-        .insert({ user_id: userId, ...payload })
-        .select(`
-          *,
-          appointment_type:appointment_types(*),
-          observations:appointment_observations(*),
-          questions:appointment_questions(*),
-          documents:appointment_documents(*),
-          followups:appointment_followups(*)
-        `)
-        .single();
-
-      if (error || !data) {
+      let data: Appointment;
+      try {
+        data = await createAppointment(userId, payload);
+      } catch (error) {
         logger.error('Error creating appointment:', error);
         alert(t('Failed to create appointment. Please try again.', 'No se pudo crear la cita. Inténtelo de nuevo.'));
         return;
@@ -164,8 +115,9 @@ export default function AppointmentPrep({ userId, onBack }: AppointmentPrepProps
 
   const handleDeleteAppointment = async (aptId: string) => {
     if (!confirm('Delete this appointment and all its data?')) return;
-    const { error } = await supabase.from('appointments').delete().eq('id', aptId);
-    if (error) {
+    try {
+      await deleteAppointment(aptId);
+    } catch (error) {
       logger.error('Error deleting appointment:', error);
       alert(t('Failed to delete appointment. Please try again.', 'No se pudo eliminar la cita. Inténtelo de nuevo.'));
       return;
@@ -177,16 +129,10 @@ export default function AppointmentPrep({ userId, onBack }: AppointmentPrepProps
   const handleAddObservation = async (observation: NewObservation): Promise<boolean> => {
     if (!selectedAppointment) return false;
 
-    const { data, error } = await supabase
-      .from('appointment_observations')
-      .insert({
-        appointment_id: selectedAppointment.id,
-        ...observation
-      })
-      .select()
-      .single();
-
-    if (error || !data) {
+    let data: Observation;
+    try {
+      data = await addObservation(selectedAppointment.id, observation);
+    } catch (error) {
       logger.error('Error adding observation:', error);
       alert(t('Failed to add observation. Please try again.', 'No se pudo agregar la observación. Inténtelo de nuevo.'));
       return false;
@@ -204,17 +150,10 @@ export default function AppointmentPrep({ userId, onBack }: AppointmentPrepProps
   const handleAddQuestion = async (question: NewQuestion): Promise<boolean> => {
     if (!selectedAppointment) return false;
 
-    const { data, error } = await supabase
-      .from('appointment_questions')
-      .insert({
-        appointment_id: selectedAppointment.id,
-        question: question.question,
-        priority: question.priority
-      })
-      .select()
-      .single();
-
-    if (error || !data) {
+    let data: Question;
+    try {
+      data = await addQuestion(selectedAppointment.id, question);
+    } catch (error) {
       logger.error('Error adding question:', error);
       alert(t('Failed to add question. Please try again.', 'No se pudo agregar la pregunta. Inténtelo de nuevo.'));
       return false;
@@ -232,16 +171,10 @@ export default function AppointmentPrep({ userId, onBack }: AppointmentPrepProps
   const handleAddDocument = async (doc: NewDocument): Promise<boolean> => {
     if (!selectedAppointment) return false;
 
-    const { data, error } = await supabase
-      .from('appointment_documents')
-      .insert({
-        appointment_id: selectedAppointment.id,
-        ...doc
-      })
-      .select()
-      .single();
-
-    if (error || !data) {
+    let data: Document;
+    try {
+      data = await addDocument(selectedAppointment.id, doc);
+    } catch (error) {
       logger.error('Error adding document:', error);
       alert(t('Failed to add document. Please try again.', 'No se pudo agregar el documento. Inténtelo de nuevo.'));
       return false;
@@ -259,17 +192,10 @@ export default function AppointmentPrep({ userId, onBack }: AppointmentPrepProps
   const handleAddFollowup = async (followup: NewFollowup): Promise<boolean> => {
     if (!selectedAppointment) return false;
 
-    const { data, error } = await supabase
-      .from('appointment_followups')
-      .insert({
-        appointment_id: selectedAppointment.id,
-        ...followup,
-        due_date: followup.due_date || null
-      })
-      .select()
-      .single();
-
-    if (error || !data) {
+    let data: Followup;
+    try {
+      data = await addFollowup(selectedAppointment.id, followup);
+    } catch (error) {
       logger.error('Error adding follow-up task:', error);
       alert(t('Failed to add follow-up task. Please try again.', 'No se pudo agregar la tarea de seguimiento. Inténtelo de nuevo.'));
       return false;
@@ -287,8 +213,9 @@ export default function AppointmentPrep({ userId, onBack }: AppointmentPrepProps
   const handleDeleteItem = async (table: AppointmentChildTable, id: string, field: keyof Appointment) => {
     if (!confirm(t('Delete this item?', '¿Eliminar este elemento?'))) return;
 
-    const { error } = await supabase.from(table).delete().eq('id', id);
-    if (error) {
+    try {
+      await deleteAppointmentItem(table, id);
+    } catch (error) {
       logger.error('Error deleting item:', error);
       alert(t('Failed to delete item. Please try again.', 'No se pudo eliminar el elemento. Inténtelo de nuevo.'));
       return;

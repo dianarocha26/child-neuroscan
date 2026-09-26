@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { BookOpen, Plus, TrendingUp, Filter, Calendar, Clock, AlertCircle, Edit2, Trash2, X } from 'lucide-react';
-import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useLoadingState } from '../hooks/useLoadingState';
 import { logger } from '../lib/logger';
-import type { BehaviorEntry, BehaviorTrigger, BehaviorIntervention } from '../types/components';
+import {
+  createBehaviorEntry, deleteBehaviorEntry, listBehaviorEntries, listBehaviorInterventions, listBehaviorTriggers,
+  updateBehaviorEntry, type BehaviorEntry, type BehaviorIntervention, type BehaviorTrigger
+} from '../lib/api/behavior';
 import { PageHeader } from './PageHeader';
 
 export default function BehaviorDiary() {
@@ -53,20 +55,15 @@ export default function BehaviorDiary() {
     }
 
     try {
-      const [entriesRes, triggersRes, interventionsRes] = await Promise.all([
-        supabase
-          .from('behavior_entries')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('entry_date', { ascending: false })
-          .order('entry_time', { ascending: false }),
-        supabase.from('behavior_triggers').select('*').eq('user_id', user.id),
-        supabase.from('behavior_interventions').select('*').eq('user_id', user.id)
+      const [entriesData, triggersData, interventionsData] = await Promise.all([
+        listBehaviorEntries(user.id),
+        listBehaviorTriggers(user.id),
+        listBehaviorInterventions(user.id)
       ]);
 
-      if (entriesRes.data) setEntries(entriesRes.data);
-      if (triggersRes.data) setTriggers(triggersRes.data);
-      if (interventionsRes.data) setInterventions(interventionsRes.data);
+      setEntries(entriesData);
+      setTriggers(triggersData);
+      setInterventions(interventionsData);
     } catch (error) {
       logger.error('Error loading behavior diary data:', error);
     } finally {
@@ -109,7 +106,6 @@ export default function BehaviorDiary() {
 
     try {
       const payload = {
-        user_id: user.id,
         child_name: formData.child_name,
         entry_date: formData.entry_date,
         entry_time: formData.entry_time,
@@ -126,14 +122,9 @@ export default function BehaviorDiary() {
       };
 
       if (editingEntry) {
-        const { error } = await supabase
-          .from('behavior_entries')
-          .update(payload)
-          .eq('id', editingEntry.id);
-        if (error) throw error;
+        await updateBehaviorEntry(editingEntry.id, payload);
       } else {
-        const { error } = await supabase.from('behavior_entries').insert(payload);
-        if (error) throw error;
+        await createBehaviorEntry(user.id, payload);
       }
 
       setShowForm(false);
@@ -149,8 +140,7 @@ export default function BehaviorDiary() {
   const handleDelete = async (entryId: string) => {
     if (!confirm('Are you sure you want to delete this entry?')) return;
     try {
-      const { error } = await supabase.from('behavior_entries').delete().eq('id', entryId);
-      if (error) throw error;
+      await deleteBehaviorEntry(entryId);
       loadData();
     } catch (error) {
       logger.error('Error deleting entry:', error);

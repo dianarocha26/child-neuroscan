@@ -1,13 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Search, MapPin, Phone, Mail, Globe, Star, Heart, Bookmark, CheckCircle, Filter, ExternalLink, ArrowLeft } from 'lucide-react';
-import { supabase } from '../lib/supabase';
 import { useLanguage } from '../contexts/LanguageContext';
 import { logger } from '../lib/logger';
 import { PageHeader } from './PageHeader';
-import type { Tables } from '../types/supabase';
-
-type TherapyResource = Tables<'therapy_resources'>;
-type SavedResource = Tables<'user_saved_resources'>;
+import {
+  deleteSavedResource, listResources, listSavedResources, markResourceContacted, saveResource,
+  type TherapyResource, type SavedResource
+} from '../lib/api/resources';
 
 interface ResourceFinderProps {
   userId: string;
@@ -36,74 +35,49 @@ export default function ResourceFinder({ userId, initialCondition, onBack }: Res
 
   const loadResources = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from('therapy_resources')
-      .select('*')
-      .order('rating', { ascending: false });
-
-    if (error) {
+    try {
+      setResources(await listResources());
+    } catch (error) {
       logger.error('Error loading resources:', error);
-    } else {
-      setResources(data || []);
     }
     setLoading(false);
   };
 
   const loadSavedResources = async () => {
-    const { data, error } = await supabase
-      .from('user_saved_resources')
-      .select('*')
-      .eq('user_id', userId);
-
-    if (error) {
+    try {
+      setSavedResources(await listSavedResources(userId));
+    } catch (error) {
       logger.error('Error loading saved resources:', error);
-    } else {
-      setSavedResources(data || []);
     }
   };
 
   const toggleSaveResource = async (resourceId: string) => {
     const isSaved = savedResources.some(sr => sr.resource_id === resourceId);
 
-    if (isSaved) {
-      const savedResource = savedResources.find(sr => sr.resource_id === resourceId);
-      if (savedResource) {
-        const { error } = await supabase
-          .from('user_saved_resources')
-          .delete()
-          .eq('id', savedResource.id);
-
-        if (!error) {
+    try {
+      if (isSaved) {
+        const savedResource = savedResources.find(sr => sr.resource_id === resourceId);
+        if (savedResource) {
+          await deleteSavedResource(savedResource.id);
           await loadSavedResources();
         }
-      }
-    } else {
-      const { error } = await supabase
-        .from('user_saved_resources')
-        .insert({
-          user_id: userId,
-          resource_id: resourceId
-        });
-
-      if (!error) {
+      } else {
+        await saveResource(userId, resourceId);
         await loadSavedResources();
       }
+    } catch (error) {
+      logger.error('Error saving resource:', error);
     }
   };
 
   const markAsContacted = async (resourceId: string) => {
     const savedResource = savedResources.find(sr => sr.resource_id === resourceId);
     if (savedResource) {
-      const { error } = await supabase
-        .from('user_saved_resources')
-        .update({
-          contacted: true,
-          contacted_date: new Date().toISOString()
-        })
-        .eq('id', savedResource.id);
-
-      if (!error) {
+      try {
+        await markResourceContacted(savedResource.id);
         await loadSavedResources();
+      } catch (error) {
+        logger.error('Error marking resource as contacted:', error);
       }
     }
   };

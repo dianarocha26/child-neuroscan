@@ -1,10 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { Star, Trophy, Plus, Target, Edit2, Trash2, X, Info, ChevronDown, ChevronUp, ThumbsUp, ThumbsDown } from 'lucide-react';
-import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useLoadingState } from '../hooks/useLoadingState';
 import { logger } from '../lib/logger';
-import type { RewardChart, RewardEntry, RewardGoal } from '../types/components';
+import {
+  createRewardChart, createRewardEntry, createRewardGoal, deleteRewardChart, deleteRewardEntry,
+  deleteRewardGoal, listRewardCharts, listRewardEntries, listRewardGoals, rateRewardChart,
+  updateRewardChart, updateRewardEntry, updateRewardGoal,
+  type RewardChart, type RewardEntry, type RewardGoal
+} from '../lib/api/rewards';
 import { PageHeader } from './PageHeader';
 
 export default function RewardsSystem() {
@@ -35,22 +39,16 @@ export default function RewardsSystem() {
   const loadData = async () => {
     if (!user) { setLoading(false); return; }
     try {
-      const { data: chartsData } = await supabase
-        .from('reward_charts').select('*').eq('user_id', user.id).order('created_at', { ascending: false });
-
-      if (chartsData) {
-        setCharts(chartsData);
-        const entriesMap: { [key: string]: RewardEntry[] } = {};
-        const goalsMap: { [key: string]: RewardGoal[] } = {};
-        for (const chart of chartsData) {
-          const { data: entriesData } = await supabase.from('reward_entries').select('*').eq('chart_id', chart.id).order('entry_date', { ascending: false });
-          const { data: goalsData } = await supabase.from('reward_goals').select('*').eq('chart_id', chart.id);
-          if (entriesData) entriesMap[chart.id] = entriesData;
-          if (goalsData) goalsMap[chart.id] = goalsData;
-        }
-        setEntries(entriesMap);
-        setGoals(goalsMap);
+      const chartsData = await listRewardCharts();
+      setCharts(chartsData);
+      const entriesMap: { [key: string]: RewardEntry[] } = {};
+      const goalsMap: { [key: string]: RewardGoal[] } = {};
+      for (const chart of chartsData) {
+        entriesMap[chart.id] = await listRewardEntries(chart.id);
+        goalsMap[chart.id] = await listRewardGoals(chart.id);
       }
+      setEntries(entriesMap);
+      setGoals(goalsMap);
     } catch (error) {
       logger.error('Error loading rewards data:', error);
     } finally {
@@ -69,34 +67,29 @@ export default function RewardsSystem() {
     e.preventDefault();
     if (!user) return;
     try {
-      const payload = { user_id: user.id, ...chartForm };
       if (editingChart) {
-        const { error } = await supabase.from('reward_charts').update(payload).eq('id', editingChart.id);
-        if (error) throw error;
+        await updateRewardChart(editingChart.id, chartForm);
       } else {
-        const { error } = await supabase.from('reward_charts').insert(payload);
-        if (error) throw error;
+        await createRewardChart(chartForm);
       }
       setShowChartForm(false); setEditingChart(null); setChartForm(emptyChartForm); loadData();
-    } catch (error) { logger.error('Error saving chart:', error); alert('Failed to save reward chart'); }
+    } catch (error) { logger.error('Error saving chart:', error); alert('Failed to save reward chart. Please try again.'); }
   };
   const handleDeleteChart = async (id: string) => {
     if (!confirm('Delete this reward chart and all its data?')) return;
     try {
-      const { error } = await supabase.from('reward_charts').delete().eq('id', id);
-      if (error) throw error;
+      await deleteRewardChart(id);
       loadData();
-    } catch (error) { logger.error('Error deleting chart:', error); alert('Failed to delete chart'); }
+    } catch (error) { logger.error('Error deleting chart:', error); alert('Failed to delete chart. Please try again.'); }
   };
 
   const handleRateChart = async (chart: RewardChart, isEffective: boolean) => {
     // Clicking the active rating again clears it
     const value = chart.is_effective === isEffective ? null : isEffective;
     try {
-      const { error } = await supabase.from('reward_charts').update({ is_effective: value }).eq('id', chart.id);
-      if (error) throw error;
+      await rateRewardChart(chart.id, value);
       setCharts(prev => prev.map(c => (c.id === chart.id ? { ...c, is_effective: value } : c)));
-    } catch (error) { logger.error('Error rating chart:', error); alert('Failed to save rating'); }
+    } catch (error) { logger.error('Error rating chart:', error); alert('Failed to save rating. Please try again.'); }
   };
 
   // --- Entry handlers ---
@@ -115,22 +108,19 @@ export default function RewardsSystem() {
         entry_date: new Date().toISOString().split('T')[0]
       };
       if (editingEntry) {
-        const { error } = await supabase.from('reward_entries').update(payload).eq('id', editingEntry.id);
-        if (error) throw error;
+        await updateRewardEntry(editingEntry.id, payload);
       } else {
-        const { error } = await supabase.from('reward_entries').insert({ chart_id: chartId, ...payload });
-        if (error) throw error;
+        await createRewardEntry(chartId, payload);
       }
       setShowEntryForm(null); setEditingEntry(null); setEntryForm(emptyEntryForm); loadData();
-    } catch (error) { logger.error('Error saving entry:', error); alert('Failed to save entry'); }
+    } catch (error) { logger.error('Error saving entry:', error); alert('Failed to save entry. Please try again.'); }
   };
   const handleDeleteEntry = async (id: string) => {
     if (!confirm('Delete this star entry?')) return;
     try {
-      const { error } = await supabase.from('reward_entries').delete().eq('id', id);
-      if (error) throw error;
+      await deleteRewardEntry(id);
       loadData();
-    } catch (error) { logger.error('Error deleting entry:', error); alert('Failed to delete entry'); }
+    } catch (error) { logger.error('Error deleting entry:', error); alert('Failed to delete entry. Please try again.'); }
   };
 
   // --- Goal handlers ---
@@ -145,22 +135,19 @@ export default function RewardsSystem() {
     try {
       const payload = { goal_name: goalForm.goal_name, stars_required: goalForm.stars_required };
       if (editingGoal) {
-        const { error } = await supabase.from('reward_goals').update(payload).eq('id', editingGoal.id);
-        if (error) throw error;
+        await updateRewardGoal(editingGoal.id, payload);
       } else {
-        const { error } = await supabase.from('reward_goals').insert({ chart_id: chartId, ...payload, is_achieved: false });
-        if (error) throw error;
+        await createRewardGoal(chartId, payload);
       }
       setShowGoalForm(null); setEditingGoal(null); setGoalForm(emptyGoalForm); loadData();
-    } catch (error) { logger.error('Error saving goal:', error); alert('Failed to save goal'); }
+    } catch (error) { logger.error('Error saving goal:', error); alert('Failed to save goal. Please try again.'); }
   };
   const handleDeleteGoal = async (id: string) => {
     if (!confirm('Delete this goal?')) return;
     try {
-      const { error } = await supabase.from('reward_goals').delete().eq('id', id);
-      if (error) throw error;
+      await deleteRewardGoal(id);
       loadData();
-    } catch (error) { logger.error('Error deleting goal:', error); alert('Failed to delete goal'); }
+    } catch (error) { logger.error('Error deleting goal:', error); alert('Failed to delete goal. Please try again.'); }
   };
 
   const getTotalStars = (chartId: string) => entries[chartId]?.reduce((sum, e) => sum + (e.stars_earned || 0), 0) || 0;
