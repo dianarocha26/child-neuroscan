@@ -11,10 +11,10 @@ export function ErrorState({ message = 'Something went wrong', onRetry, onBack }
     <div className="min-h-screen bg-gradient-to-br from-red-50 via-white to-gray-50 flex items-center justify-center p-4">
       <div className="text-center max-w-md">
         <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-        <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+        <h3 className="text-xl font-semibold text-gray-900 mb-2">
           Oops!
         </h3>
-        <p className="text-gray-600 dark:text-gray-400 mb-6">
+        <p className="text-gray-600 mb-6">
           {message}
         </p>
         <div className="flex gap-3 justify-center">
@@ -43,5 +43,3 @@ export function ErrorState({ message = 'Something went wrong', onRetry, onBack }
     </div>
   );
 }
-
-export default ErrorState;
