@@ -51,17 +51,17 @@ export function SignUp({ onSwitchToLogin, onSignUpSuccess }: SignUpProps) {
       return;
     }
 
-    const { error } = await signUp(email, password);
+    const { error, needsConfirmation } = await signUp(email, password);
 
     if (error) {
       setError(error.message || 'Failed to create account. Please try again.');
       setLoading(false);
-    } else {
+    } else if (needsConfirmation) {
+      // Stay here so the user sees they must confirm before signing in
       setSuccess(true);
       setLoading(false);
-      setTimeout(() => {
-        onSignUpSuccess();
-      }, 2000);
+    } else {
+      onSignUpSuccess();
     }
   };
 
@@ -101,9 +101,20 @@ export function SignUp({ onSwitchToLogin, onSignUpSuccess }: SignUpProps) {
         {success && (
           <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg flex items-start gap-3">
             <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-            <p className="text-sm text-green-800">
-              Account created successfully! Redirecting to login...
-            </p>
+            <div className="text-sm text-green-800">
+              <p className="font-semibold">Check your email to confirm your account.</p>
+              <p className="mt-1">
+                We sent a link to {email}. Open it, then{' '}
+                <button
+                  type="button"
+                  onClick={onSwitchToLogin}
+                  className="underline font-semibold hover:text-green-900"
+                >
+                  sign in
+                </button>
+                .
+              </p>
+            </div>
           </div>
         )}
 
@@ -216,7 +227,7 @@ export function SignUp({ onSwitchToLogin, onSignUpSuccess }: SignUpProps) {
             disabled={loading || success}
             className="w-full bg-teal-600 text-white py-3 rounded-lg font-semibold hover:bg-teal-700 transition disabled:bg-gray-400 disabled:cursor-not-allowed"
           >
-            {loading ? 'Creating Account...' : success ? 'Success!' : 'Sign Up'}
+            {loading ? 'Creating Account...' : success ? 'Check your email' : 'Sign Up'}
           </button>
         </form>
 

@@ -76,3 +76,10 @@ Read CLAUDE.md first. This file is the starting point for the phase 3 session; d
 - Migration `20260926030000_seed_remaining_condition_content.sql` adds explanations (EN+ES), 7 recommendations and 5 daily tips each for cerebral palsy, epilepsy, intellectual disability and Tourette. Generated from a script; each condition has at least one recommendation for every risk level (incl. "talk to your pediatrician"). Epilepsy includes standard seizure first aid and the 5-minute emergency rule.
 - Re-runnable: explanations only fill empty columns; rows use fixed ids + `ON CONFLICT (id) DO NOTHING`. Tested twice on a local Postgres 16 against the earlier seed migrations. No code change: tip categories reuse existing `HomeProgramTips` labels.
 - Owner: apply the migration manually in prod. No clinical review yet (see owner decisions).
+
+### Task 0: auth emails and messages (branch `claude/phase-3-auth-emails-ew1dcb`)
+- Sign-up: when Supabase returns no session (confirmation required), the form stays and says "Check your email to confirm your account" with a link to sign in. If confirmation is off, the user is signed in directly.
+- Login: `email_not_confirmed` shows "Your account needs verification. Check your email." plus a "Resend confirmation email" button (`supabase.auth.resend`, type `signup`). Every other failure shows one generic message (no account enumeration).
+- `signUp` and `resend` pass `emailRedirectTo: window.location.origin`, so preview deploys need their URL in Supabase redirect URLs to confirm there.
+- Branded templates are in `supabase/templates/` (`confirmation.html`, `recovery.html`), pasted by the owner into the dashboard. Custom SMTP (Resend) and DNS are owner setup; not in `config.toml`.
+- Not done: SignUp collects "Full name" but never saves it (pre-existing).
