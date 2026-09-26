@@ -43,6 +43,7 @@ const ScreenWrapper = lazy(() => import('./components/ScreenWrapper'));
 import { calculateScreeningScore, saveScreeningResult, getQuestionsForCondition } from './lib/database';
 import type { Condition, RiskLevel, DomainScore } from './types/database';
 import { useDialog } from './contexts/DialogContext';
+import { useReminderAlerts } from './hooks/useReminderAlerts';
 
 export type Screen = 'login' | 'signup' | 'forgot-password' | 'landing' | 'children' | 'age-input' | 'questionnaire' | 'results' | 'dashboard' | 'report' | 'resources' | 'community' | 'videos' | 'appointments' | 'photos' | 'goals' | 'medications' | 'behavior' | 'crisis' | 'rewards' | 'reminders' | 'schedule' | 'sensory' | 'analytics' | 'reports';
 
@@ -50,6 +51,7 @@ function AppContent() {
   const { notify } = useDialog();
   const { user, loading, passwordRecovery, clearPasswordRecovery, signOut } = useAuth();
   const { language } = useLanguage();
+  useReminderAlerts();
   const [currentScreen, setCurrentScreen] = useState<Screen>('landing');
   const [selectedCondition, setSelectedCondition] = useState<Condition | null>(null);
   const [childAgeMonths, setChildAgeMonths] = useState<number>(0);

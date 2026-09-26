@@ -10,6 +10,7 @@ import {
 } from '../lib/api/reminders';
 import { ChildPicker } from './ChildPicker';
 import { useDialog } from '../contexts/DialogContext';
+import { REMINDERS_CHANGED } from '../hooks/useReminderAlerts';
 
 const REMINDER_TYPES: { value: ReminderType; label: string; icon: typeof Pill; color: string }[] = [
   { value: 'medication', label: 'Medication', icon: Pill, color: 'bg-purple-100 text-purple-700' },
@@ -21,7 +22,15 @@ const REMINDER_TYPES: { value: ReminderType; label: string; icon: typeof Pill; c
 
 const typeInfo = (type: string) => REMINDER_TYPES.find(t => t.value === type) || REMINDER_TYPES[4];
 
-const today = () => new Date().toISOString().split('T')[0];
+// Local date, not UTC, so "today" matches the user's calendar.
+const today = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
+const remindersChanged = () => window.dispatchEvent(new Event(REMINDERS_CHANGED));
+
+const notificationPermission = () => (typeof Notification === 'undefined' ? 'unsupported' : Notification.permission);
 
 export default function NotificationCenter() {
   const { notify, confirm } = useDialog();
@@ -35,6 +44,11 @@ export default function NotificationCenter() {
   const [editing, setEditing] = useState<Reminder | null>(null);
   const emptyForm = { reminder_type: 'medication' as ReminderType, title: '', description: '', child_name: '', reminder_date: today(), reminder_time: '09:00' };
   const [form, setForm] = useState(emptyForm);
+  const [permission, setPermission] = useState(notificationPermission);
+
+  const enableAlerts = async () => {
+    setPermission(await Notification.requestPermission());
+  };
 
   useEffect(() => { loadData(); }, [user]);
 
@@ -81,7 +95,7 @@ export default function NotificationCenter() {
       } else {
         await createReminder(user.id, payload);
       }
-      closeForm(); loadData();
+      closeForm(); loadData(); remindersChanged();
     } catch (error) { logger.error('Error saving reminder:', error); notify('Failed to save reminder'); }
   };
 
@@ -89,6 +103,7 @@ export default function NotificationCenter() {
     try {
       await setReminderActive(r.id, !r.is_active);
       setReminders(prev => prev.map(x => (x.id === r.id ? { ...x, is_active: !r.is_active } : x)));
+      remindersChanged();
     } catch (error) { logger.error('Error updating reminder:', error); notify('Failed to update reminder'); }
   };
 
@@ -97,6 +112,7 @@ export default function NotificationCenter() {
     try {
       await deleteReminder(id);
       setReminders(prev => prev.filter(r => r.id !== id));
+      remindersChanged();
     } catch (error) { logger.error('Error deleting reminder:', error); notify('Failed to delete reminder'); }
   };
 
@@ -164,6 +180,22 @@ export default function NotificationCenter() {
         action={{ label: 'New Reminder', icon: Plus, onClick: openNew }}
       />
 
+      <div className="flex flex-wrap items-center gap-3 mb-6 p-3 rounded-lg bg-teal-50 border border-teal-100 text-sm text-teal-900">
+        <Bell className="w-4 h-4 flex-shrink-0" aria-hidden="true" />
+        <p className="flex-1 min-w-[12rem]">
+          {permission === 'granted'
+            ? 'Alerts are on. You will be notified when a reminder is due while Child Neuro Scan is open.'
+            : permission === 'denied'
+              ? 'Browser notifications are blocked. You will still see alerts inside the app while it is open.'
+              : 'You will see an alert in the app when a reminder is due, while Child Neuro Scan is open.'}
+        </p>
+        {permission === 'default' && (
+          <button onClick={enableAlerts} className="px-3 py-1.5 rounded-lg bg-teal-600 text-white font-medium hover:bg-teal-700 transition">
+            Turn on notifications
+          </button>
+        )}
+      </div>
+
       <div className="flex gap-2 flex-wrap mb-6">
         {[{ value: 'all' as const, label: 'All' }, ...REMINDER_TYPES].map(t => (
           <button key={t.value} onClick={() => setFilter(t.value)}
@@ -182,38 +214,38 @@ export default function NotificationCenter() {
             </div>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
-                <select value={form.reminder_type} onChange={(e) => setForm({ ...form, reminder_type: e.target.value as ReminderType })}
+                <label htmlFor="reminder-type" className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+                <select id="reminder-type" value={form.reminder_type} onChange={(e) => setForm({ ...form, reminder_type: e.target.value as ReminderType })}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500">
                   {REMINDER_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
-                <input type="text" required value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })}
+                <label htmlFor="reminder-title" className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+                <input id="reminder-title" type="text" required value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500"
                   placeholder="e.g., Give evening medication" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Child Name (optional)</label>
-                <ChildPicker value={form.child_name} onChange={(name) => setForm({ ...form, child_name: name })}
+                <label htmlFor="reminder-child" className="block text-sm font-medium text-gray-700 mb-1">Child Name (optional)</label>
+                <ChildPicker id="reminder-child" value={form.child_name} onChange={(name) => setForm({ ...form, child_name: name })}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500" />
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
-                  <input type="date" required value={form.reminder_date} onChange={(e) => setForm({ ...form, reminder_date: e.target.value })}
+                  <label htmlFor="reminder-date" className="block text-sm font-medium text-gray-700 mb-1">Date</label>
+                  <input id="reminder-date" type="date" required value={form.reminder_date} onChange={(e) => setForm({ ...form, reminder_date: e.target.value })}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Time</label>
-                  <input type="time" required value={form.reminder_time} onChange={(e) => setForm({ ...form, reminder_time: e.target.value })}
+                  <label htmlFor="reminder-time" className="block text-sm font-medium text-gray-700 mb-1">Time</label>
+                  <input id="reminder-time" type="time" required value={form.reminder_time} onChange={(e) => setForm({ ...form, reminder_time: e.target.value })}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500" />
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Notes (optional)</label>
-                <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={3}
+                <label htmlFor="reminder-notes" className="block text-sm font-medium text-gray-700 mb-1">Notes (optional)</label>
+                <textarea id="reminder-notes" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={3}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500" />
               </div>
               <div className="modal-footer flex gap-3">

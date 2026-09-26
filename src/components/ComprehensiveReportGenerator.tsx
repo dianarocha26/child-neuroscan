@@ -388,13 +388,15 @@ export default function ComprehensiveReportGenerator() {
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <p id="report-template-label" className="block text-sm font-medium text-gray-700 mb-2">
                   Report Template
-                </label>
-                <div className="space-y-2">
+                </p>
+                <div role="group" aria-labelledby="report-template-label" className="space-y-2">
                   {templates.map((template) => (
                     <button
                       key={template.id}
+                      type="button"
+                      aria-pressed={selectedTemplate?.id === template.id}
                       onClick={() => setSelectedTemplate(template)}
                       className={`w-full text-left p-4 sm:p-5 rounded-xl border-2 transition-all duration-200 ${
                         selectedTemplate?.id === template.id
@@ -412,10 +414,11 @@ export default function ComprehensiveReportGenerator() {
               {selectedTemplate && (
                 <>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label htmlFor="report-title" className="block text-sm font-medium text-gray-700 mb-2">
                       Report Title
                     </label>
                     <input
+                      id="report-title"
                       type="text"
                       value={reportTitle}
                       onChange={(e) => setReportTitle(e.target.value)}
@@ -426,10 +429,11 @@ export default function ComprehensiveReportGenerator() {
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label htmlFor="report-start" className="block text-sm font-medium text-gray-700 mb-2">
                         Start Date
                       </label>
                       <input
+                      id="report-start"
                         type="date"
                         value={dateRangeStart}
                         onChange={(e) => setDateRangeStart(e.target.value)}
@@ -437,10 +441,11 @@ export default function ComprehensiveReportGenerator() {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label htmlFor="report-end" className="block text-sm font-medium text-gray-700 mb-2">
                         End Date
                       </label>
                       <input
+                      id="report-end"
                         type="date"
                         value={dateRangeEnd}
                         onChange={(e) => setDateRangeEnd(e.target.value)}
@@ -450,10 +455,11 @@ export default function ComprehensiveReportGenerator() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label htmlFor="report-notes" className="block text-sm font-medium text-gray-700 mb-2">
                       Additional Notes
                     </label>
                     <textarea
+                      id="report-notes"
                       value={reportNotes}
                       onChange={(e) => setReportNotes(e.target.value)}
                       rows={4}

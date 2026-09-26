@@ -9,7 +9,7 @@ interface ConfirmOptions {
 
 interface DialogContextValue {
   /** Non-blocking message, replaces window.alert(). */
-  notify: (message: string, type?: ToastType) => void;
+  notify: (message: string, type?: ToastType, duration?: number) => void;
   /** Resolves true if the user confirms, replaces window.confirm(). */
   confirm: (message: string, options?: ConfirmOptions) => Promise<boolean>;
 }
@@ -22,13 +22,13 @@ interface PendingConfirm extends ConfirmOptions {
 }
 
 export function DialogProvider({ children }: { children: ReactNode }) {
-  const [toast, setToast] = useState<{ id: number; message: string; type: ToastType } | null>(null);
+  const [toast, setToast] = useState<{ id: number; message: string; type: ToastType; duration?: number } | null>(null);
   const [pending, setPending] = useState<PendingConfirm | null>(null);
   const toastId = useRef(0);
 
-  const notify = useCallback((message: string, type: ToastType = 'error') => {
+  const notify = useCallback((message: string, type: ToastType = 'error', duration?: number) => {
     toastId.current += 1;
-    setToast({ id: toastId.current, message, type });
+    setToast({ id: toastId.current, message, type, duration });
   }, []);
 
   const closeToast = useCallback(() => setToast(null), []);
@@ -54,7 +54,7 @@ export function DialogProvider({ children }: { children: ReactNode }) {
   return (
     <DialogContext.Provider value={{ notify, confirm }}>
       {children}
-      {toast && <Toast key={toast.id} message={toast.message} type={toast.type} onClose={closeToast} />}
+      {toast && <Toast key={toast.id} message={toast.message} type={toast.type} duration={toast.duration} onClose={closeToast} />}
       <ResponsiveModal isOpen={!!pending} onClose={cancel} title={pending?.title ?? 'Please confirm'} size="sm">
         <p className="text-gray-700 mb-6">{pending?.message}</p>
         <div className="flex justify-end gap-3">

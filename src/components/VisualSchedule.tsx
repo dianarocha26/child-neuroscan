@@ -10,6 +10,7 @@ import {
   type Activity, type ActivityTemplate, type VisualSchedule
 } from '../lib/api/schedules';
 import { PageHeader } from './PageHeader';
+import { SCHEDULE_ICONS, scheduleIcon } from './scheduleIcons';
 import { ChildPicker } from './ChildPicker';
 import { useDialog } from '../contexts/DialogContext';
 
@@ -235,8 +236,8 @@ export default function VisualSchedule() {
     setActivityForm({
       activity_name: activity.activity_name,
       activity_description: activity.activity_description || '',
-      icon_name: activity.icon_name || '',
-      icon_color: activity.icon_color || '',
+      icon_name: activity.icon_name || 'Circle',
+      icon_color: activity.icon_color || '#3B82F6',
       start_time: activity.start_time || '',
       duration_minutes: activity.duration_minutes?.toString() || '30'
     });
@@ -451,10 +452,7 @@ export default function VisualSchedule() {
                         onClick={() => addTemplateActivity(template)}
                         className="w-full text-left p-2 rounded hover:bg-gray-100 transition text-sm flex items-center gap-2"
                       >
-                        <div
-                          className="w-6 h-6 rounded"
-                          style={{ backgroundColor: template.icon_color || undefined }}
-                        />
+                        <IconTile name={template.icon_name} color={template.icon_color} className="w-6 h-6" iconClassName="w-4 h-4" />
                         <div className="flex-1">
                           <div className="font-medium text-gray-900">{template.template_name}</div>
                           <div className="text-xs text-gray-500">{template.category}</div>
@@ -526,12 +524,14 @@ export default function VisualSchedule() {
                         value={activityForm.activity_name}
                         onChange={(e) => setActivityForm({ ...activityForm, activity_name: e.target.value })}
                         placeholder="Activity name"
+                        aria-label="Activity name"
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                       />
                       <textarea
                         value={activityForm.activity_description}
                         onChange={(e) => setActivityForm({ ...activityForm, activity_description: e.target.value })}
                         placeholder="Description (optional)"
+                        aria-label="Description (optional)"
                         rows={2}
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                       />
@@ -554,6 +554,30 @@ export default function VisualSchedule() {
                             onChange={(e) => setActivityForm({ ...activityForm, duration_minutes: e.target.value })}
                             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                           />
+                        </div>
+                      </div>
+                      <div>
+                        <p id="visual-schedule-icon-label" className="block text-sm font-medium text-gray-700 mb-2">Icon</p>
+                        <div role="group" aria-labelledby="visual-schedule-icon-label" className="grid grid-cols-6 sm:grid-cols-8 gap-1.5 max-h-40 overflow-y-auto p-1">
+                          {Object.entries(SCHEDULE_ICONS).map(([name, { icon: Icon, label }]) => {
+                            const selected = activityForm.icon_name === name;
+                            return (
+                              <button
+                                key={name}
+                                type="button"
+                                onClick={() => setActivityForm({ ...activityForm, icon_name: name })}
+                                aria-pressed={selected}
+                                aria-label={label}
+                                title={label}
+                                className={`h-10 rounded-lg flex items-center justify-center border-2 transition ${
+                                  selected ? 'border-teal-600 text-white' : 'border-gray-200 text-gray-600 hover:border-gray-300'
+                                }`}
+                                style={selected ? { backgroundColor: activityForm.icon_color || '#3B82F6' } : undefined}
+                              >
+                                <Icon className="w-5 h-5" aria-hidden="true" />
+                              </button>
+                            );
+                          })}
                         </div>
                       </div>
                       <div>
@@ -631,9 +655,11 @@ export default function VisualSchedule() {
                           )}
                         </button>
 
-                        <div
-                          className="w-7 h-7 sm:w-10 sm:h-10 rounded flex-shrink-0"
-                          style={{ backgroundColor: activity.icon_color || undefined }}
+                        <IconTile
+                          name={activity.icon_name}
+                          color={activity.icon_color}
+                          className="w-7 h-7 sm:w-10 sm:h-10 flex-shrink-0"
+                          iconClassName="w-4 h-4 sm:w-6 sm:h-6"
                         />
 
                         <div className="flex-1 min-w-0">
@@ -765,6 +791,23 @@ export default function VisualSchedule() {
           </button>
         </div>
       )}
+    </div>
+  );
+}
+
+function IconTile({ name, color, className, iconClassName }: {
+  name: string | null;
+  color: string | null;
+  className: string;
+  iconClassName: string;
+}) {
+  const Icon = scheduleIcon(name);
+  return (
+    <div
+      className={`${className} rounded flex items-center justify-center text-white`}
+      style={{ backgroundColor: color || '#3B82F6' }}
+    >
+      <Icon className={iconClassName} aria-hidden="true" />
     </div>
   );
 }
