@@ -9,6 +9,9 @@ import { ResetPassword } from './components/ResetPassword';
 import { AccountPrompt } from './components/AccountPrompt';
 import { LandingPage } from './components/LandingPage';
 import { AgeInput } from './components/AgeInput';
+import { ChildrenSetup } from './components/ChildrenSetup';
+import { useChildren } from './contexts/ChildrenContext';
+import type { Child } from './lib/api/children';
 import { Questionnaire } from './components/Questionnaire';
 import { Results } from './components/Results';
 import { MobileNavigation } from './components/MobileNavigation';
@@ -39,15 +42,22 @@ const ComprehensiveReportGenerator = lazy(() => import('./components/Comprehensi
 const ScreenWrapper = lazy(() => import('./components/ScreenWrapper'));
 import { calculateScreeningScore, saveScreeningResult, getQuestionsForCondition } from './lib/database';
 import type { Condition, RiskLevel, DomainScore } from './types/database';
+import { useDialog } from './contexts/DialogContext';
+import { useReminderAlerts } from './hooks/useReminderAlerts';
 
-export type Screen = 'login' | 'signup' | 'forgot-password' | 'landing' | 'age-input' | 'questionnaire' | 'results' | 'dashboard' | 'report' | 'resources' | 'community' | 'videos' | 'appointments' | 'photos' | 'goals' | 'medications' | 'behavior' | 'crisis' | 'rewards' | 'reminders' | 'schedule' | 'sensory' | 'analytics' | 'reports';
+export type Screen = 'login' | 'signup' | 'forgot-password' | 'landing' | 'children' | 'age-input' | 'questionnaire' | 'results' | 'dashboard' | 'report' | 'resources' | 'community' | 'videos' | 'appointments' | 'photos' | 'goals' | 'medications' | 'behavior' | 'crisis' | 'rewards' | 'reminders' | 'schedule' | 'sensory' | 'analytics' | 'reports';
 
 function AppContent() {
+  const { notify } = useDialog();
   const { user, loading, passwordRecovery, clearPasswordRecovery, signOut } = useAuth();
   const { language } = useLanguage();
+  useReminderAlerts();
   const [currentScreen, setCurrentScreen] = useState<Screen>('landing');
   const [selectedCondition, setSelectedCondition] = useState<Condition | null>(null);
   const [childAgeMonths, setChildAgeMonths] = useState<number>(0);
+  const [screeningChildName, setScreeningChildName] = useState<string | undefined>(undefined);
+  const { childList, loaded: childrenLoaded } = useChildren();
+  const [childrenOnboarding, setChildrenOnboarding] = useState(false);
   const [riskLevel, setRiskLevel] = useState<RiskLevel>('low');
   const [hasRedFlags, setHasRedFlags] = useState(false);
   const [domainScores, setDomainScores] = useState<Record<string, DomainScore>>({});
@@ -63,6 +73,20 @@ function AppContent() {
       setCurrentScreen('landing');
     }
   }, [user, currentScreen]);
+
+  // First time a signed-in parent with no child profiles reaches home: ask for their kids once.
+  useEffect(() => {
+    if (!user || !childrenLoaded || childList.length > 0 || currentScreen !== 'landing') return;
+    const key = `childrenSetupSeen:${user.id}`;
+    try {
+      if (localStorage.getItem(key)) return;
+      localStorage.setItem(key, '1');
+    } catch {
+      return;
+    }
+    setChildrenOnboarding(true);
+    setCurrentScreen('children');
+  }, [user, childrenLoaded, childList.length, currentScreen]);
 
   // Every screen change is a page navigation: start the new screen at the top.
   useEffect(() => {
@@ -88,6 +112,13 @@ function AppContent() {
 
   function handleAgeSubmit(ageInMonths: number) {
     setChildAgeMonths(ageInMonths);
+    setScreeningChildName(undefined);
+    setCurrentScreen('questionnaire');
+  }
+
+  function handleChildSelect(child: Child, ageInMonths: number) {
+    setChildAgeMonths(ageInMonths);
+    setScreeningChildName(child.child_name);
     setCurrentScreen('questionnaire');
   }
 
@@ -144,6 +175,7 @@ function AppContent() {
     setCurrentScreen('landing');
     setSelectedCondition(null);
     setChildAgeMonths(0);
+    setScreeningChildName(undefined);
     setRiskLevel('low');
     setHasRedFlags(false);
     setDomainScores({});
@@ -323,12 +355,12 @@ function AppContent() {
         localStorage.removeItem('guestScreeningData');
       } catch (err) {
         logger.error('Failed to save guest screening after login', err);
-        alert(language === 'es'
+        notify(language === 'es'
           ? 'No pudimos guardar su evaluación. Intente de nuevo más tarde.'
           : 'We could not save your screening. Please try again later.');
       }
     })();
-  }, [user, pendingSaveAction, selectedCondition, language]);
+  }, [user, pendingSaveAction, selectedCondition, language, notify]);
 
   function handleGenerateReport(sessionId: string) {
     setSelectedReportSessionId(sessionId);
@@ -369,6 +401,10 @@ function AppContent() {
         hideSignIn={isAuthScreen}
         onHome={() => setCurrentScreen('landing')}
         onSearch={() => setIsSearchOpen(true)}
+        onChildren={() => {
+          setChildrenOnboarding(false);
+          setCurrentScreen('children');
+        }}
         onLogin={() => setCurrentScreen('login')}
         onLogout={() => {
           setCurrentScreen('landing');
@@ -464,9 +500,21 @@ function AppContent() {
         />
       )}
 
+      {currentScreen === 'children' && user && (
+        <ChildrenSetup
+          isOnboarding={childrenOnboarding}
+          onDone={() => {
+            setChildrenOnboarding(false);
+            setCurrentScreen('landing');
+          }}
+        />
+      )}
+
       {currentScreen === 'age-input' && selectedCondition && (
         <AgeInput
           onSubmit={handleAgeSubmit}
+          childList={user ? childList : []}
+          onChildSelect={handleChildSelect}
           onBack={() => setCurrentScreen('landing')}
         />
       )}
@@ -475,6 +523,7 @@ function AppContent() {
         <Questionnaire
           condition={selectedCondition}
           childAgeMonths={childAgeMonths}
+          initialChildName={screeningChildName}
           onComplete={handleQuestionnaireComplete}
           onBack={() => setCurrentScreen('age-input')}
         />

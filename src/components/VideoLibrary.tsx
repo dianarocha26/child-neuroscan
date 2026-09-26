@@ -1,38 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Play, Search, Filter, Clock, CheckCircle, Tag, ArrowLeft } from 'lucide-react';
-import { supabase } from '../lib/supabase';
 import { useLanguage } from '../contexts/LanguageContext';
 import { logger } from '../lib/logger';
 import { PageHeader } from './PageHeader';
-
-interface Video {
-  id: string;
-  title: string;
-  description: string;
-  video_url: string;
-  thumbnail_url: string;
-  duration: number;
-  condition_type: string;
-  age_group: string;
-  difficulty_level: string;
-  views: number;
-  category: {
-    name: string;
-    icon: string;
-  };
-  tags: string[];
-  progress?: {
-    watched: boolean;
-    progress_seconds: number;
-  };
-}
-
-interface VideoCategory {
-  id: string;
-  name: string;
-  description: string;
-  icon: string;
-}
+import {
+  listVideoCategories, listVideos, markVideoWatched, recordVideoView, startVideoProgress,
+  type Video, type VideoCategory
+} from '../lib/api/videos';
 
 interface VideoLibraryProps {
   userId?: string;
@@ -58,64 +32,21 @@ export default function VideoLibrary({ userId, onBack }: VideoLibraryProps) {
   const loadVideosAndCategories = async () => {
     setLoading(true);
 
-    let query = supabase
-      .from('videos')
-      .select(`
-        *,
-        category:video_categories(name, icon),
-        tags:video_tags(tag)
-      `)
-      .order('created_at', { ascending: false });
-
-    if (selectedCondition !== 'all') {
-      query = query.eq('condition_type', selectedCondition);
-    }
-
-    if (selectedCategory !== 'all') {
-      query = query.eq('category_id', selectedCategory);
-    }
-
-    if (selectedAgeGroup !== 'all') {
-      query = query.or(`age_group.eq.${selectedAgeGroup},age_group.eq.all`);
-    }
-
-    const [videosResult, categoriesResult] = await Promise.all([
-      query,
-      supabase.from('video_categories').select('*').order('name')
+    const [videosResult, categoriesResult] = await Promise.allSettled([
+      listVideos({ condition: selectedCondition, categoryId: selectedCategory, ageGroup: selectedAgeGroup }, userId),
+      listVideoCategories()
     ]);
 
-    if (videosResult.error) {
-      logger.error('Error loading videos:', videosResult.error);
+    if (videosResult.status === 'rejected') {
+      logger.error('Error loading videos:', videosResult.reason);
     } else {
-      const videosWithTags = videosResult.data.map((video: any) => ({
-        ...video,
-        tags: video.tags?.map((t: any) => t.tag) || []
-      }));
-
-      if (userId) {
-        const videoIds = videosWithTags.map((v: Video) => v.id);
-        const { data: progressData } = await supabase
-          .from('user_video_progress')
-          .select('video_id, watched, progress_seconds')
-          .eq('user_id', userId)
-          .in('video_id', videoIds);
-
-        const progressMap = new Map(
-          progressData?.map(p => [p.video_id, { watched: p.watched, progress_seconds: p.progress_seconds }])
-        );
-
-        videosWithTags.forEach((video: Video) => {
-          video.progress = progressMap.get(video.id);
-        });
-      }
-
-      setVideos(videosWithTags);
+      setVideos(videosResult.value);
     }
 
-    if (categoriesResult.error) {
-      logger.error('Error loading categories:', categoriesResult.error);
+    if (categoriesResult.status === 'rejected') {
+      logger.error('Error loading categories:', categoriesResult.reason);
     } else {
-      setCategories(categoriesResult.data || []);
+      setCategories(categoriesResult.value);
     }
 
     setLoading(false);
@@ -124,41 +55,29 @@ export default function VideoLibrary({ userId, onBack }: VideoLibraryProps) {
   const handleVideoClick = async (video: Video) => {
     setSelectedVideo(video);
 
-    await supabase
-      .from('videos')
-      .update({ views: (video.views || 0) + 1 })
-      .eq('id', video.id);
+    try {
+      await recordVideoView(video.id, video.views || 0);
+    } catch (error) {
+      logger.error('Error recording video view:', error);
+    }
 
     if (userId) {
-      await supabase
-        .from('user_video_progress')
-        .upsert({
-          user_id: userId,
-          video_id: video.id,
-          watched: false,
-          progress_seconds: 0,
-          updated_at: new Date().toISOString()
-        }, {
-          onConflict: 'user_id,video_id'
-        });
+      try {
+        await startVideoProgress(userId, video.id);
+      } catch (error) {
+        logger.error('Error starting video progress:', error);
+      }
     }
   };
 
   const handleMarkAsWatched = async (videoId: string) => {
     if (!userId) return;
 
-    await supabase
-      .from('user_video_progress')
-      .upsert({
-        user_id: userId,
-        video_id: videoId,
-        watched: true,
-        progress_seconds: 0,
-        completed_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      }, {
-        onConflict: 'user_id,video_id'
-      });
+    try {
+      await markVideoWatched(userId, videoId);
+    } catch (error) {
+      logger.error('Error marking video as watched:', error);
+    }
 
     await loadVideosAndCategories();
   };
@@ -166,7 +85,7 @@ export default function VideoLibrary({ userId, onBack }: VideoLibraryProps) {
   const filteredVideos = videos.filter(video => {
     const matchesSearch = searchQuery === '' ||
       video.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      video.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (video.description ?? '').toLowerCase().includes(searchQuery.toLowerCase()) ||
       video.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
 
     return matchesSearch;
@@ -238,7 +157,7 @@ export default function VideoLibrary({ userId, onBack }: VideoLibraryProps) {
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-600">
                     <span className="flex items-center gap-1">
                       <Clock className="w-4 h-4" />
-                      {formatDuration(selectedVideo.duration)}
+                      {formatDuration(selectedVideo.duration ?? 0)}
                     </span>
                     <span className="flex items-center gap-1">
                       <Play className="w-4 h-4" />
@@ -342,10 +261,11 @@ export default function VideoLibrary({ userId, onBack }: VideoLibraryProps) {
             <div className="bg-white p-4 sm:p-6 rounded-lg border border-gray-200 shadow-sm space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label htmlFor="video-condition" className="block text-sm font-medium text-gray-700 mb-2">
                     {t('Condition Type', 'Tipo de Condición')}
                   </label>
                   <select
+                    id="video-condition"
                     value={selectedCondition}
                     onChange={(e) => setSelectedCondition(e.target.value)}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -359,10 +279,11 @@ export default function VideoLibrary({ userId, onBack }: VideoLibraryProps) {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label htmlFor="video-category" className="block text-sm font-medium text-gray-700 mb-2">
                     {t('Category', 'Categoría')}
                   </label>
                   <select
+                    id="video-category"
                     value={selectedCategory}
                     onChange={(e) => setSelectedCategory(e.target.value)}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -377,10 +298,11 @@ export default function VideoLibrary({ userId, onBack }: VideoLibraryProps) {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label htmlFor="video-age-group" className="block text-sm font-medium text-gray-700 mb-2">
                     {t('Age Group', 'Grupo de Edad')}
                   </label>
                   <select
+                    id="video-age-group"
                     value={selectedAgeGroup}
                     onChange={(e) => setSelectedAgeGroup(e.target.value)}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -450,7 +372,7 @@ export default function VideoLibrary({ userId, onBack }: VideoLibraryProps) {
                     </div>
                   </div>
                   <div className="absolute bottom-2 right-2 px-2 py-1 bg-black bg-opacity-75 text-white text-xs rounded">
-                    {formatDuration(video.duration)}
+                    {formatDuration(video.duration ?? 0)}
                   </div>
                   {video.progress?.watched && (
                     <div className="absolute top-2 right-2 bg-green-500 text-white p-1 rounded-full">

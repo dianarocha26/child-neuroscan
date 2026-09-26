@@ -1,13 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { Star, Trophy, Plus, Target, Edit2, Trash2, X, Info, ChevronDown, ChevronUp, ThumbsUp, ThumbsDown } from 'lucide-react';
-import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useLoadingState } from '../hooks/useLoadingState';
 import { logger } from '../lib/logger';
-import type { RewardChart, RewardEntry, RewardGoal } from '../types/components';
+import {
+  createRewardChart, createRewardEntry, createRewardGoal, deleteRewardChart, deleteRewardEntry,
+  deleteRewardGoal, listRewardCharts, listRewardEntries, listRewardGoals, rateRewardChart,
+  updateRewardChart, updateRewardEntry, updateRewardGoal,
+  type RewardChart, type RewardEntry, type RewardGoal
+} from '../lib/api/rewards';
 import { PageHeader } from './PageHeader';
+import { ChildPicker } from './ChildPicker';
+import { useDialog } from '../contexts/DialogContext';
 
 export default function RewardsSystem() {
+  const { notify, confirm } = useDialog();
   const { user } = useAuth();
   const [charts, setCharts] = useState<RewardChart[]>([]);
   const [entries, setEntries] = useState<{ [key: string]: RewardEntry[] }>({});
@@ -35,22 +42,35 @@ export default function RewardsSystem() {
   const loadData = async () => {
     if (!user) { setLoading(false); return; }
     try {
-      const { data: chartsData } = await supabase
-        .from('reward_charts').select('*').eq('user_id', user.id).order('created_at', { ascending: false });
+      const chartsData = await listRewardCharts(user.id);
+      setCharts(chartsData);
 
-      if (chartsData) {
-        setCharts(chartsData);
-        const entriesMap: { [key: string]: RewardEntry[] } = {};
-        const goalsMap: { [key: string]: RewardGoal[] } = {};
-        for (const chart of chartsData) {
-          const { data: entriesData } = await supabase.from('reward_entries').select('*').eq('chart_id', chart.id).order('entry_date', { ascending: false });
-          const { data: goalsData } = await supabase.from('reward_goals').select('*').eq('chart_id', chart.id);
-          if (entriesData) entriesMap[chart.id] = entriesData;
-          if (goalsData) goalsMap[chart.id] = goalsData;
-        }
-        setEntries(entriesMap);
-        setGoals(goalsMap);
-      }
+      const entriesMap: { [key: string]: RewardEntry[] } = {};
+      const goalsMap: { [key: string]: RewardGoal[] } = {};
+
+      await Promise.all(
+        chartsData.map(async (chart) => {
+          const [entriesResult, goalsResult] = await Promise.allSettled([
+            listRewardEntries(chart.id),
+            listRewardGoals(chart.id)
+          ]);
+
+          if (entriesResult.status === 'rejected') {
+            logger.error('Error loading star entries:', entriesResult.reason);
+          } else {
+            entriesMap[chart.id] = entriesResult.value;
+          }
+
+          if (goalsResult.status === 'rejected') {
+            logger.error('Error loading reward goals:', goalsResult.reason);
+          } else {
+            goalsMap[chart.id] = goalsResult.value;
+          }
+        })
+      );
+
+      setEntries(entriesMap);
+      setGoals(goalsMap);
     } catch (error) {
       logger.error('Error loading rewards data:', error);
     } finally {
@@ -62,41 +82,36 @@ export default function RewardsSystem() {
   const openNewChart = () => { setEditingChart(null); setChartForm(emptyChartForm); setShowChartForm(true); };
   const openEditChart = (chart: RewardChart) => {
     setEditingChart(chart);
-    setChartForm({ child_name: chart.child_name, chart_name: chart.chart_name, chart_type: chart.chart_type, target_behavior: chart.target_behavior, points_per_star: chart.points_per_star });
+    setChartForm({ child_name: chart.child_name, chart_name: chart.chart_name, chart_type: chart.chart_type, target_behavior: chart.target_behavior, points_per_star: chart.points_per_star ?? 1 });
     setShowChartForm(true);
   };
   const handleChartSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
     try {
-      const payload = { user_id: user.id, ...chartForm };
       if (editingChart) {
-        const { error } = await supabase.from('reward_charts').update(payload).eq('id', editingChart.id);
-        if (error) throw error;
+        await updateRewardChart(editingChart.id, chartForm);
       } else {
-        const { error } = await supabase.from('reward_charts').insert(payload);
-        if (error) throw error;
+        await createRewardChart(user.id, chartForm);
       }
       setShowChartForm(false); setEditingChart(null); setChartForm(emptyChartForm); loadData();
-    } catch (error) { logger.error('Error saving chart:', error); alert('Failed to save reward chart'); }
+    } catch (error) { logger.error('Error saving chart:', error); notify('Failed to save reward chart. Please try again.'); }
   };
   const handleDeleteChart = async (id: string) => {
-    if (!confirm('Delete this reward chart and all its data?')) return;
+    if (!(await confirm('Delete this reward chart and all its data?'))) return;
     try {
-      const { error } = await supabase.from('reward_charts').delete().eq('id', id);
-      if (error) throw error;
+      await deleteRewardChart(id);
       loadData();
-    } catch (error) { logger.error('Error deleting chart:', error); alert('Failed to delete chart'); }
+    } catch (error) { logger.error('Error deleting chart:', error); notify('Failed to delete chart. Please try again.'); }
   };
 
   const handleRateChart = async (chart: RewardChart, isEffective: boolean) => {
     // Clicking the active rating again clears it
     const value = chart.is_effective === isEffective ? null : isEffective;
     try {
-      const { error } = await supabase.from('reward_charts').update({ is_effective: value }).eq('id', chart.id);
-      if (error) throw error;
+      await rateRewardChart(chart.id, value);
       setCharts(prev => prev.map(c => (c.id === chart.id ? { ...c, is_effective: value } : c)));
-    } catch (error) { logger.error('Error rating chart:', error); alert('Failed to save rating'); }
+    } catch (error) { logger.error('Error rating chart:', error); notify('Failed to save rating. Please try again.'); }
   };
 
   // --- Entry handlers ---
@@ -115,22 +130,19 @@ export default function RewardsSystem() {
         entry_date: new Date().toISOString().split('T')[0]
       };
       if (editingEntry) {
-        const { error } = await supabase.from('reward_entries').update(payload).eq('id', editingEntry.id);
-        if (error) throw error;
+        await updateRewardEntry(editingEntry.id, payload);
       } else {
-        const { error } = await supabase.from('reward_entries').insert({ chart_id: chartId, ...payload });
-        if (error) throw error;
+        await createRewardEntry(chartId, payload);
       }
       setShowEntryForm(null); setEditingEntry(null); setEntryForm(emptyEntryForm); loadData();
-    } catch (error) { logger.error('Error saving entry:', error); alert('Failed to save entry'); }
+    } catch (error) { logger.error('Error saving entry:', error); notify('Failed to save entry. Please try again.'); }
   };
   const handleDeleteEntry = async (id: string) => {
-    if (!confirm('Delete this star entry?')) return;
+    if (!(await confirm('Delete this star entry?'))) return;
     try {
-      const { error } = await supabase.from('reward_entries').delete().eq('id', id);
-      if (error) throw error;
+      await deleteRewardEntry(id);
       loadData();
-    } catch (error) { logger.error('Error deleting entry:', error); alert('Failed to delete entry'); }
+    } catch (error) { logger.error('Error deleting entry:', error); notify('Failed to delete entry. Please try again.'); }
   };
 
   // --- Goal handlers ---
@@ -145,22 +157,19 @@ export default function RewardsSystem() {
     try {
       const payload = { goal_name: goalForm.goal_name, stars_required: goalForm.stars_required };
       if (editingGoal) {
-        const { error } = await supabase.from('reward_goals').update(payload).eq('id', editingGoal.id);
-        if (error) throw error;
+        await updateRewardGoal(editingGoal.id, payload);
       } else {
-        const { error } = await supabase.from('reward_goals').insert({ chart_id: chartId, ...payload, is_achieved: false });
-        if (error) throw error;
+        await createRewardGoal(chartId, payload);
       }
       setShowGoalForm(null); setEditingGoal(null); setGoalForm(emptyGoalForm); loadData();
-    } catch (error) { logger.error('Error saving goal:', error); alert('Failed to save goal'); }
+    } catch (error) { logger.error('Error saving goal:', error); notify('Failed to save goal. Please try again.'); }
   };
   const handleDeleteGoal = async (id: string) => {
-    if (!confirm('Delete this goal?')) return;
+    if (!(await confirm('Delete this goal?'))) return;
     try {
-      const { error } = await supabase.from('reward_goals').delete().eq('id', id);
-      if (error) throw error;
+      await deleteRewardGoal(id);
       loadData();
-    } catch (error) { logger.error('Error deleting goal:', error); alert('Failed to delete goal'); }
+    } catch (error) { logger.error('Error deleting goal:', error); notify('Failed to delete goal. Please try again.'); }
   };
 
   const getTotalStars = (chartId: string) => entries[chartId]?.reduce((sum, e) => sum + (e.stars_earned || 0), 0) || 0;
@@ -217,7 +226,7 @@ export default function RewardsSystem() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label htmlFor="rewards-system-child-name" className="block text-sm font-medium text-gray-700 mb-1">Child Name</label>
-                  <input id="rewards-system-child-name" type="text" required value={chartForm.child_name} onChange={(e) => setChartForm({ ...chartForm, child_name: e.target.value })}
+                  <ChildPicker id="rewards-system-child-name" required value={chartForm.child_name} onChange={(name) => setChartForm({ ...chartForm, child_name: name })}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500" />
                 </div>
                 <div>

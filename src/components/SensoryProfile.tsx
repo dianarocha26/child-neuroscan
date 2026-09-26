@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { Sparkles, Plus, Eye, Ear, Hand, Aperture, Wind, Activity, Users } from 'lucide-react';
-import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useLoadingState } from '../hooks/useLoadingState';
 import { logger } from '../lib/logger';
-import type { SensoryProfile } from '../types/components';
+import { createSensoryProfile, listSensoryProfiles, type SensoryProfile } from '../lib/api/sensory';
 import { PageHeader } from './PageHeader';
+import { ChildPicker } from './ChildPicker';
+import { useDialog } from '../contexts/DialogContext';
 
 export default function SensoryProfile() {
+  const { notify } = useDialog();
   const { user } = useAuth();
   const [profiles, setProfiles] = useState<SensoryProfile[]>([]);
   const { loading, setLoading } = useLoadingState();
@@ -111,17 +113,10 @@ export default function SensoryProfile() {
     }
 
     try {
-      const { data } = await supabase
-        .from('sensory_profiles')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
-
-      if (data) {
-        setProfiles(data);
-        if (data.length > 0 && !selectedProfile) {
-          setSelectedProfile(data[0].id);
-        }
+      const data = await listSensoryProfiles(user.id);
+      setProfiles(data);
+      if (data.length > 0 && !selectedProfile) {
+        setSelectedProfile(data[0].id);
       }
     } catch (error) {
       logger.error('Error loading sensory profiles:', error);
@@ -134,13 +129,12 @@ export default function SensoryProfile() {
     e.preventDefault();
 
     if (!user) {
-      alert('You must be logged in to create a sensory profile');
+      notify('You must be logged in to create a sensory profile');
       return;
     }
 
     try {
-      const { error } = await supabase.from('sensory_profiles').insert({
-        user_id: user.id,
+      await createSensoryProfile(user.id, {
         child_name: formData.child_name,
         visual_sensitivity: formData.visual_sensitivity,
         auditory_sensitivity: formData.auditory_sensitivity,
@@ -157,8 +151,6 @@ export default function SensoryProfile() {
         vestibular_notes: formData.vestibular_notes || null,
         proprioceptive_notes: formData.proprioceptive_notes || null
       });
-
-      if (error) throw error;
 
       setShowForm(false);
       setFormData({
@@ -181,7 +173,7 @@ export default function SensoryProfile() {
       loadProfiles();
     } catch (error) {
       logger.error('Error creating sensory profile:', error);
-      alert('Failed to create sensory profile');
+      notify('Failed to create sensory profile');
     }
   };
 
@@ -225,14 +217,9 @@ export default function SensoryProfile() {
           <h2 className="text-xl sm:text-2xl font-bold mb-6">Create Sensory Profile</h2>
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Child Name</label>
-              <input
-                type="text"
-                required
-                value={formData.child_name}
-                onChange={(e) => setFormData({ ...formData, child_name: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-              />
+              <label htmlFor="sensory-child" className="block text-sm font-medium text-gray-700 mb-1">Child Name</label>
+              <ChildPicker id="sensory-child" required value={formData.child_name} onChange={(name) => setFormData({ ...formData, child_name: name })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500" />
             </div>
 
             <div className="space-y-6">
@@ -254,12 +241,13 @@ export default function SensoryProfile() {
 
                     <div className="space-y-3">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Sensitivity Level</label>
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                        <p id={`${system.key}-sensitivity-label`} className="block text-sm font-medium text-gray-700 mb-2">Sensitivity Level</p>
+                        <div role="group" aria-labelledby={`${system.key}-sensitivity-label`} className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                           {sensitivityLevels.map((level) => (
                             <button
                               key={level.value}
                               type="button"
+                              aria-pressed={formData[sensitivityKey] === level.value}
                               onClick={() => setFormData({ ...formData, [sensitivityKey]: level.value })}
                               className={`p-3 rounded-lg border-2 transition text-sm ${
                                 formData[sensitivityKey] === level.value
@@ -274,8 +262,9 @@ export default function SensoryProfile() {
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Notes & Examples</label>
+                        <label htmlFor={`${system.key}-notes`} className="block text-sm font-medium text-gray-700 mb-1">Notes & Examples</label>
                         <textarea
+                          id={`${system.key}-notes`}
                           value={formData[notesKey] as string}
                           onChange={(e) => setFormData({ ...formData, [notesKey]: e.target.value })}
                           placeholder="Specific triggers, reactions, or helpful strategies..."

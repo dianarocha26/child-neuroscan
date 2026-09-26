@@ -23,13 +23,13 @@ export function HomeProgramTips({ tips }: HomeProgramTipsProps) {
     });
   }
 
-  const difficultyColors = {
+  const difficultyColors: Record<string, string> = {
     easy: 'bg-green-100 text-green-800',
     moderate: 'bg-yellow-100 text-yellow-800',
     challenging: 'bg-orange-100 text-orange-800'
   };
 
-  const difficultyLabels = {
+  const difficultyLabels: Record<string, { en: string; es: string }> = {
     easy: { en: 'Easy', es: 'Fácil' },
     moderate: { en: 'Moderate', es: 'Moderado' },
     challenging: { en: 'Challenging', es: 'Desafiante' }

@@ -59,48 +59,138 @@ export function LandingPage({ onConditionSelect, onViewDashboard, onViewResource
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50">
 
       <div className="max-w-6xl mx-auto px-4 py-6 relative">
-        {/* Quick links (language, search and account controls live in the app header) */}
-        <nav className={`${user ? 'grid grid-cols-2' : 'flex'} sm:flex sm:flex-wrap gap-2 mb-6 sm:mb-8 animate-in`} aria-label={t('Quick links', 'Accesos rápidos')}>
-          {user && onViewDashboard && (
-            <button
-              onClick={onViewDashboard}
-              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 min-h-[44px] text-sm sm:text-base whitespace-nowrap text-white rounded-xl hover:shadow-lg hover:scale-105 active:scale-100 transition-all duration-200 font-semibold bg-gradient-to-r from-primary-600 to-primary-700 hover:shadow-primary-500/30"
-            >
-              <TrendingUp className="w-4 h-4" aria-hidden="true" />
-              {t('Progress', 'Progreso')}
-            </button>
+        <div className="text-center mb-10 sm:mb-16 animate-in-delay-2">
+          <div className="grid md:grid-cols-2 gap-6 md:gap-12 items-center max-w-5xl mx-auto mb-8">
+            <div className="order-2 md:order-1 text-left">
+              <div className="inline-flex items-center gap-2 bg-gradient-to-r from-primary-100 to-cyan-100 px-4 py-2 rounded-full mb-4">
+                <Sparkles className="w-4 h-4 text-primary-600" />
+                <span className="text-sm font-semibold text-primary-700">{translations.trustedCompanion[language]}</span>
+              </div>
+              <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 mb-4 leading-tight">
+                {translations.appTitle[language]}
+              </h1>
+              <p className="text-lg sm:text-xl text-gray-600 mb-6 sm:mb-8 leading-relaxed">
+                {translations.appSubtitle[language]}
+              </p>
+              {!user && (
+                <div className="flex flex-wrap gap-3">
+                  <button
+                    onClick={onSignUp}
+                    className="btn-primary group"
+                  >
+                    <span>{translations.getStartedFree[language]}</span>
+                    <Sparkles className="w-4 h-4 ml-2 group-hover:rotate-12 transition-transform" />
+                  </button>
+                  <button
+                    onClick={onLogin}
+                    className="btn-secondary"
+                  >
+                    {translations.signIn[language]}
+                  </button>
+                </div>
+              )}
+            </div>
+            <div className={`order-1 md:order-2 relative ${user ? 'hidden md:block' : ''}`}>
+              <div className="relative w-full max-w-md mx-auto animate-float">
+                <div className="absolute inset-0 bg-gradient-to-br from-primary-400 to-cyan-400 rounded-full blur-3xl opacity-20 animate-pulse"></div>
+                <div className="relative animate-scale-in">
+                  <img
+                    src="/mascot.png"
+                    alt="ChildNeuroScan Mascot"
+                    className="w-44 sm:w-64 md:w-full max-w-sm mx-auto drop-shadow-2xl"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {!user && (
+            <div className="bg-gradient-to-br from-primary-50 via-white to-cyan-50 rounded-3xl p-5 sm:p-8 border-2 border-primary-100 max-w-4xl mx-auto shadow-soft-lg backdrop-blur-sm relative overflow-hidden">
+              <div className="absolute top-4 right-4 w-20 h-20 opacity-30" aria-hidden="true">
+                <WelcomeIllustration />
+              </div>
+              <div className="relative">
+                <p className="text-gray-700 sm:text-lg leading-relaxed mb-6 pr-16 sm:pr-24">
+                  {translations.exploreTools[language]}
+                </p>
+                <div className="grid md:grid-cols-3 gap-4 text-left">
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-primary-100 flex items-center justify-center flex-shrink-0">
+                      <Target className="w-5 h-5 text-primary-600" />
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-gray-900">{translations.tracking[language]}</h4>
+                      <p className="text-sm text-gray-600">{translations.trackingDescription[language]}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center flex-shrink-0">
+                      <BarChart3 className="w-5 h-5 text-emerald-600" />
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-gray-900">{translations.analysis[language]}</h4>
+                      <p className="text-sm text-gray-600">{translations.analysisDescription[language]}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-violet-100 flex items-center justify-center flex-shrink-0">
+                      <Users className="w-5 h-5 text-violet-600" />
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-gray-900">{translations.community[language]}</h4>
+                      <p className="text-sm text-gray-600">{translations.communityDescription[language]}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           )}
-          {onViewVideoLibrary && (
-            <button
-              onClick={onViewVideoLibrary}
-              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 min-h-[44px] text-sm sm:text-base whitespace-nowrap text-white rounded-xl hover:shadow-lg hover:scale-105 active:scale-100 transition-all duration-200 font-semibold bg-gradient-to-r from-emerald-600 to-emerald-700 hover:shadow-emerald-500/30"
-            >
-              <Video className="w-4 h-4" aria-hidden="true" />
-              {t('Videos', 'Videos')}
-            </button>
-          )}
-          {user && onViewResourceFinder && (
-            <button
-              onClick={onViewResourceFinder}
-              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 min-h-[44px] text-sm sm:text-base whitespace-nowrap text-white rounded-xl hover:shadow-lg hover:scale-105 active:scale-100 transition-all duration-200 font-semibold bg-gradient-to-r from-teal-600 to-teal-700 hover:shadow-teal-500/30"
-            >
-              <Search className="w-4 h-4" aria-hidden="true" />
-              {t('Resources', 'Recursos')}
-            </button>
-          )}
-          {user && onViewCommunity && (
-            <button
-              onClick={onViewCommunity}
-              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 min-h-[44px] text-sm sm:text-base whitespace-nowrap text-white rounded-xl hover:shadow-lg hover:scale-105 active:scale-100 transition-all duration-200 font-semibold bg-gradient-to-r from-orange-600 to-orange-700 hover:shadow-orange-500/30"
-            >
-              <Users className="w-4 h-4" aria-hidden="true" />
-              {t('Community', 'Comunidad')}
-            </button>
-          )}
-        </nav>
+        </div>
+
+        {/* Quick links for signed-in users (language, search and account controls live in the app header) */}
+        {user && (
+          <nav className={`grid grid-cols-2 sm:flex sm:flex-wrap gap-2 mb-6 sm:mb-8 animate-in`} aria-label={t('Quick links', 'Accesos rápidos')}>
+            {user && onViewDashboard && (
+              <button
+                onClick={onViewDashboard}
+                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 min-h-[44px] text-sm sm:text-base whitespace-nowrap text-white rounded-xl hover:shadow-lg hover:scale-105 active:scale-100 transition-all duration-200 font-semibold bg-gradient-to-r from-primary-600 to-primary-700 hover:shadow-primary-500/30"
+              >
+                <TrendingUp className="w-4 h-4" aria-hidden="true" />
+                {t('Progress', 'Progreso')}
+              </button>
+            )}
+            {onViewVideoLibrary && (
+              <button
+                onClick={onViewVideoLibrary}
+                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 min-h-[44px] text-sm sm:text-base whitespace-nowrap text-white rounded-xl hover:shadow-lg hover:scale-105 active:scale-100 transition-all duration-200 font-semibold bg-gradient-to-r from-emerald-600 to-emerald-700 hover:shadow-emerald-500/30"
+              >
+                <Video className="w-4 h-4" aria-hidden="true" />
+                {t('Videos', 'Videos')}
+              </button>
+            )}
+            {user && onViewResourceFinder && (
+              <button
+                onClick={onViewResourceFinder}
+                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 min-h-[44px] text-sm sm:text-base whitespace-nowrap text-white rounded-xl hover:shadow-lg hover:scale-105 active:scale-100 transition-all duration-200 font-semibold bg-gradient-to-r from-teal-600 to-teal-700 hover:shadow-teal-500/30"
+              >
+                <Search className="w-4 h-4" aria-hidden="true" />
+                {t('Resources', 'Recursos')}
+              </button>
+            )}
+            {user && onViewCommunity && (
+              <button
+                onClick={onViewCommunity}
+                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 min-h-[44px] text-sm sm:text-base whitespace-nowrap text-white rounded-xl hover:shadow-lg hover:scale-105 active:scale-100 transition-all duration-200 font-semibold bg-gradient-to-r from-orange-600 to-orange-700 hover:shadow-orange-500/30"
+              >
+                <Users className="w-4 h-4" aria-hidden="true" />
+                {t('Community', 'Comunidad')}
+              </button>
+            )}
+          </nav>
+        )}
 
         {user && (
-          <div className="mb-10 space-y-6 animate-in-delay-1">
+          <div className="mb-8 sm:mb-10 space-y-6 animate-in-delay-3">
             <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-soft-lg p-4 sm:p-8 border border-white/60">
               <div className="flex items-center gap-3 mb-4 sm:mb-6">
                 <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-primary-500 to-primary-700 rounded-xl flex items-center justify-center shadow-lg">
@@ -294,94 +384,6 @@ export function LandingPage({ onConditionSelect, onViewDashboard, onViewResource
             </div>
           </div>
         )}
-
-        <div className="text-center mb-10 sm:mb-16 animate-in-delay-2">
-          <div className="grid md:grid-cols-2 gap-6 md:gap-12 items-center max-w-5xl mx-auto mb-8">
-            <div className="order-2 md:order-1 text-left">
-              <div className="inline-flex items-center gap-2 bg-gradient-to-r from-primary-100 to-cyan-100 px-4 py-2 rounded-full mb-4">
-                <Sparkles className="w-4 h-4 text-primary-600" />
-                <span className="text-sm font-semibold text-primary-700">{translations.trustedCompanion[language]}</span>
-              </div>
-              <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 mb-4 leading-tight">
-                {translations.appTitle[language]}
-              </h1>
-              <p className="text-lg sm:text-xl text-gray-600 mb-6 sm:mb-8 leading-relaxed">
-                {translations.appSubtitle[language]}
-              </p>
-              {!user && (
-                <div className="flex flex-wrap gap-3">
-                  <button
-                    onClick={onSignUp}
-                    className="btn-primary group"
-                  >
-                    <span>{translations.getStartedFree[language]}</span>
-                    <Sparkles className="w-4 h-4 ml-2 group-hover:rotate-12 transition-transform" />
-                  </button>
-                  <button
-                    onClick={onLogin}
-                    className="btn-secondary"
-                  >
-                    {translations.signIn[language]}
-                  </button>
-                </div>
-              )}
-            </div>
-            <div className={`order-1 md:order-2 relative ${user ? 'hidden md:block' : ''}`}>
-              <div className="relative w-full max-w-md mx-auto animate-float">
-                <div className="absolute inset-0 bg-gradient-to-br from-primary-400 to-cyan-400 rounded-full blur-3xl opacity-20 animate-pulse"></div>
-                <div className="relative animate-scale-in">
-                  <img
-                    src="/mascot.png"
-                    alt="ChildNeuroScan Mascot"
-                    className="w-44 sm:w-64 md:w-full max-w-sm mx-auto drop-shadow-2xl"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {!user && (
-            <div className="bg-gradient-to-br from-primary-50 via-white to-cyan-50 rounded-3xl p-5 sm:p-8 border-2 border-primary-100 max-w-4xl mx-auto shadow-soft-lg backdrop-blur-sm relative overflow-hidden">
-              <div className="absolute top-4 right-4 w-20 h-20 opacity-30" aria-hidden="true">
-                <WelcomeIllustration />
-              </div>
-              <div className="relative">
-                <p className="text-gray-700 sm:text-lg leading-relaxed mb-6 pr-16 sm:pr-24">
-                  {translations.exploreTools[language]}
-                </p>
-                <div className="grid md:grid-cols-3 gap-4 text-left">
-                  <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-primary-100 flex items-center justify-center flex-shrink-0">
-                      <Target className="w-5 h-5 text-primary-600" />
-                    </div>
-                    <div>
-                      <h4 className="font-semibold text-gray-900">{translations.tracking[language]}</h4>
-                      <p className="text-sm text-gray-600">{translations.trackingDescription[language]}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center flex-shrink-0">
-                      <BarChart3 className="w-5 h-5 text-emerald-600" />
-                    </div>
-                    <div>
-                      <h4 className="font-semibold text-gray-900">{translations.analysis[language]}</h4>
-                      <p className="text-sm text-gray-600">{translations.analysisDescription[language]}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-violet-100 flex items-center justify-center flex-shrink-0">
-                      <Users className="w-5 h-5 text-violet-600" />
-                    </div>
-                    <div>
-                      <h4 className="font-semibold text-gray-900">{translations.community[language]}</h4>
-                      <p className="text-sm text-gray-600">{translations.communityDescription[language]}</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
 
         <div className="bg-white/90 backdrop-blur-sm rounded-3xl shadow-soft-lg p-5 sm:p-10 mb-8 sm:mb-10 border border-white/60 animate-in-delay-3">
           <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-3 flex items-center gap-3">

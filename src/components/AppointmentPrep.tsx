@@ -5,67 +5,19 @@ import {
   ClipboardList, MessageSquare, FolderOpen, ListTodo,
   Download, X
 } from 'lucide-react';
-import { supabase } from '../lib/supabase';
 import { useLanguage } from '../contexts/LanguageContext';
 import { logger } from '../lib/logger';
 import { localToday, toLocalDateString, toDateTimeLocalInput, fromDateTimeLocalInput } from '../lib/dates';
 import { PageHeader } from './PageHeader';
-
-interface AppointmentType {
-  id: string;
-  name: string;
-  description: string;
-  icon: string;
-  typical_duration: number;
-  preparation_tips: string[];
-}
-
-interface Appointment {
-  id: string;
-  child_name: string;
-  appointment_type: AppointmentType | null;
-  appointment_date: string;
-  provider_name: string;
-  location: string;
-  notes: string;
-  completed: boolean;
-  observations: Observation[];
-  questions: Question[];
-  documents: Document[];
-  followups: Followup[];
-}
-
-interface Observation {
-  id?: string;
-  category: string;
-  observation: string;
-  date_observed: string;
-  frequency: string;
-  concern_level: string;
-}
-
-interface Question {
-  id?: string;
-  question: string;
-  priority: string;
-  answered: boolean;
-  answer: string;
-}
-
-interface Document {
-  id?: string;
-  document_type: string;
-  document_name: string;
-  notes: string;
-}
-
-interface Followup {
-  id?: string;
-  followup_item: string;
-  due_date: string;
-  completed: boolean;
-  completed_at?: string;
-}
+import {
+  listAppointmentTypes, listAppointments, createAppointment, updateAppointment, deleteAppointment,
+  addObservation, addQuestion, addDocument, addFollowup, deleteAppointmentItem,
+  type AppointmentType, type Observation, type Question, type Document, type Followup,
+  type Appointment, type AppointmentChildTable,
+  type NewObservation, type NewQuestion, type NewDocument, type NewFollowup
+} from '../lib/api/appointments';
+import { ChildPicker } from './ChildPicker';
+import { useDialog } from '../contexts/DialogContext';
 
 interface AppointmentPrepProps {
   userId: string;
@@ -73,6 +25,7 @@ interface AppointmentPrepProps {
 }
 
 export default function AppointmentPrep({ userId, onBack }: AppointmentPrepProps) {
+  const { notify, confirm } = useDialog();
   const { t } = useLanguage();
   const [view, setView] = useState<'list' | 'create' | 'detail'>('list');
   const [editingApt, setEditingApt] = useState<Appointment | null>(null);
@@ -96,24 +49,24 @@ export default function AppointmentPrep({ userId, onBack }: AppointmentPrepProps
 
   const loadData = async () => {
     setLoading(true);
-    const [typesResult, appointmentsResult] = await Promise.all([
-      supabase.from('appointment_types').select('*').order('name'),
-      supabase
-        .from('appointments')
-        .select(`
-          *,
-          appointment_type:appointment_types(*),
-          observations:appointment_observations(*),
-          questions:appointment_questions(*),
-          documents:appointment_documents(*),
-          followups:appointment_followups(*)
-        `)
-        .eq('user_id', userId)
-        .order('appointment_date', { ascending: true })
+
+    const [apptsResult, typesResult] = await Promise.allSettled([
+      listAppointments(userId),
+      listAppointmentTypes()
     ]);
 
-    if (typesResult.data) setAppointmentTypes(typesResult.data);
-    if (appointmentsResult.data) setAppointments(appointmentsResult.data as any);
+    if (apptsResult.status === 'rejected') {
+      logger.error('Error loading appointments:', apptsResult.reason);
+    } else {
+      setAppointments(apptsResult.value);
+    }
+
+    if (typesResult.status === 'rejected') {
+      logger.error('Error loading appointment types:', typesResult.reason);
+    } else {
+      setAppointmentTypes(typesResult.value);
+    }
+
     setLoading(false);
   };
 
@@ -128,54 +81,33 @@ export default function AppointmentPrep({ userId, onBack }: AppointmentPrepProps
 
     if (editingApt) {
       // Update existing appointment
-      const { data, error } = await supabase
-        .from('appointments')
-        .update(payload)
-        .eq('id', editingApt.id)
-        .select(`
-          *,
-          appointment_type:appointment_types(*),
-          observations:appointment_observations(*),
-          questions:appointment_questions(*),
-          documents:appointment_documents(*),
-          followups:appointment_followups(*)
-        `)
-        .single();
-
-      if (error || !data) {
+      let data: Appointment;
+      try {
+        data = await updateAppointment(editingApt.id, payload);
+      } catch (error) {
         logger.error('Error updating appointment:', error);
-        alert(t('Failed to update appointment. Please try again.', 'No se pudo actualizar la cita. Inténtelo de nuevo.'));
+        notify(t('Failed to update appointment. Please try again.', 'No se pudo actualizar la cita. Inténtelo de nuevo.'));
         return;
       }
 
-      updateAppointmentInList(data as any);
-      setSelectedAppointment(data as any);
+      updateAppointmentInList(data);
+      setSelectedAppointment(data);
       setEditingApt(null);
       setFormData({ child_name: '', appointment_type_id: '', appointment_date: '', provider_name: '', location: '', notes: '' });
       setView('detail');
     } else {
       // Create new appointment
-      const { data, error } = await supabase
-        .from('appointments')
-        .insert({ user_id: userId, ...payload })
-        .select(`
-          *,
-          appointment_type:appointment_types(*),
-          observations:appointment_observations(*),
-          questions:appointment_questions(*),
-          documents:appointment_documents(*),
-          followups:appointment_followups(*)
-        `)
-        .single();
-
-      if (error || !data) {
+      let data: Appointment;
+      try {
+        data = await createAppointment(userId, payload);
+      } catch (error) {
         logger.error('Error creating appointment:', error);
-        alert(t('Failed to create appointment. Please try again.', 'No se pudo crear la cita. Inténtelo de nuevo.'));
+        notify(t('Failed to create appointment. Please try again.', 'No se pudo crear la cita. Inténtelo de nuevo.'));
         return;
       }
 
-      setAppointments([...appointments, data as any]);
-      setSelectedAppointment(data as any);
+      setAppointments([...appointments, data]);
+      setSelectedAppointment(data);
       setView('detail');
       setFormData({ child_name: '', appointment_type_id: '', appointment_date: '', provider_name: '', location: '', notes: '' });
     }
@@ -195,32 +127,27 @@ export default function AppointmentPrep({ userId, onBack }: AppointmentPrepProps
   };
 
   const handleDeleteAppointment = async (aptId: string) => {
-    if (!confirm('Delete this appointment and all its data?')) return;
-    const { error } = await supabase.from('appointments').delete().eq('id', aptId);
-    if (error) {
+    if (!(await confirm('Delete this appointment and all its data?'))) return;
+    try {
+      await deleteAppointment(aptId);
+    } catch (error) {
       logger.error('Error deleting appointment:', error);
-      alert(t('Failed to delete appointment. Please try again.', 'No se pudo eliminar la cita. Inténtelo de nuevo.'));
+      notify(t('Failed to delete appointment. Please try again.', 'No se pudo eliminar la cita. Inténtelo de nuevo.'));
       return;
     }
     setAppointments(appointments.filter(a => a.id !== aptId));
     setView('list');
   };
 
-  const handleAddObservation = async (observation: Observation): Promise<boolean> => {
+  const handleAddObservation = async (observation: NewObservation): Promise<boolean> => {
     if (!selectedAppointment) return false;
 
-    const { data, error } = await supabase
-      .from('appointment_observations')
-      .insert({
-        appointment_id: selectedAppointment.id,
-        ...observation
-      })
-      .select()
-      .single();
-
-    if (error || !data) {
+    let data: Observation;
+    try {
+      data = await addObservation(selectedAppointment.id, observation);
+    } catch (error) {
       logger.error('Error adding observation:', error);
-      alert(t('Failed to add observation. Please try again.', 'No se pudo agregar la observación. Inténtelo de nuevo.'));
+      notify(t('Failed to add observation. Please try again.', 'No se pudo agregar la observación. Inténtelo de nuevo.'));
       return false;
     }
 
@@ -233,22 +160,15 @@ export default function AppointmentPrep({ userId, onBack }: AppointmentPrepProps
     return true;
   };
 
-  const handleAddQuestion = async (question: Question): Promise<boolean> => {
+  const handleAddQuestion = async (question: NewQuestion): Promise<boolean> => {
     if (!selectedAppointment) return false;
 
-    const { data, error } = await supabase
-      .from('appointment_questions')
-      .insert({
-        appointment_id: selectedAppointment.id,
-        question: question.question,
-        priority: question.priority
-      })
-      .select()
-      .single();
-
-    if (error || !data) {
+    let data: Question;
+    try {
+      data = await addQuestion(selectedAppointment.id, question);
+    } catch (error) {
       logger.error('Error adding question:', error);
-      alert(t('Failed to add question. Please try again.', 'No se pudo agregar la pregunta. Inténtelo de nuevo.'));
+      notify(t('Failed to add question. Please try again.', 'No se pudo agregar la pregunta. Inténtelo de nuevo.'));
       return false;
     }
 
@@ -261,21 +181,15 @@ export default function AppointmentPrep({ userId, onBack }: AppointmentPrepProps
     return true;
   };
 
-  const handleAddDocument = async (doc: Document): Promise<boolean> => {
+  const handleAddDocument = async (doc: NewDocument): Promise<boolean> => {
     if (!selectedAppointment) return false;
 
-    const { data, error } = await supabase
-      .from('appointment_documents')
-      .insert({
-        appointment_id: selectedAppointment.id,
-        ...doc
-      })
-      .select()
-      .single();
-
-    if (error || !data) {
+    let data: Document;
+    try {
+      data = await addDocument(selectedAppointment.id, doc);
+    } catch (error) {
       logger.error('Error adding document:', error);
-      alert(t('Failed to add document. Please try again.', 'No se pudo agregar el documento. Inténtelo de nuevo.'));
+      notify(t('Failed to add document. Please try again.', 'No se pudo agregar el documento. Inténtelo de nuevo.'));
       return false;
     }
 
@@ -288,22 +202,15 @@ export default function AppointmentPrep({ userId, onBack }: AppointmentPrepProps
     return true;
   };
 
-  const handleAddFollowup = async (followup: Followup): Promise<boolean> => {
+  const handleAddFollowup = async (followup: NewFollowup): Promise<boolean> => {
     if (!selectedAppointment) return false;
 
-    const { data, error } = await supabase
-      .from('appointment_followups')
-      .insert({
-        appointment_id: selectedAppointment.id,
-        ...followup,
-        due_date: followup.due_date || null
-      })
-      .select()
-      .single();
-
-    if (error || !data) {
+    let data: Followup;
+    try {
+      data = await addFollowup(selectedAppointment.id, followup);
+    } catch (error) {
       logger.error('Error adding follow-up task:', error);
-      alert(t('Failed to add follow-up task. Please try again.', 'No se pudo agregar la tarea de seguimiento. Inténtelo de nuevo.'));
+      notify(t('Failed to add follow-up task. Please try again.', 'No se pudo agregar la tarea de seguimiento. Inténtelo de nuevo.'));
       return false;
     }
 
@@ -316,13 +223,14 @@ export default function AppointmentPrep({ userId, onBack }: AppointmentPrepProps
     return true;
   };
 
-  const handleDeleteItem = async (table: string, id: string, field: keyof Appointment) => {
-    if (!confirm(t('Delete this item?', '¿Eliminar este elemento?'))) return;
+  const handleDeleteItem = async (table: AppointmentChildTable, id: string, field: keyof Appointment) => {
+    if (!(await confirm(t('Delete this item?', '¿Eliminar este elemento?')))) return;
 
-    const { error } = await supabase.from(table).delete().eq('id', id);
-    if (error) {
+    try {
+      await deleteAppointmentItem(table, id);
+    } catch (error) {
       logger.error('Error deleting item:', error);
-      alert(t('Failed to delete item. Please try again.', 'No se pudo eliminar el elemento. Inténtelo de nuevo.'));
+      notify(t('Failed to delete item. Please try again.', 'No se pudo eliminar el elemento. Inténtelo de nuevo.'));
       return;
     }
 
@@ -380,7 +288,7 @@ export default function AppointmentPrep({ userId, onBack }: AppointmentPrepProps
         return priority[a.priority as keyof typeof priority] - priority[b.priority as keyof typeof priority];
       });
       sortedQuestions.forEach((q, idx) => {
-        summary += `${idx + 1}. [${q.priority.toUpperCase()}] ${q.question}\n`;
+        summary += `${idx + 1}. [${(q.priority ?? '').toUpperCase()}] ${q.question}\n`;
       });
     }
 
@@ -441,13 +349,8 @@ export default function AppointmentPrep({ userId, onBack }: AppointmentPrepProps
                 <label htmlFor="appointment-prep-child-name" className="block text-sm font-medium text-gray-700 mb-2">
                   {t('Child Name', 'Nombre del Niño')}
                 </label>
-                <input id="appointment-prep-child-name"
-                  type="text"
-                  required
-                  value={formData.child_name}
-                  onChange={(e) => setFormData({ ...formData, child_name: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
+                <ChildPicker id="appointment-prep-child-name" required value={formData.child_name} onChange={(name) => setFormData({ ...formData, child_name: name })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
               </div>
 
               <div>
@@ -674,11 +577,11 @@ function AppointmentDetail({
 }: {
   appointment: Appointment;
   onBack: () => void;
-  onAddObservation: (obs: Observation) => Promise<boolean>;
-  onAddQuestion: (q: Question) => Promise<boolean>;
-  onAddDocument: (doc: Document) => Promise<boolean>;
-  onAddFollowup: (f: Followup) => Promise<boolean>;
-  onDeleteItem: (table: string, id: string, field: keyof Appointment) => void;
+  onAddObservation: (obs: NewObservation) => Promise<boolean>;
+  onAddQuestion: (q: NewQuestion) => Promise<boolean>;
+  onAddDocument: (doc: NewDocument) => Promise<boolean>;
+  onAddFollowup: (f: NewFollowup) => Promise<boolean>;
+  onDeleteItem: (table: AppointmentChildTable, id: string, field: keyof Appointment) => void;
   onGenerateSummary: () => void;
   onEditAppointment: (apt: Appointment) => void;
   onDeleteAppointment: (id: string) => void;
@@ -899,7 +802,7 @@ function OverviewTab({ appointment }: { appointment: Appointment }) {
         <div>
           <h3 className="text-lg font-semibold text-gray-900 mb-3">Preparation Tips</h3>
           <ul className="space-y-2">
-            {appointment.appointment_type?.preparation_tips.map((tip, idx) => (
+            {(appointment.appointment_type?.preparation_tips ?? []).map((tip, idx) => (
               <li key={idx} className="flex items-start gap-3">
                 <CheckCircle2 className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
                 <span className="text-gray-700">{tip}</span>
@@ -955,13 +858,13 @@ function StatCard({ icon, label, value }: StatCardProps) {
 
 interface ObservationsTabProps {
   observations: Observation[];
-  onAdd: (item: Observation) => Promise<boolean>;
+  onAdd: (item: NewObservation) => Promise<boolean>;
   onDelete: (id: string) => void;
 }
 
 function ObservationsTab({ observations, onAdd, onDelete }: ObservationsTabProps) {
   const [showForm, setShowForm] = useState(false);
-  const [formData, setFormData] = useState<Observation>({
+  const [formData, setFormData] = useState<NewObservation>({
     category: 'behavior',
     observation: '',
     date_observed: localToday(),
@@ -1020,7 +923,7 @@ function ObservationsTab({ observations, onAdd, onDelete }: ObservationsTabProps
               <label htmlFor="appointment-prep-date-observed" className="block text-sm font-medium text-gray-700 mb-2">Date Observed</label>
               <input id="appointment-prep-date-observed"
                 type="date"
-                value={formData.date_observed}
+                value={formData.date_observed ?? ""}
                 onChange={(e) => setFormData({ ...formData, date_observed: e.target.value })}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                 required
@@ -1042,7 +945,7 @@ function ObservationsTab({ observations, onAdd, onDelete }: ObservationsTabProps
             <div>
               <label htmlFor="appointment-prep-frequency" className="block text-sm font-medium text-gray-700 mb-2">Frequency</label>
               <select id="appointment-prep-frequency"
-                value={formData.frequency}
+                value={formData.frequency ?? ""}
                 onChange={(e) => setFormData({ ...formData, frequency: e.target.value })}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
               >
@@ -1054,7 +957,7 @@ function ObservationsTab({ observations, onAdd, onDelete }: ObservationsTabProps
             <div>
               <label htmlFor="appointment-prep-concern-level" className="block text-sm font-medium text-gray-700 mb-2">Concern Level</label>
               <select id="appointment-prep-concern-level"
-                value={formData.concern_level}
+                value={formData.concern_level ?? ""}
                 onChange={(e) => setFormData({ ...formData, concern_level: e.target.value })}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
               >
@@ -1116,13 +1019,13 @@ function ObservationsTab({ observations, onAdd, onDelete }: ObservationsTabProps
 
 interface QuestionsTabProps {
   questions: Question[];
-  onAdd: (item: Question) => Promise<boolean>;
+  onAdd: (item: NewQuestion) => Promise<boolean>;
   onDelete: (id: string) => void;
 }
 
 function QuestionsTab({ questions, onAdd, onDelete }: QuestionsTabProps) {
   const [showForm, setShowForm] = useState(false);
-  const [formData, setFormData] = useState<Question>({
+  const [formData, setFormData] = useState<NewQuestion>({
     question: '',
     priority: 'medium',
     answered: false,
@@ -1176,7 +1079,7 @@ function QuestionsTab({ questions, onAdd, onDelete }: QuestionsTabProps) {
           <div>
             <label htmlFor="appointment-prep-priority" className="block text-sm font-medium text-gray-700 mb-2">Priority</label>
             <select id="appointment-prep-priority"
-              value={formData.priority}
+              value={formData.priority ?? ""}
               onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
             >
@@ -1238,13 +1141,13 @@ function QuestionsTab({ questions, onAdd, onDelete }: QuestionsTabProps) {
 
 interface DocumentsTabProps {
   documents: Document[];
-  onAdd: (item: Document) => Promise<boolean>;
+  onAdd: (item: NewDocument) => Promise<boolean>;
   onDelete: (id: string) => void;
 }
 
 function DocumentsTab({ documents, onAdd, onDelete }: DocumentsTabProps) {
   const [showForm, setShowForm] = useState(false);
-  const [formData, setFormData] = useState<Document>({
+  const [formData, setFormData] = useState<NewDocument>({
     document_type: 'medical_records',
     document_name: '',
     notes: ''
@@ -1313,7 +1216,7 @@ function DocumentsTab({ documents, onAdd, onDelete }: DocumentsTabProps) {
           <div>
             <label htmlFor="appointment-prep-notes-2" className="block text-sm font-medium text-gray-700 mb-2">Notes</label>
             <textarea id="appointment-prep-notes-2"
-              value={formData.notes}
+              value={formData.notes ?? ""}
               onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
               rows={2}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
@@ -1361,13 +1264,13 @@ function DocumentsTab({ documents, onAdd, onDelete }: DocumentsTabProps) {
 
 interface FollowupTabProps {
   followups: Followup[];
-  onAdd: (item: Followup) => Promise<boolean>;
+  onAdd: (item: NewFollowup) => Promise<boolean>;
   onDelete: (id: string) => void;
 }
 
 function FollowupTab({ followups, onAdd, onDelete }: FollowupTabProps) {
   const [showForm, setShowForm] = useState(false);
-  const [formData, setFormData] = useState<Followup>({
+  const [formData, setFormData] = useState<NewFollowup>({
     followup_item: '',
     due_date: '',
     completed: false
@@ -1415,7 +1318,7 @@ function FollowupTab({ followups, onAdd, onDelete }: FollowupTabProps) {
             <label htmlFor="appointment-prep-due-date" className="block text-sm font-medium text-gray-700 mb-2">Due Date</label>
             <input id="appointment-prep-due-date"
               type="date"
-              value={formData.due_date}
+              value={formData.due_date ?? ""}
               onChange={(e) => setFormData({ ...formData, due_date: e.target.value })}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
             />

@@ -1,26 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { Camera, Upload, X, Search, Calendar, Tag } from 'lucide-react';
 import { useLoadingState } from '../hooks/useLoadingState';
-import { supabase } from '../lib/supabase';
 import { logger } from '../lib/logger';
 import { PageHeader } from './PageHeader';
-
-interface PhotoEntry {
-  id: string;
-  child_name: string;
-  title: string;
-  description: string;
-  photo_url: string;
-  display_url?: string;
-  media_type: 'photo' | 'video';
-  milestone_type: string;
-  age_at_capture: string;
-  linked_condition: string;
-  tags: string[];
-  created_at: string;
-}
+import {
+  createPhotoEntry, deletePhotoEntry, listPhotoEntries, updatePhotoEntry,
+  type PhotoEntry
+} from '../lib/api/photos';
+import { ChildPicker } from './ChildPicker';
+import { useDialog } from '../contexts/DialogContext';
 
 export default function PhotoJournal() {
+  const { notify, confirm } = useDialog();
   const [entries, setEntries] = useState<PhotoEntry[]>([]);
   const [filteredEntries, setFilteredEntries] = useState<PhotoEntry[]>([]);
   const { loading, setLoading } = useLoadingState();
@@ -59,15 +50,6 @@ export default function PhotoJournal() {
     };
   }, [previewUrl]);
 
-  // photo_url holds the storage path; older rows hold a full public URL.
-  const storagePath = (photoUrl: string) => {
-    const marker = '/photo-journal/';
-    const i = photoUrl.indexOf(marker);
-    if (i === -1) return photoUrl;
-    const path = photoUrl.slice(i + marker.length).split('?')[0];
-    try { return decodeURIComponent(path); } catch { return path; }
-  };
-
   const resetForm = () => {
     setEditingEntry(null);
     setFormData({
@@ -96,29 +78,7 @@ export default function PhotoJournal() {
 
   const loadEntries = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data, error } = await supabase
-        .from('photo_journal_entries')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-
-      // Bucket is private: resolve short-lived signed URLs for display
-      const rows: PhotoEntry[] = data || [];
-      const paths = rows.map(r => storagePath(r.photo_url));
-      if (paths.length > 0) {
-        const { data: signed, error: signError } = await supabase.storage
-          .from('photo-journal')
-          .createSignedUrls(paths, 60 * 60);
-        if (signError) logger.error('Failed to sign photo URLs', signError);
-        const byPath = new Map((signed || []).map(s => [s.path, s.signedUrl]));
-        rows.forEach(r => { r.display_url = byPath.get(storagePath(r.photo_url)) || undefined; });
-      }
-      setEntries(rows);
+      setEntries(await listPhotoEntries());
     } catch (error) {
       logger.error('Failed to load photo journal entries', error);
     } finally {
@@ -132,8 +92,8 @@ export default function PhotoJournal() {
     if (searchTerm) {
       filtered = filtered.filter(entry =>
         entry.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        entry.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        entry.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()))
+        (entry.description ?? '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (entry.tags ?? []).some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()))
       );
     }
 
@@ -149,13 +109,13 @@ export default function PhotoJournal() {
     if (file) {
       const maxSize = 50 * 1024 * 1024; // 50MB
       if (file.size > maxSize) {
-        alert('File size must be less than 50MB');
+        notify('File size must be less than 50MB');
         return;
       }
 
       const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'video/mp4', 'video/webm', 'video/quicktime'];
       if (!validTypes.includes(file.type)) {
-        alert('Please select a valid image or video file');
+        notify('Please select a valid image or video file');
         return;
       }
 
@@ -174,75 +134,29 @@ export default function PhotoJournal() {
 
     setUploading(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
-
-      const fileExt = selectedFile.name.split('.').pop();
-      const fileName = `${user.id}/${Date.now()}.${fileExt}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from('photo-journal')
-        .upload(fileName, selectedFile);
-
-      if (uploadError) throw uploadError;
-
       const tagsArray = formData.tags.split(',').map(t => t.trim()).filter(t => t);
-      const mediaType = selectedFile.type.startsWith('video/') ? 'video' : 'photo';
-
-      const { error: insertError } = await supabase
-        .from('photo_journal_entries')
-        .insert({
-          user_id: user.id,
-          child_name: formData.child_name,
-          title: formData.title,
-          description: formData.description,
-          photo_url: fileName,
-          media_type: mediaType,
-          milestone_type: formData.milestone_type,
-          age_at_capture: formData.age_at_capture,
-          linked_condition: formData.linked_condition,
-          tags: tagsArray
-        });
-
-      if (insertError) {
-        // Don't leave an orphaned file in storage if the row insert failed
-        const { error: cleanupError } = await supabase.storage
-          .from('photo-journal')
-          .remove([fileName]);
-        if (cleanupError) logger.error('Failed to remove orphaned upload', cleanupError);
-        throw insertError;
-      }
+      await createPhotoEntry(selectedFile, { ...formData, tags: tagsArray });
 
       closeForm();
       loadEntries();
     } catch (error) {
       logger.error('Error uploading photo/video', error);
-      alert('Failed to upload photo. Please try again.');
+      notify('Failed to upload photo. Please try again.');
     } finally {
       setUploading(false);
     }
   };
 
   const handleDelete = async (entry: PhotoEntry) => {
-    if (!confirm('Are you sure you want to delete this entry?')) return;
+    if (!(await confirm('Are you sure you want to delete this entry?'))) return;
 
     try {
-      const { error: storageError } = await supabase.storage
-        .from('photo-journal')
-        .remove([storagePath(entry.photo_url)]);
-      if (storageError) logger.error('Failed to remove photo journal file from storage', storageError);
-
-      const { error } = await supabase
-        .from('photo_journal_entries')
-        .delete()
-        .eq('id', entry.id);
-
-      if (error) throw error;
+      await deletePhotoEntry(entry);
       loadEntries();
       setSelectedEntry(null);
     } catch (error) {
       logger.error('Error deleting photo journal entry', error);
-      alert('Failed to delete entry. Please try again.');
+      notify('Failed to delete entry. Please try again.');
     }
   };
 
@@ -250,11 +164,11 @@ export default function PhotoJournal() {
     setFormData({
       child_name: entry.child_name,
       title: entry.title,
-      description: entry.description,
-      milestone_type: entry.milestone_type,
-      age_at_capture: entry.age_at_capture,
-      linked_condition: entry.linked_condition,
-      tags: entry.tags.join(', ')
+      description: entry.description ?? '',
+      milestone_type: entry.milestone_type ?? '',
+      age_at_capture: entry.age_at_capture ?? '',
+      linked_condition: entry.linked_condition ?? '',
+      tags: (entry.tags ?? []).join(', ')
     });
     setEditingEntry(entry);
     setSelectedEntry(null);
@@ -268,33 +182,19 @@ export default function PhotoJournal() {
     setUploading(true);
     try {
       const tagsArray = formData.tags.split(',').map(t => t.trim()).filter(t => t);
-
-      const { error } = await supabase
-        .from('photo_journal_entries')
-        .update({
-          child_name: formData.child_name,
-          title: formData.title,
-          description: formData.description,
-          milestone_type: formData.milestone_type,
-          age_at_capture: formData.age_at_capture,
-          linked_condition: formData.linked_condition,
-          tags: tagsArray
-        })
-        .eq('id', editingEntry.id);
-
-      if (error) throw error;
+      await updatePhotoEntry(editingEntry.id, { ...formData, tags: tagsArray });
 
       closeForm();
       loadEntries();
     } catch (error) {
       logger.error('Error updating photo journal entry', error);
-      alert('Failed to update entry. Please try again.');
+      notify('Failed to update entry. Please try again.');
     } finally {
       setUploading(false);
     }
   };
 
-  const conditions = Array.from(new Set(entries.map(e => e.linked_condition).filter(c => c)));
+  const conditions = Array.from(new Set(entries.map(e => e.linked_condition).filter((c): c is string => Boolean(c))));
 
   if (loading) {
     return (
@@ -404,13 +304,8 @@ export default function PhotoJournal() {
                   <label htmlFor="photo-journal-child-s-name" className="block text-sm font-medium text-gray-700 mb-2">
                     Child's Name *
                   </label>
-                  <input id="photo-journal-child-s-name"
-                    type="text"
-                    value={formData.child_name}
-                    onChange={(e) => setFormData({ ...formData, child_name: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    required
-                  />
+                  <ChildPicker id="photo-journal-child-s-name" required value={formData.child_name} onChange={(name) => setFormData({ ...formData, child_name: name })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" />
                 </div>
                 <div>
                   <label htmlFor="photo-journal-age-at-time" className="block text-sm font-medium text-gray-700 mb-2">
@@ -537,7 +432,7 @@ export default function PhotoJournal() {
                 <div className="flex flex-wrap gap-2 text-sm text-gray-600">
                   <span className="flex items-center gap-1">
                     <Calendar className="w-4 h-4" />
-                    {new Date(selectedEntry.created_at).toLocaleDateString()}
+                    {new Date(selectedEntry.created_at ?? '').toLocaleDateString()}
                   </span>
                   <span>•</span>
                   <span>{selectedEntry.child_name}</span>
@@ -565,10 +460,10 @@ export default function PhotoJournal() {
                 )}
               </div>
 
-              {selectedEntry.tags.length > 0 && (
+              {(selectedEntry.tags ?? []).length > 0 && (
                 <div className="mb-4">
                   <div className="flex flex-wrap gap-2">
-                    {selectedEntry.tags.map((tag, idx) => (
+                    {(selectedEntry.tags ?? []).map((tag, idx) => (
                       <span key={idx} className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
                         <Tag className="w-3 h-3" />
                         {tag}
@@ -637,19 +532,19 @@ export default function PhotoJournal() {
                 <div className="text-sm text-gray-600 mb-2">
                   <div>{entry.child_name} • {entry.age_at_capture}</div>
                   <div className="text-xs text-gray-500">
-                    {new Date(entry.created_at).toLocaleDateString()}
+                    {new Date(entry.created_at ?? '').toLocaleDateString()}
                   </div>
                 </div>
-                {entry.tags.length > 0 && (
+                {(entry.tags ?? []).length > 0 && (
                   <div className="flex flex-wrap gap-1">
-                    {entry.tags.slice(0, 3).map((tag, idx) => (
+                    {(entry.tags ?? []).slice(0, 3).map((tag, idx) => (
                       <span key={idx} className="px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs">
                         {tag}
                       </span>
                     ))}
-                    {entry.tags.length > 3 && (
+                    {(entry.tags ?? []).length > 3 && (
                       <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs">
-                        +{entry.tags.length - 3}
+                        +{(entry.tags ?? []).length - 3}
                       </span>
                     )}
                   </div>

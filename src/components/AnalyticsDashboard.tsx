@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import { BarChart3, TrendingUp, AlertCircle, Calendar, Brain, Activity, Sparkles } from 'lucide-react';
-import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useLoadingState } from '../hooks/useLoadingState';
 import { logger } from '../lib/logger';
 import { ThinkingIllustration, EmptyStateIllustration } from './FriendlyIllustrations';
 import type { BehaviorPattern, Correlation, WeeklySummary, TriggerAnalysis } from '../types/components';
+import { listBehaviorPatterns, listCorrelations, listWeeklySummaries, listTriggerAnalysis } from '../lib/api/analytics';
 import { PageHeader } from './PageHeader';
 
 export default function AnalyticsDashboard() {
@@ -53,43 +53,36 @@ export default function AnalyticsDashboard() {
           break;
       }
 
-      const [patternsRes, correlationsRes, summariesRes, triggersRes] = await Promise.all([
-        supabase
-          .from('analytics_behavior_patterns')
-          .select('*')
-          .eq('user_id', user.id)
-          .gte('time_range_start', startDate.toISOString())
-          .order('frequency', { ascending: false })
-          .limit(10),
-
-        supabase
-          .from('analytics_correlations')
-          .select('*')
-          .eq('user_id', user.id)
-          .gte('date_range_start', startDate.toISOString())
-          .order('correlation_strength', { ascending: false })
-          .limit(5),
-
-        supabase
-          .from('analytics_weekly_summaries')
-          .select('*')
-          .eq('user_id', user.id)
-          .gte('week_start_date', startDate.toISOString().split('T')[0])
-          .order('week_start_date', { ascending: false })
-          .limit(8),
-
-        supabase
-          .from('analytics_trigger_analysis')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('total_occurrences', { ascending: false })
-          .limit(10)
+      const [patternsResult, correlationsResult, summariesResult, triggersResult] = await Promise.allSettled([
+        listBehaviorPatterns(user.id, startDate.toISOString()),
+        listCorrelations(user.id, startDate.toISOString()),
+        listWeeklySummaries(user.id, startDate.toISOString().split('T')[0]),
+        listTriggerAnalysis(user.id)
       ]);
 
-      setPatterns(patternsRes.data || []);
-      setCorrelations(correlationsRes.data || []);
-      setWeeklySummaries(summariesRes.data || []);
-      setTriggerAnalysis(triggersRes.data || []);
+      if (patternsResult.status === 'rejected') {
+        logger.error('Error loading behavior patterns:', patternsResult.reason);
+      } else {
+        setPatterns(patternsResult.value);
+      }
+
+      if (correlationsResult.status === 'rejected') {
+        logger.error('Error loading correlations:', correlationsResult.reason);
+      } else {
+        setCorrelations(correlationsResult.value);
+      }
+
+      if (summariesResult.status === 'rejected') {
+        logger.error('Error loading weekly summaries:', summariesResult.reason);
+      } else {
+        setWeeklySummaries(summariesResult.value);
+      }
+
+      if (triggersResult.status === 'rejected') {
+        logger.error('Error loading trigger analysis:', triggersResult.reason);
+      } else {
+        setTriggerAnalysis(triggersResult.value);
+      }
     } catch (error) {
       logger.error('Error loading analytics:', error);
     } finally {
@@ -219,20 +212,20 @@ export default function AnalyticsDashboard() {
                 {correlations.map((corr) => (
                   <div
                     key={corr.id}
-                    className={`p-4 rounded-lg border ${getCorrelationColor(corr.correlation_strength)}`}
+                    className={`p-4 rounded-lg border ${getCorrelationColor(corr.correlation_strength ?? 0)}`}
                   >
                     <div className="flex justify-between items-start mb-2">
                       <p className="font-semibold capitalize">
                         {formatCorrelationText(corr.factor_a, corr.factor_b)}
                       </p>
                       <span className="text-sm font-bold">
-                        {(corr.correlation_strength * 100).toFixed(0)}%
+                        {((corr.correlation_strength ?? 0) * 100).toFixed(0)}%
                       </span>
                     </div>
                     <p className="text-sm">
                       Observed together {corr.occurrences} times
                     </p>
-                    {Math.abs(corr.correlation_strength) >= 0.7 && (
+                    {Math.abs(corr.correlation_strength ?? 0) >= 0.7 && (
                       <p className="text-xs mt-2 font-medium">
                         Strong correlation detected - consider this pattern when planning interventions
                       </p>
@@ -288,7 +281,7 @@ export default function AnalyticsDashboard() {
                     <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
                       <div
                         className="bg-blue-600 h-2 rounded-full"
-                        style={{ width: `${Math.min(100, (pattern.frequency / 20) * 100)}%` }}
+                        style={{ width: `${Math.min(100, ((pattern.frequency ?? 0) / 20) * 100)}%` }}
                       ></div>
                     </div>
                   </div>
@@ -318,12 +311,12 @@ export default function AnalyticsDashboard() {
                         {trigger.total_occurrences}x
                       </span>
                     </div>
-                    {trigger.successful_strategies && trigger.successful_strategies.length > 0 && (
+                    {Array.isArray(trigger.successful_strategies) && trigger.successful_strategies.length > 0 && (
                       <div className="mt-2 bg-green-50 rounded p-2">
                         <p className="text-xs text-green-800 font-medium mb-1">Effective Strategies:</p>
                         <ul className="text-xs text-green-700 space-y-1">
-                          {trigger.successful_strategies.slice(0, 2).map((strategy: string, idx: number) => (
-                            <li key={idx}>• {strategy}</li>
+                          {trigger.successful_strategies.slice(0, 2).map((strategy, idx: number) => (
+                            <li key={idx}>• {String(strategy)}</li>
                           ))}
                         </ul>
                       </div>

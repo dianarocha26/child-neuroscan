@@ -1,13 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, Plus, Clock, Check, Edit2, Trash2, ArrowUp, ArrowDown, Save, X, Settings } from 'lucide-react';
-import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useLoadingState } from '../hooks/useLoadingState';
 import { logger } from '../lib/logger';
-import type { VisualSchedule, Activity, ActivityTemplate } from '../types/components';
+import {
+  createActivity, createSchedule, deleteActivity, deleteSchedule,
+  listActivityTemplates, listScheduleActivities, listSchedules, resetScheduleActivities, setActivityCompleted,
+  swapActivityOrder, updateActivity, updateSchedule,
+  type Activity, type ActivityTemplate, type VisualSchedule
+} from '../lib/api/schedules';
 import { PageHeader } from './PageHeader';
+import { SCHEDULE_ICONS, scheduleIcon } from './scheduleIcons';
+import { ChildPicker } from './ChildPicker';
+import { useDialog } from '../contexts/DialogContext';
 
 export default function VisualSchedule() {
+  const { notify, confirm } = useDialog();
   const { user } = useAuth();
   const [schedules, setSchedules] = useState<VisualSchedule[]>([]);
   const [activities, setActivities] = useState<{ [key: string]: Activity[] }>({});
@@ -50,39 +58,34 @@ export default function VisualSchedule() {
     }
 
     try {
-      const { data: schedulesData } = await supabase
-        .from('visual_schedules')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
+      const schedulesData = await listSchedules(user.id);
+      setSchedules(schedulesData);
 
-      const { data: templatesData } = await supabase
-        .from('activity_templates')
-        .select('*')
-        .eq('is_public', true)
-        .order('category', { ascending: true });
-
-      if (schedulesData) {
-        setSchedules(schedulesData);
-
-        const activitiesMap: { [key: string]: Activity[] } = {};
-        for (const schedule of schedulesData) {
-          const { data: activitiesData } = await supabase
-            .from('schedule_activities')
-            .select('*')
-            .eq('schedule_id', schedule.id)
-            .order('activity_order');
-
-          if (activitiesData) activitiesMap[schedule.id] = activitiesData;
-        }
-        setActivities(activitiesMap);
-
-        if (schedulesData.length > 0 && !selectedSchedule) {
-          setSelectedSchedule(schedulesData[0].id);
-        }
+      if (schedulesData.length > 0 && !selectedSchedule) {
+        setSelectedSchedule(schedulesData[0].id);
       }
 
-      if (templatesData) setTemplates(templatesData);
+      const [templatesResult, ...activityResults] = await Promise.allSettled([
+        listActivityTemplates(),
+        ...schedulesData.map((schedule) => listScheduleActivities(schedule.id))
+      ]);
+
+      if (templatesResult.status === 'rejected') {
+        logger.error('Error loading activity templates:', templatesResult.reason);
+      } else {
+        setTemplates(templatesResult.value);
+      }
+
+      const activitiesMap: { [key: string]: Activity[] } = {};
+      activityResults.forEach((result, index) => {
+        const schedule = schedulesData[index];
+        if (result.status === 'rejected') {
+          logger.error('Error loading schedule activities:', result.reason);
+        } else {
+          activitiesMap[schedule.id] = result.value;
+        }
+      });
+      setActivities(activitiesMap);
     } catch (error) {
       logger.error('Error loading visual schedules:', error);
     } finally {
@@ -94,31 +97,24 @@ export default function VisualSchedule() {
     e.preventDefault();
 
     if (!user) {
-      alert('You must be logged in to create a visual schedule');
+      notify('You must be logged in to create a visual schedule');
       return;
     }
 
     try {
       if (editingScheduleId) {
-        const { error } = await supabase
-          .from('visual_schedules')
-          .update({
-            child_name: scheduleForm.child_name,
-            schedule_name: scheduleForm.schedule_name,
-            schedule_type: scheduleForm.schedule_type
-          })
-          .eq('id', editingScheduleId);
-        if (error) throw error;
-      } else {
-        const { data, error } = await supabase.from('visual_schedules').insert({
-          user_id: user.id,
+        await updateSchedule(editingScheduleId, {
           child_name: scheduleForm.child_name,
           schedule_name: scheduleForm.schedule_name,
           schedule_type: scheduleForm.schedule_type
-        }).select().single();
-
-        if (error) throw error;
-        if (data) setSelectedSchedule(data.id);
+        });
+      } else {
+        const created = await createSchedule(user.id, {
+          child_name: scheduleForm.child_name,
+          schedule_name: scheduleForm.schedule_name,
+          schedule_type: scheduleForm.schedule_type
+        });
+        setSelectedSchedule(created.id);
       }
 
       setShowScheduleForm(false);
@@ -127,7 +123,7 @@ export default function VisualSchedule() {
       loadData();
     } catch (error) {
       logger.error('Error saving schedule:', error);
-      alert('Failed to save schedule');
+      notify('Failed to save schedule');
     }
   };
 
@@ -142,18 +138,16 @@ export default function VisualSchedule() {
   };
 
   const handleDeleteSchedule = async (scheduleId: string) => {
-    if (!confirm('Delete this schedule and all its activities? This cannot be undone.')) return;
+    if (!(await confirm('Delete this schedule and all its activities? This cannot be undone.'))) return;
 
     try {
-      await supabase.from('schedule_activities').delete().eq('schedule_id', scheduleId);
-      const { error } = await supabase.from('visual_schedules').delete().eq('id', scheduleId);
-      if (error) throw error;
+      await deleteSchedule(scheduleId);
 
       if (selectedSchedule === scheduleId) setSelectedSchedule(null);
       loadData();
     } catch (error) {
       logger.error('Error deleting schedule:', error);
-      alert('Failed to delete schedule');
+      notify('Failed to delete schedule');
     }
   };
 
@@ -164,24 +158,19 @@ export default function VisualSchedule() {
 
     try {
       if (editingActivity) {
-        const { error } = await supabase
-          .from('schedule_activities')
-          .update({
-            activity_name: activityForm.activity_name,
-            activity_description: activityForm.activity_description || null,
-            icon_name: activityForm.icon_name,
-            icon_color: activityForm.icon_color,
-            start_time: activityForm.start_time || null,
-            duration_minutes: activityForm.duration_minutes ? parseInt(activityForm.duration_minutes) : null
-          })
-          .eq('id', editingActivity.id);
-
-        if (error) throw error;
+        await updateActivity(editingActivity.id, {
+          activity_name: activityForm.activity_name,
+          activity_description: activityForm.activity_description || null,
+          icon_name: activityForm.icon_name,
+          icon_color: activityForm.icon_color,
+          start_time: activityForm.start_time || null,
+          duration_minutes: activityForm.duration_minutes ? parseInt(activityForm.duration_minutes) : null
+        });
       } else {
         const currentActivities = activities[selectedSchedule] || [];
         const nextOrder = currentActivities.length + 1;
 
-        const { error } = await supabase.from('schedule_activities').insert({
+        await createActivity({
           schedule_id: selectedSchedule,
           activity_order: nextOrder,
           activity_name: activityForm.activity_name,
@@ -191,15 +180,13 @@ export default function VisualSchedule() {
           start_time: activityForm.start_time || null,
           duration_minutes: activityForm.duration_minutes ? parseInt(activityForm.duration_minutes) : null
         });
-
-        if (error) throw error;
       }
 
       handleCancelEdit();
       loadData();
     } catch (error) {
       logger.error('Error saving activity:', error);
-      alert('Failed to save activity');
+      notify('Failed to save activity');
     }
   };
 
@@ -210,7 +197,7 @@ export default function VisualSchedule() {
     const nextOrder = currentActivities.length + 1;
 
     try {
-      const { error } = await supabase.from('schedule_activities').insert({
+      await createActivity({
         schedule_id: selectedSchedule,
         activity_order: nextOrder,
         activity_name: template.template_name,
@@ -218,8 +205,6 @@ export default function VisualSchedule() {
         icon_color: template.icon_color,
         duration_minutes: template.typical_duration_minutes
       });
-
-      if (error) throw error;
       loadData();
     } catch (error) {
       logger.error('Error adding template activity:', error);
@@ -228,12 +213,7 @@ export default function VisualSchedule() {
 
   const toggleActivityCompletion = async (activityId: string, currentStatus: boolean) => {
     try {
-      const { error } = await supabase
-        .from('schedule_activities')
-        .update({ is_completed: !currentStatus })
-        .eq('id', activityId);
-
-      if (error) throw error;
+      await setActivityCompleted(activityId, !currentStatus);
       loadData();
     } catch (error) {
       logger.error('Error updating activity:', error);
@@ -244,12 +224,7 @@ export default function VisualSchedule() {
     if (!selectedSchedule) return;
 
     try {
-      const { error } = await supabase
-        .from('schedule_activities')
-        .update({ is_completed: false })
-        .eq('schedule_id', selectedSchedule);
-
-      if (error) throw error;
+      await resetScheduleActivities(selectedSchedule);
       loadData();
     } catch (error) {
       logger.error('Error resetting schedule:', error);
@@ -261,8 +236,8 @@ export default function VisualSchedule() {
     setActivityForm({
       activity_name: activity.activity_name,
       activity_description: activity.activity_description || '',
-      icon_name: activity.icon_name,
-      icon_color: activity.icon_color,
+      icon_name: activity.icon_name || 'Circle',
+      icon_color: activity.icon_color || '#3B82F6',
       start_time: activity.start_time || '',
       duration_minutes: activity.duration_minutes?.toString() || '30'
     });
@@ -270,19 +245,14 @@ export default function VisualSchedule() {
   };
 
   const handleDeleteActivity = async (activityId: string) => {
-    if (!confirm('Are you sure you want to delete this activity?')) return;
+    if (!(await confirm('Are you sure you want to delete this activity?'))) return;
 
     try {
-      const { error } = await supabase
-        .from('schedule_activities')
-        .delete()
-        .eq('id', activityId);
-
-      if (error) throw error;
+      await deleteActivity(activityId);
       loadData();
     } catch (error) {
       logger.error('Error deleting activity:', error);
-      alert('Failed to delete activity');
+      notify('Failed to delete activity');
     }
   };
 
@@ -310,21 +280,16 @@ export default function VisualSchedule() {
 
   const saveQuickEdit = async (activityId: string) => {
     try {
-      const { error } = await supabase
-        .from('schedule_activities')
-        .update({
-          activity_name: quickEditValues.activity_name,
-          start_time: quickEditValues.start_time || null,
-          duration_minutes: quickEditValues.duration_minutes ? parseInt(quickEditValues.duration_minutes) : null
-        })
-        .eq('id', activityId);
-
-      if (error) throw error;
+      await updateActivity(activityId, {
+        activity_name: quickEditValues.activity_name,
+        start_time: quickEditValues.start_time || null,
+        duration_minutes: quickEditValues.duration_minutes ? parseInt(quickEditValues.duration_minutes) : null
+      });
       setQuickEditId(null);
       loadData();
     } catch (error) {
       logger.error('Error quick-saving activity:', error);
-      alert('Failed to save changes');
+      notify('Failed to save changes');
     }
   };
 
@@ -339,8 +304,7 @@ export default function VisualSchedule() {
     const b = list[swapIdx];
 
     try {
-      await supabase.from('schedule_activities').update({ activity_order: b.activity_order }).eq('id', a.id);
-      await supabase.from('schedule_activities').update({ activity_order: a.activity_order }).eq('id', b.id);
+      await swapActivityOrder(a, b);
       loadData();
     } catch (error) {
       logger.error('Error reordering activities:', error);
@@ -387,13 +351,8 @@ export default function VisualSchedule() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label htmlFor="visual-schedule-child-name" className="block text-sm font-medium text-gray-700 mb-1">Child Name</label>
-                <input id="visual-schedule-child-name"
-                  type="text"
-                  required
-                  value={scheduleForm.child_name}
-                  onChange={(e) => setScheduleForm({ ...scheduleForm, child_name: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                />
+                <ChildPicker id="visual-schedule-child-name" required value={scheduleForm.child_name} onChange={(name) => setScheduleForm({ ...scheduleForm, child_name: name })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" />
               </div>
               <div>
                 <label htmlFor="visual-schedule-schedule-name" className="block text-sm font-medium text-gray-700 mb-1">Schedule Name</label>
@@ -493,10 +452,7 @@ export default function VisualSchedule() {
                         onClick={() => addTemplateActivity(template)}
                         className="w-full text-left p-2 rounded hover:bg-gray-100 transition text-sm flex items-center gap-2"
                       >
-                        <div
-                          className="w-6 h-6 rounded"
-                          style={{ backgroundColor: template.icon_color }}
-                        />
+                        <IconTile name={template.icon_name} color={template.icon_color} className="w-6 h-6" iconClassName="w-4 h-4" />
                         <div className="flex-1">
                           <div className="font-medium text-gray-900">{template.template_name}</div>
                           <div className="text-xs text-gray-500">{template.category}</div>
@@ -568,12 +524,14 @@ export default function VisualSchedule() {
                         value={activityForm.activity_name}
                         onChange={(e) => setActivityForm({ ...activityForm, activity_name: e.target.value })}
                         placeholder="Activity name"
+                        aria-label="Activity name"
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                       />
                       <textarea
                         value={activityForm.activity_description}
                         onChange={(e) => setActivityForm({ ...activityForm, activity_description: e.target.value })}
                         placeholder="Description (optional)"
+                        aria-label="Description (optional)"
                         rows={2}
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                       />
@@ -596,6 +554,30 @@ export default function VisualSchedule() {
                             onChange={(e) => setActivityForm({ ...activityForm, duration_minutes: e.target.value })}
                             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                           />
+                        </div>
+                      </div>
+                      <div>
+                        <p id="visual-schedule-icon-label" className="block text-sm font-medium text-gray-700 mb-2">Icon</p>
+                        <div role="group" aria-labelledby="visual-schedule-icon-label" className="grid grid-cols-6 sm:grid-cols-8 gap-1.5 max-h-40 overflow-y-auto p-1">
+                          {Object.entries(SCHEDULE_ICONS).map(([name, { icon: Icon, label }]) => {
+                            const selected = activityForm.icon_name === name;
+                            return (
+                              <button
+                                key={name}
+                                type="button"
+                                onClick={() => setActivityForm({ ...activityForm, icon_name: name })}
+                                aria-pressed={selected}
+                                aria-label={label}
+                                title={label}
+                                className={`h-10 rounded-lg flex items-center justify-center border-2 transition ${
+                                  selected ? 'border-teal-600 text-white' : 'border-gray-200 text-gray-600 hover:border-gray-300'
+                                }`}
+                                style={selected ? { backgroundColor: activityForm.icon_color || '#3B82F6' } : undefined}
+                              >
+                                <Icon className="w-5 h-5" aria-hidden="true" />
+                              </button>
+                            );
+                          })}
                         </div>
                       </div>
                       <div>
@@ -658,7 +640,7 @@ export default function VisualSchedule() {
 
                         <button
                           type="button"
-                          onClick={() => toggleActivityCompletion(activity.id, activity.is_completed)}
+                          onClick={() => toggleActivityCompletion(activity.id, activity.is_completed ?? false)}
                           aria-label={`Mark done: ${activity.activity_name}`}
                           className={`flex-shrink-0 w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center transition ${
                             activity.is_completed
@@ -673,9 +655,11 @@ export default function VisualSchedule() {
                           )}
                         </button>
 
-                        <div
-                          className="w-7 h-7 sm:w-10 sm:h-10 rounded flex-shrink-0"
-                          style={{ backgroundColor: activity.icon_color }}
+                        <IconTile
+                          name={activity.icon_name}
+                          color={activity.icon_color}
+                          className="w-7 h-7 sm:w-10 sm:h-10 flex-shrink-0"
+                          iconClassName="w-4 h-4 sm:w-6 sm:h-6"
                         />
 
                         <div className="flex-1 min-w-0">
@@ -807,6 +791,23 @@ export default function VisualSchedule() {
           </button>
         </div>
       )}
+    </div>
+  );
+}
+
+function IconTile({ name, color, className, iconClassName }: {
+  name: string | null;
+  color: string | null;
+  className: string;
+  iconClassName: string;
+}) {
+  const Icon = scheduleIcon(name);
+  return (
+    <div
+      className={`${className} rounded flex items-center justify-center text-white`}
+      style={{ backgroundColor: color || '#3B82F6' }}
+    >
+      <Icon className={iconClassName} aria-hidden="true" />
     </div>
   );
 }

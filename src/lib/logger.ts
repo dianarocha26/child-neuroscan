@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { toJson } from './json';
 
 const isDevelopment = import.meta.env.DEV;
 
@@ -18,7 +19,7 @@ async function logToDatabase(entry: LogEntry) {
         level: entry.level,
         message: entry.message,
         timestamp: entry.timestamp,
-        data: entry.data,
+        data: toJson(entry.data),
         user_id: user?.id,
       });
     } catch (error) {

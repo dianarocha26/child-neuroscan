@@ -1,41 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { Pill, Plus, Clock, X, Edit2, Trash2 } from 'lucide-react';
-import { supabase } from '../lib/supabase';
 import { logger } from '../lib/logger';
 import { PageHeader } from './PageHeader';
-
-interface Medication {
-  id: string;
-  child_name: string;
-  name: string;
-  type: 'medication' | 'supplement' | 'vitamin';
-  dosage: string;
-  frequency: string;
-  schedule_times: string[];
-  purpose: string;
-  prescribing_doctor: string;
-  linked_condition: string;
-  start_date: string;
-  end_date: string | null;
-  active: boolean;
-  notes: string;
-  side_effects: string;
-  created_at: string;
-}
-
-interface MedicationLog {
-  id: string;
-  medication_id: string;
-  taken_at: string;
-  scheduled_time: string;
-  status: 'taken' | 'missed' | 'skipped';
-  notes: string;
-  side_effects_observed: string;
-  behavioral_changes: string;
-  logged_at: string;
-}
+import {
+  createMedication, deleteMedication, listMedicationLogs, listMedications, logMedicationDose,
+  setMedicationActive, updateMedication,
+  type Medication, type MedicationLog
+} from '../lib/api/medications';
+import { ChildPicker } from './ChildPicker';
+import { useDialog } from '../contexts/DialogContext';
 
 export default function MedicationTracker() {
+  const { notify, confirm } = useDialog();
   const [medications, setMedications] = useState<Medication[]>([]);
   const [logs, setLogs] = useState<MedicationLog[]>([]);
   const [loading, setLoading] = useState(true);
@@ -80,17 +56,7 @@ export default function MedicationTracker() {
 
   const loadMedications = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data, error } = await supabase
-        .from('medications')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setMedications(data || []);
+      setMedications(await listMedications());
     } catch (error) {
       logger.error('Error loading medications:', error);
     } finally {
@@ -100,18 +66,7 @@ export default function MedicationTracker() {
 
   const loadLogs = async (medId: string) => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data, error } = await supabase
-        .from('medication_logs')
-        .select('*')
-        .eq('medication_id', medId)
-        .order('taken_at', { ascending: false })
-        .limit(30);
-
-      if (error) throw error;
-      setLogs(data || []);
+      setLogs(await listMedicationLogs(medId));
     } catch (error) {
       logger.error('Error loading logs:', error);
     }
@@ -120,29 +75,19 @@ export default function MedicationTracker() {
   const handleSubmitMed = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
       const scheduleArray = medForm.schedule_times.split(',').map(t => t.trim()).filter(t => t);
       const medData = {
         ...medForm,
-        user_id: user.id,
         schedule_times: scheduleArray,
+        start_date: medForm.start_date || null,
         end_date: medForm.end_date || null,
         active: editingMed ? editingMed.active : true
       };
 
       if (editingMed) {
-        const { error } = await supabase
-          .from('medications')
-          .update(medData)
-          .eq('id', editingMed.id);
-        if (error) throw error;
+        await updateMedication(editingMed.id, medData);
       } else {
-        const { error } = await supabase
-          .from('medications')
-          .insert(medData);
-        if (error) throw error;
+        await createMedication(medData);
       }
 
       setShowMedForm(false);
@@ -151,7 +96,7 @@ export default function MedicationTracker() {
       loadMedications();
     } catch (error) {
       logger.error('Error saving medication:', error);
-      alert('Failed to save medication. Please try again.');
+      notify('Failed to save medication. Please try again.');
     }
   };
 
@@ -160,20 +105,7 @@ export default function MedicationTracker() {
     if (!selectedMed) return;
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { error } = await supabase
-        .from('medication_logs')
-        .insert({
-          medication_id: selectedMed.id,
-          user_id: user.id,
-          taken_at: new Date().toISOString(),
-          scheduled_time: new Date().toTimeString().slice(0, 5),
-          ...logForm
-        });
-
-      if (error) throw error;
+      await logMedicationDose(selectedMed.id, logForm);
 
       setShowLogForm(false);
       setLogForm({
@@ -185,40 +117,30 @@ export default function MedicationTracker() {
       loadLogs(selectedMed.id);
     } catch (error) {
       logger.error('Error logging dose:', error);
-      alert('Failed to log dose. Please try again.');
+      notify('Failed to log dose. Please try again.');
     }
   };
 
   const handleToggleActive = async (med: Medication) => {
     try {
-      const { error } = await supabase
-        .from('medications')
-        .update({ active: !med.active })
-        .eq('id', med.id);
-
-      if (error) throw error;
+      await setMedicationActive(med.id, !med.active);
       loadMedications();
     } catch (error) {
       logger.error('Error toggling medication', error);
-      alert('Failed to update medication status. Please try again.');
+      notify('Failed to update medication status. Please try again.');
     }
   };
 
   const handleDeleteMed = async (medId: string) => {
-    if (!confirm('Are you sure you want to delete this medication?')) return;
+    if (!(await confirm('Are you sure you want to delete this medication?'))) return;
 
     try {
-      const { error } = await supabase
-        .from('medications')
-        .delete()
-        .eq('id', medId);
-
-      if (error) throw error;
+      await deleteMedication(medId);
       loadMedications();
       setSelectedMed(null);
     } catch (error) {
       logger.error('Error deleting medication', error);
-      alert('Failed to delete medication. Please try again.');
+      notify('Failed to delete medication. Please try again.');
     }
   };
 
@@ -248,14 +170,14 @@ export default function MedicationTracker() {
       type: med.type,
       dosage: med.dosage,
       frequency: med.frequency,
-      schedule_times: med.schedule_times.join(', '),
-      purpose: med.purpose,
-      prescribing_doctor: med.prescribing_doctor,
-      linked_condition: med.linked_condition,
-      start_date: med.start_date,
+      schedule_times: (med.schedule_times ?? []).join(', '),
+      purpose: med.purpose ?? '',
+      prescribing_doctor: med.prescribing_doctor ?? '',
+      linked_condition: med.linked_condition ?? '',
+      start_date: med.start_date ?? '',
       end_date: med.end_date || '',
-      notes: med.notes,
-      side_effects: med.side_effects
+      notes: med.notes ?? '',
+      side_effects: med.side_effects ?? ''
     });
     setSelectedMed(null);
     setShowMedForm(true);
@@ -350,13 +272,8 @@ export default function MedicationTracker() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label htmlFor="medication-tracker-child-s-name" className="block text-sm font-medium text-gray-700 mb-2">Child's Name *</label>
-                  <input id="medication-tracker-child-s-name"
-                    type="text"
-                    value={medForm.child_name}
-                    onChange={(e) => setMedForm({ ...medForm, child_name: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    required
-                  />
+                  <ChildPicker id="medication-tracker-child-s-name" required value={medForm.child_name} onChange={(name) => setMedForm({ ...medForm, child_name: name })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" />
                 </div>
                 <div>
                   <label htmlFor="medication-tracker-type" className="block text-sm font-medium text-gray-700 mb-2">Type *</label>
@@ -555,10 +472,10 @@ export default function MedicationTracker() {
                 <span className="font-semibold text-gray-700">Frequency: </span>
                 <span className="text-gray-600">{selectedMed.frequency}</span>
               </div>
-              {selectedMed.schedule_times.length > 0 && (
+              {(selectedMed.schedule_times ?? []).length > 0 && (
                 <div className="col-span-2">
                   <span className="font-semibold text-gray-700">Schedule: </span>
-                  <span className="text-gray-600">{selectedMed.schedule_times.join(', ')}</span>
+                  <span className="text-gray-600">{(selectedMed.schedule_times ?? []).join(', ')}</span>
                 </div>
               )}
               {selectedMed.purpose && (
@@ -575,7 +492,7 @@ export default function MedicationTracker() {
               )}
               <div>
                 <span className="font-semibold text-gray-700">Started: </span>
-                <span className="text-gray-600">{new Date(selectedMed.start_date).toLocaleDateString()}</span>
+                <span className="text-gray-600">{new Date(selectedMed.start_date ?? '').toLocaleDateString()}</span>
               </div>
               {selectedMed.side_effects && (
                 <div className="col-span-2">
@@ -757,10 +674,10 @@ export default function MedicationTracker() {
                 <div className="text-gray-700">
                   <span className="font-medium">Frequency:</span> {med.frequency}
                 </div>
-                {med.schedule_times.length > 0 && (
+                {(med.schedule_times ?? []).length > 0 && (
                   <div className="flex items-center gap-1 text-gray-600">
                     <Clock className="w-3 h-3" />
-                    {med.schedule_times.join(', ')}
+                    {(med.schedule_times ?? []).join(', ')}
                   </div>
                 )}
               </div>
@@ -773,7 +690,7 @@ export default function MedicationTracker() {
 
               <div className="flex items-center justify-between text-xs pt-3 border-t border-gray-200">
                 <span className="text-gray-500">
-                  Since {new Date(med.start_date).toLocaleDateString()}
+                  Since {new Date(med.start_date ?? '').toLocaleDateString()}
                 </span>
                 {med.linked_condition && (
                   <span className="text-gray-600 font-medium">{med.linked_condition}</span>

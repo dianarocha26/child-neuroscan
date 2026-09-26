@@ -1,14 +1,18 @@
 import { useState, useEffect } from 'react';
 import { FileText, Download, Calendar, CheckCircle, Printer, ChevronDown, ChevronUp, Sparkles } from 'lucide-react';
-import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useLoadingState } from '../hooks/useLoadingState';
 import { logger } from '../lib/logger';
 import { SuccessIllustration, LoadingIllustration, EmptyStateIllustration } from './FriendlyIllustrations';
 import { exportToJSON, exportToCSV, generateHTMLReport, printReport, downloadHTMLReport, type ExportData, type ReportContent } from '../lib/exportUtils';
-import type { ReportTemplate, GeneratedReport, ReportData, BehaviorEntry, MedicationLog, Goal, Appointment } from '../types/components';
+import type { ReportTemplate, GeneratedReport, ReportData, Goal } from '../types/components';
+import { toJson } from '../lib/json';
+import {
+  listReportTemplates, listGeneratedReports, createGeneratedReport, compileReportSourceData
+} from '../lib/api/reports';
 import { PageHeader } from './PageHeader';
+import { useDialog } from '../contexts/DialogContext';
 
 // Matches the behavior type saved by BehaviorDiary; every other type counts as challenging.
 const POSITIVE_BEHAVIOR_TYPE = 'Positive Behavior';
@@ -87,6 +91,7 @@ const toReportContent = (report: GeneratedReport): ReportContent => {
 };
 
 export default function ComprehensiveReportGenerator() {
+  const { notify } = useDialog();
   const { user } = useAuth();
   const { t } = useLanguage();
 
@@ -118,25 +123,13 @@ export default function ComprehensiveReportGenerator() {
 
     try {
       setLoading(true);
-      const [templatesRes, reportsRes] = await Promise.all([
-        supabase
-          .from('report_templates')
-          .select('*')
-          .eq('is_active', true)
-          .order('name'),
-
-        supabase
-          .from('generated_reports')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('generated_at', { ascending: false })
+      const [templates, reports] = await Promise.all([
+        listReportTemplates(),
+        listGeneratedReports(user.id)
       ]);
 
-      if (templatesRes.error) throw templatesRes.error;
-      if (reportsRes.error) throw reportsRes.error;
-
-      setTemplates(templatesRes.data || []);
-      setGeneratedReports(reportsRes.data || []);
+      setTemplates(templates);
+      setGeneratedReports(reports);
     } catch (error) {
       logger.error('Error loading data:', error);
     } finally {
@@ -146,12 +139,12 @@ export default function ComprehensiveReportGenerator() {
 
   const generateReport = async () => {
     if (!selectedTemplate || !dateRangeStart || !dateRangeEnd || !reportTitle) {
-      alert('Please fill in all required fields');
+      notify('Please fill in all required fields');
       return;
     }
 
     if (!user) {
-      alert('You must be logged in to generate reports');
+      notify('You must be logged in to generate reports');
       return;
     }
 
@@ -160,24 +153,17 @@ export default function ComprehensiveReportGenerator() {
 
       const reportData = await compileReportData(selectedTemplate.template_type, dateRangeStart, dateRangeEnd);
 
-      const { data, error } = await supabase
-        .from('generated_reports')
-        .insert({
-          user_id: user.id,
-          template_id: selectedTemplate.id,
-          report_type: selectedTemplate.template_type,
-          title: reportTitle,
-          date_range_start: dateRangeStart,
-          date_range_end: dateRangeEnd,
-          report_data: reportData,
-          notes: reportNotes
-        })
-        .select()
-        .single();
+      const created = await createGeneratedReport(user.id, {
+        template_id: selectedTemplate.id,
+        report_type: selectedTemplate.template_type,
+        title: reportTitle,
+        date_range_start: dateRangeStart,
+        date_range_end: dateRangeEnd,
+        report_data: toJson(reportData),
+        notes: reportNotes
+      });
 
-      if (error) throw error;
-
-      setGeneratedReports([data, ...generatedReports]);
+      setGeneratedReports([created, ...generatedReports]);
 
       setReportTitle('');
       setReportNotes('');
@@ -187,7 +173,7 @@ export default function ComprehensiveReportGenerator() {
       setTimeout(() => setShowSuccess(false), 4000);
     } catch (error) {
       logger.error('Error generating report:', error);
-      alert('Failed to generate report. Please try again.');
+      notify('Failed to generate report. Please try again.');
     } finally {
       setGenerating(false);
     }
@@ -203,51 +189,8 @@ export default function ComprehensiveReportGenerator() {
       dateRange: { start: startDate, end: endDate }
     };
 
-    // taken_at / appointment_date are timestamptz, so include the whole end day.
-    // Timestamp columns: use the user's local day boundaries
-    const startOfDay = new Date(`${startDate}T00:00:00`).toISOString();
-    const endOfDay = new Date(`${endDate}T23:59:59.999`).toISOString();
-
-    const [behaviors, medications, goals, appointments] = await Promise.all([
-      supabase
-        .from('behavior_entries')
-        .select('*')
-        .eq('user_id', user.id)
-        .gte('entry_date', startDate)
-        .lte('entry_date', endDate)
-        .order('entry_date', { ascending: true }),
-
-      supabase
-        .from('medication_logs')
-        .select('*, medications(name, dosage)')
-        .eq('user_id', user.id)
-        .gte('taken_at', startOfDay)
-        .lte('taken_at', endOfDay)
-        .order('taken_at', { ascending: true }),
-
-      supabase
-        .from('goals')
-        .select('*')
-        .eq('user_id', user.id),
-
-      supabase
-        .from('appointments')
-        .select('*')
-        .eq('user_id', user.id)
-        .gte('appointment_date', startOfDay)
-        .lte('appointment_date', endOfDay)
-        .order('appointment_date', { ascending: true })
-    ]);
-
-    const firstError = behaviors.error || medications.error || goals.error || appointments.error;
-    if (firstError) {
-      throw firstError;
-    }
-
-    const behaviorEntries: BehaviorEntry[] = behaviors.data || [];
-    const medicationLogs: MedicationLog[] = medications.data || [];
-    const goalRows: Goal[] = goals.data || [];
-    const appointmentRows: Appointment[] = appointments.data || [];
+    const { behaviorEntries, medicationLogs, goals: goalRows, appointments: appointmentRows, crisisPlans } =
+      await compileReportSourceData(user.id, startDate, endDate, reportType);
 
     data.behaviors = {
       total: behaviorEntries.length,
@@ -274,17 +217,8 @@ export default function ComprehensiveReportGenerator() {
       details: appointmentRows
     };
 
-    if (reportType === 'crisis') {
-      const crisisPlans = await supabase
-        .from('crisis_plans')
-        .select('*')
-        .eq('user_id', user.id);
-
-      if (crisisPlans.error) {
-        throw crisisPlans.error;
-      }
-
-      data.crisisPlans = crisisPlans.data || [];
+    if (crisisPlans) {
+      data.crisisPlans = crisisPlans;
     }
 
     return data;
@@ -315,7 +249,7 @@ export default function ComprehensiveReportGenerator() {
     const exportData: ExportData = {
       type: 'comprehensive',
       title: report.title,
-      date: report.generated_at,
+      date: report.generated_at ?? '',
       data: {
         ...report.report_data,
         notes: report.notes,
@@ -391,7 +325,7 @@ export default function ComprehensiveReportGenerator() {
   const buildHTMLExportData = (report: GeneratedReport): ExportData => ({
     type: 'comprehensive',
     title: report.title,
-    date: report.generated_at,
+    date: report.generated_at ?? '',
     data: toReportContent(report)
   });
 
@@ -454,13 +388,15 @@ export default function ComprehensiveReportGenerator() {
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <p id="report-template-label" className="block text-sm font-medium text-gray-700 mb-2">
                   Report Template
-                </label>
-                <div className="space-y-2">
+                </p>
+                <div role="group" aria-labelledby="report-template-label" className="space-y-2">
                   {templates.map((template) => (
                     <button
                       key={template.id}
+                      type="button"
+                      aria-pressed={selectedTemplate?.id === template.id}
                       onClick={() => setSelectedTemplate(template)}
                       className={`w-full text-left p-4 sm:p-5 rounded-xl border-2 transition-all duration-200 ${
                         selectedTemplate?.id === template.id
@@ -478,10 +414,11 @@ export default function ComprehensiveReportGenerator() {
               {selectedTemplate && (
                 <>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label htmlFor="report-title" className="block text-sm font-medium text-gray-700 mb-2">
                       Report Title
                     </label>
                     <input
+                      id="report-title"
                       type="text"
                       value={reportTitle}
                       onChange={(e) => setReportTitle(e.target.value)}
@@ -492,10 +429,11 @@ export default function ComprehensiveReportGenerator() {
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label htmlFor="report-start" className="block text-sm font-medium text-gray-700 mb-2">
                         Start Date
                       </label>
                       <input
+                        id="report-start"
                         type="date"
                         value={dateRangeStart}
                         onChange={(e) => setDateRangeStart(e.target.value)}
@@ -503,10 +441,11 @@ export default function ComprehensiveReportGenerator() {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label htmlFor="report-end" className="block text-sm font-medium text-gray-700 mb-2">
                         End Date
                       </label>
                       <input
+                        id="report-end"
                         type="date"
                         value={dateRangeEnd}
                         onChange={(e) => setDateRangeEnd(e.target.value)}
@@ -516,10 +455,11 @@ export default function ComprehensiveReportGenerator() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label htmlFor="report-notes" className="block text-sm font-medium text-gray-700 mb-2">
                       Additional Notes
                     </label>
                     <textarea
+                      id="report-notes"
                       value={reportNotes}
                       onChange={(e) => setReportNotes(e.target.value)}
                       rows={4}
@@ -661,7 +601,7 @@ export default function ComprehensiveReportGenerator() {
                     {expandedReport === report.id && (
                       <div className="p-4 border-t border-gray-200 bg-white">
                         <p className="text-sm text-gray-600 mb-2">
-                          <strong>Generated:</strong> {new Date(report.generated_at).toLocaleString()}
+                          <strong>Generated:</strong> {new Date(report.generated_at ?? '').toLocaleString()}
                         </p>
                         {report.notes && (
                           <div className="mt-3">

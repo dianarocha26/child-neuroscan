@@ -1,25 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { Bell, Plus, Edit2, Trash2, X, Check, RotateCcw, Calendar, Clock, Pill, Stethoscope, Activity, Target, Tag } from 'lucide-react';
-import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useLoadingState } from '../hooks/useLoadingState';
 import { logger } from '../lib/logger';
 import { PageHeader } from './PageHeader';
-
-type ReminderType = 'medication' | 'appointment' | 'therapy' | 'goal' | 'other';
-
-interface Reminder {
-  id: string;
-  user_id: string;
-  reminder_type: ReminderType;
-  title: string;
-  description: string | null;
-  child_name: string | null;
-  reminder_date: string;
-  reminder_time: string;
-  is_active: boolean;
-  created_at?: string;
-}
+import {
+  createReminder, deleteReminder, listReminders, setReminderActive, updateReminder,
+  type Reminder, type ReminderType
+} from '../lib/api/reminders';
+import { ChildPicker } from './ChildPicker';
+import { useDialog } from '../contexts/DialogContext';
+import { REMINDERS_CHANGED } from '../hooks/useReminderAlerts';
 
 const REMINDER_TYPES: { value: ReminderType; label: string; icon: typeof Pill; color: string }[] = [
   { value: 'medication', label: 'Medication', icon: Pill, color: 'bg-purple-100 text-purple-700' },
@@ -31,9 +22,18 @@ const REMINDER_TYPES: { value: ReminderType; label: string; icon: typeof Pill; c
 
 const typeInfo = (type: string) => REMINDER_TYPES.find(t => t.value === type) || REMINDER_TYPES[4];
 
-const today = () => new Date().toISOString().split('T')[0];
+// Local date, not UTC, so "today" matches the user's calendar.
+const today = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
+const remindersChanged = () => window.dispatchEvent(new Event(REMINDERS_CHANGED));
+
+const notificationPermission = () => (typeof Notification === 'undefined' ? 'unsupported' : Notification.permission);
 
 export default function NotificationCenter() {
+  const { notify, confirm } = useDialog();
   const { user } = useAuth();
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const { loading, setLoading } = useLoadingState();
@@ -44,18 +44,18 @@ export default function NotificationCenter() {
   const [editing, setEditing] = useState<Reminder | null>(null);
   const emptyForm = { reminder_type: 'medication' as ReminderType, title: '', description: '', child_name: '', reminder_date: today(), reminder_time: '09:00' };
   const [form, setForm] = useState(emptyForm);
+  const [permission, setPermission] = useState(notificationPermission);
+
+  const enableAlerts = async () => {
+    setPermission(await Notification.requestPermission());
+  };
 
   useEffect(() => { loadData(); }, [user]);
 
   const loadData = async () => {
     if (!user) return;
     try {
-      const { data, error } = await supabase
-        .from('reminders').select('*').eq('user_id', user.id)
-        .order('reminder_date', { ascending: true })
-        .order('reminder_time', { ascending: true });
-      if (error) throw error;
-      setReminders(data || []);
+      setReminders(await listReminders(user.id));
     } catch (error) {
       logger.error('Error loading reminders:', error);
     } finally {
@@ -89,35 +89,31 @@ export default function NotificationCenter() {
         child_name: form.child_name || null,
         reminder_date: form.reminder_date,
         reminder_time: form.reminder_time,
-        updated_at: new Date().toISOString(),
       };
       if (editing) {
-        const { error } = await supabase.from('reminders').update(payload).eq('id', editing.id);
-        if (error) throw error;
+        await updateReminder(editing.id, payload);
       } else {
-        const { error } = await supabase.from('reminders').insert({ user_id: user.id, ...payload, is_active: true });
-        if (error) throw error;
+        await createReminder(user.id, payload);
       }
-      closeForm(); loadData();
-    } catch (error) { logger.error('Error saving reminder:', error); alert('Failed to save reminder'); }
+      closeForm(); loadData(); remindersChanged();
+    } catch (error) { logger.error('Error saving reminder:', error); notify('Failed to save reminder'); }
   };
 
   const handleToggleDone = async (r: Reminder) => {
     try {
-      const { error } = await supabase.from('reminders')
-        .update({ is_active: !r.is_active, updated_at: new Date().toISOString() }).eq('id', r.id);
-      if (error) throw error;
+      await setReminderActive(r.id, !r.is_active);
       setReminders(prev => prev.map(x => (x.id === r.id ? { ...x, is_active: !r.is_active } : x)));
-    } catch (error) { logger.error('Error updating reminder:', error); alert('Failed to update reminder'); }
+      remindersChanged();
+    } catch (error) { logger.error('Error updating reminder:', error); notify('Failed to update reminder'); }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Delete this reminder?')) return;
+    if (!(await confirm('Delete this reminder?'))) return;
     try {
-      const { error } = await supabase.from('reminders').delete().eq('id', id);
-      if (error) throw error;
+      await deleteReminder(id);
       setReminders(prev => prev.filter(r => r.id !== id));
-    } catch (error) { logger.error('Error deleting reminder:', error); alert('Failed to delete reminder'); }
+      remindersChanged();
+    } catch (error) { logger.error('Error deleting reminder:', error); notify('Failed to delete reminder'); }
   };
 
   const formatDate = (d: string) =>
@@ -184,6 +180,22 @@ export default function NotificationCenter() {
         action={{ label: 'New Reminder', icon: Plus, onClick: openNew }}
       />
 
+      <div className="flex flex-wrap items-center gap-3 mb-6 p-3 rounded-lg bg-teal-50 border border-teal-100 text-sm text-teal-900">
+        <Bell className="w-4 h-4 flex-shrink-0" aria-hidden="true" />
+        <p className="flex-1 min-w-[12rem]">
+          {permission === 'granted'
+            ? 'Alerts are on. You will be notified when a reminder is due while Child Neuro Scan is open.'
+            : permission === 'denied'
+              ? 'Browser notifications are blocked. You will still see alerts inside the app while it is open.'
+              : 'You will see an alert in the app when a reminder is due, while Child Neuro Scan is open.'}
+        </p>
+        {permission === 'default' && (
+          <button onClick={enableAlerts} className="px-3 py-1.5 rounded-lg bg-teal-600 text-white font-medium hover:bg-teal-700 transition">
+            Turn on notifications
+          </button>
+        )}
+      </div>
+
       <div className="flex gap-2 flex-wrap mb-6">
         {[{ value: 'all' as const, label: 'All' }, ...REMINDER_TYPES].map(t => (
           <button key={t.value} onClick={() => setFilter(t.value)}
@@ -202,38 +214,38 @@ export default function NotificationCenter() {
             </div>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
-                <select value={form.reminder_type} onChange={(e) => setForm({ ...form, reminder_type: e.target.value as ReminderType })}
+                <label htmlFor="reminder-type" className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+                <select id="reminder-type" value={form.reminder_type} onChange={(e) => setForm({ ...form, reminder_type: e.target.value as ReminderType })}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500">
                   {REMINDER_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
-                <input type="text" required value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })}
+                <label htmlFor="reminder-title" className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+                <input id="reminder-title" type="text" required value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500"
                   placeholder="e.g., Give evening medication" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Child Name (optional)</label>
-                <input type="text" value={form.child_name} onChange={(e) => setForm({ ...form, child_name: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500" />
+                <label htmlFor="reminder-child" className="block text-sm font-medium text-gray-700 mb-1">Child Name (optional)</label>
+                <ChildPicker id="reminder-child" value={form.child_name} onChange={(name) => setForm({ ...form, child_name: name })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500" />
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
-                  <input type="date" required value={form.reminder_date} onChange={(e) => setForm({ ...form, reminder_date: e.target.value })}
+                  <label htmlFor="reminder-date" className="block text-sm font-medium text-gray-700 mb-1">Date</label>
+                  <input id="reminder-date" type="date" required value={form.reminder_date} onChange={(e) => setForm({ ...form, reminder_date: e.target.value })}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Time</label>
-                  <input type="time" required value={form.reminder_time} onChange={(e) => setForm({ ...form, reminder_time: e.target.value })}
+                  <label htmlFor="reminder-time" className="block text-sm font-medium text-gray-700 mb-1">Time</label>
+                  <input id="reminder-time" type="time" required value={form.reminder_time} onChange={(e) => setForm({ ...form, reminder_time: e.target.value })}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500" />
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Notes (optional)</label>
-                <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={3}
+                <label htmlFor="reminder-notes" className="block text-sm font-medium text-gray-700 mb-1">Notes (optional)</label>
+                <textarea id="reminder-notes" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={3}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500" />
               </div>
               <div className="modal-footer flex gap-3">

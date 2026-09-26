@@ -182,7 +182,9 @@ export default function ProgressDashboard({ userId, onGenerateReport, onBack }: 
                         <div className="mb-4">
                           <div className="flex items-start justify-between gap-3">
                             <h4 className="font-semibold text-gray-900 leading-snug">
-                              {language === 'es' ? result.condition.name_es : result.condition.name_en}
+                              {result.condition
+                                ? (language === 'es' ? result.condition.name_es : result.condition.name_en)
+                                : 'Screening'}
                             </h4>
                             <span className={`inline-flex items-center gap-1.5 flex-shrink-0 whitespace-nowrap px-2.5 py-1 rounded-full border text-sm font-semibold ${getRiskColor(result.risk_level)}`}>
                               <RiskIcon className="w-4 h-4" aria-hidden="true" />

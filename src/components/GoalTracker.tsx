@@ -1,36 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { Target, Plus, Calendar, Edit2, Trash2, X } from 'lucide-react';
-import { supabase } from '../lib/supabase';
 import { logger } from '../lib/logger';
 import { PageHeader } from './PageHeader';
-
-interface Goal {
-  id: string;
-  child_name: string;
-  title: string;
-  description: string;
-  category: 'speech' | 'motor' | 'social' | 'behavioral' | 'academic' | 'self-care';
-  linked_condition: string;
-  target_value: number;
-  current_value: number;
-  unit: string;
-  target_date: string | null;
-  status: 'not_started' | 'in_progress' | 'achieved' | 'archived';
-  priority: 'low' | 'medium' | 'high';
-  notes: string;
-  created_at: string;
-  completed_at: string | null;
-}
-
-interface ProgressLog {
-  id: string;
-  goal_id: string;
-  value: number;
-  notes: string;
-  logged_at: string;
-}
+import {
+  createGoal, deleteGoal, listGoalProgress, listGoals, logGoalProgress, updateGoal,
+  type Goal, type GoalProgressLog as ProgressLog
+} from '../lib/api/goals';
+import { ChildPicker } from './ChildPicker';
+import { useDialog } from '../contexts/DialogContext';
 
 export default function GoalTracker() {
+  const { notify, confirm } = useDialog();
   const [goals, setGoals] = useState<Goal[]>([]);
   const [loading, setLoading] = useState(true);
   const [dateError, setDateError] = useState(false);
@@ -73,17 +53,7 @@ export default function GoalTracker() {
 
   const loadGoals = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data, error } = await supabase
-        .from('goals')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setGoals(data || []);
+      setGoals(await listGoals());
     } catch (error) {
       logger.error('Failed to load goals', error);
     } finally {
@@ -93,17 +63,7 @@ export default function GoalTracker() {
 
   const loadProgressLogs = async (goalId: string) => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data, error } = await supabase
-        .from('goal_progress_logs')
-        .select('*')
-        .eq('goal_id', goalId)
-        .order('logged_at', { ascending: false });
-
-      if (error) throw error;
-      setProgressLogs(data || []);
+      setProgressLogs(await listGoalProgress(goalId));
     } catch (error) {
       logger.error('Failed to load progress logs', error);
     }
@@ -117,29 +77,17 @@ export default function GoalTracker() {
     }
     setDateError(false);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
       const { target_date, ...restForm } = goalForm;
       const goalData = {
         ...restForm,
-        user_id: user.id,
         target_date: target_date ? target_date : null,
-        status: goalForm.current_value === 0 ? 'not_started' : 'in_progress'
+        status: goalForm.current_value === 0 ? 'not_started' as const : 'in_progress' as const
       };
 
-
       if (editingGoal) {
-        const { error } = await supabase
-          .from('goals')
-          .update(goalData)
-          .eq('id', editingGoal.id);
-        if (error) throw error;
+        await updateGoal(editingGoal.id, goalData);
       } else {
-        const { error } = await supabase
-          .from('goals')
-          .insert(goalData);
-        if (error) throw error;
+        await createGoal(goalData);
       }
 
       setActiveModal("none");
@@ -148,8 +96,7 @@ export default function GoalTracker() {
       loadGoals();
     } catch (error: unknown) {
       logger.error('Error saving goal', error);
-      console.error('Full error:', JSON.stringify(error, null, 2));
-      alert('Failed to save goal: ' + ((error as { message?: string } | null)?.message || JSON.stringify(error)));
+      notify('Failed to save goal. Please try again.');
     }
   };
 
@@ -158,36 +105,7 @@ export default function GoalTracker() {
     if (!selectedGoal) return;
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { error: logError } = await supabase
-        .from('goal_progress_logs')
-        .insert({
-          goal_id: selectedGoal.id,
-          user_id: user.id,
-          value: progressForm.value,
-          notes: progressForm.notes
-        });
-
-      if (logError) throw logError;
-
-      const newStatus = progressForm.value >= selectedGoal.target_value ? 'achieved' : 'in_progress';
-      const updateData: Record<string, unknown> = {
-        current_value: progressForm.value,
-        status: newStatus
-      };
-
-      if (newStatus === 'achieved' && !selectedGoal.completed_at) {
-        updateData.completed_at = new Date().toISOString();
-      }
-
-      const { error: updateError } = await supabase
-        .from('goals')
-        .update(updateData)
-        .eq('id', selectedGoal.id);
-
-      if (updateError) throw updateError;
+      await logGoalProgress(selectedGoal, progressForm.value, progressForm.notes);
 
       setShowProgressForm(false);
       setProgressForm({ value: 0, notes: '' });
@@ -195,26 +113,21 @@ export default function GoalTracker() {
       loadProgressLogs(selectedGoal.id);
     } catch (error) {
       logger.error('Error logging progress', error);
-      alert('Failed to log progress. Please try again.');
+      notify('Failed to log progress. Please try again.');
     }
   };
 
   const handleDeleteGoal = async (goalId: string) => {
-    if (!confirm('Are you sure you want to delete this goal?')) return;
+    if (!(await confirm('Are you sure you want to delete this goal?'))) return;
 
     try {
-      const { error } = await supabase
-        .from('goals')
-        .delete()
-        .eq('id', goalId);
-
-      if (error) throw error;
+      await deleteGoal(goalId);
       loadGoals();
       setSelectedGoal(null);
       setActiveModal("none");
     } catch (error) {
       logger.error('Error deleting goal', error);
-      alert('Failed to delete goal. Please try again.');
+      notify('Failed to delete goal. Please try again.');
     }
   };
 
@@ -239,15 +152,15 @@ export default function GoalTracker() {
     setGoalForm({
       child_name: goal.child_name,
       title: goal.title,
-      description: goal.description,
+      description: goal.description ?? '',
       category: goal.category,
-      linked_condition: goal.linked_condition,
+      linked_condition: goal.linked_condition ?? '',
       target_value: goal.target_value,
       current_value: goal.current_value,
       unit: goal.unit,
       target_date: goal.target_date || '',
       priority: goal.priority,
-      notes: goal.notes
+      notes: goal.notes ?? ''
     });
     setSelectedGoal(null);
     setActiveModal("form");
@@ -358,13 +271,8 @@ export default function GoalTracker() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label htmlFor="goal-tracker-child-s-name" className="block text-sm font-medium text-gray-700 mb-2">Child's Name *</label>
-                  <input id="goal-tracker-child-s-name"
-                    type="text"
-                    value={goalForm.child_name}
-                    onChange={(e) => setGoalForm({ ...goalForm, child_name: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    required
-                  />
+                  <ChildPicker id="goal-tracker-child-s-name" required value={goalForm.child_name} onChange={(name) => setGoalForm({ ...goalForm, child_name: name })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" />
                 </div>
                 <div>
                   <label htmlFor="goal-tracker-category" className="block text-sm font-medium text-gray-700 mb-2">Category *</label>
@@ -565,7 +473,7 @@ export default function GoalTracker() {
               )}
               <div>
                 <span className="font-semibold text-gray-700">Created: </span>
-                <span className="text-gray-600">{new Date(selectedGoal.created_at).toLocaleDateString()}</span>
+                <span className="text-gray-600">{new Date(selectedGoal.created_at ?? '').toLocaleDateString()}</span>
               </div>
             </div>
 
@@ -632,7 +540,7 @@ export default function GoalTracker() {
                     <div key={log.id} className="bg-gray-50 p-3 rounded-lg">
                       <div className="flex justify-between items-start mb-1">
                         <span className="font-medium text-gray-900">{log.value} {selectedGoal.unit}</span>
-                        <span className="text-xs text-gray-500">{new Date(log.logged_at).toLocaleDateString()}</span>
+                        <span className="text-xs text-gray-500">{new Date(log.logged_at ?? '').toLocaleDateString()}</span>
                       </div>
                       {log.notes && <p className="text-sm text-gray-600">{log.notes}</p>}
                     </div>

@@ -1,14 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { AlertTriangle, Phone, Heart, Shield, Plus, Edit2, Trash2, Users, X } from 'lucide-react';
-import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useLoadingState } from '../hooks/useLoadingState';
 import { logger } from '../lib/logger';
-import type { CrisisPlan, CrisisContact, CalmingStrategy } from '../types/components';
+import {
+  createCalmingStrategy, createCrisisContact, createCrisisPlan, deleteCalmingStrategy,
+  deleteCrisisContact, deleteCrisisPlan, listCalmingStrategies, listCrisisContacts, listCrisisPlans,
+  updateCalmingStrategy, updateCrisisContact,
+  updateCrisisPlan, type CalmingStrategy, type CrisisContact, type CrisisPlan
+} from '../lib/api/crisis';
 import { PageHeader } from './PageHeader';
+import { ChildPicker } from './ChildPicker';
+import { useDialog } from '../contexts/DialogContext';
 
 export default function CrisisPlanComponent() {
+  const { notify, confirm } = useDialog();
   const { user } = useAuth();
   const { t } = useLanguage();
   const [crisisPlans, setCrisisPlans] = useState<CrisisPlan[]>([]);
@@ -49,20 +56,32 @@ export default function CrisisPlanComponent() {
 
   const loadData = async () => {
     if (!user) { setLoading(false); return; }
-    try {
-      const [plansRes, contactsRes, strategiesRes] = await Promise.all([
-        supabase.from('crisis_plans').select('*').eq('user_id', user.id),
-        supabase.from('crisis_contacts').select('*').eq('user_id', user.id).order('priority_order'),
-        supabase.from('calming_strategies').select('*').eq('user_id', user.id)
-      ]);
-      if (plansRes.data) setCrisisPlans(plansRes.data);
-      if (contactsRes.data) setContacts(contactsRes.data);
-      if (strategiesRes.data) setStrategies(strategiesRes.data);
-    } catch (error) {
-      logger.error('Error loading crisis plan data:', error);
-    } finally {
-      setLoading(false);
+
+    const [plansResult, contactsResult, strategiesResult] = await Promise.allSettled([
+      listCrisisPlans(user.id),
+      listCrisisContacts(user.id),
+      listCalmingStrategies(user.id)
+    ]);
+
+    if (plansResult.status === 'rejected') {
+      logger.error('Error loading crisis plans:', plansResult.reason);
+    } else {
+      setCrisisPlans(plansResult.value);
     }
+
+    if (contactsResult.status === 'rejected') {
+      logger.error('Error loading emergency contacts:', contactsResult.reason);
+    } else {
+      setContacts(contactsResult.value);
+    }
+
+    if (strategiesResult.status === 'rejected') {
+      logger.error('Error loading calming strategies:', strategiesResult.reason);
+    } else {
+      setStrategies(strategiesResult.value);
+    }
+
+    setLoading(false);
   };
 
   // --- Plan handlers ---
@@ -71,12 +90,12 @@ export default function CrisisPlanComponent() {
     setEditingPlan(plan);
     setPlanForm({
       child_name: plan.child_name,
-      warning_signs: plan.warning_signs.length ? plan.warning_signs : [''],
-      immediate_actions: plan.immediate_actions.length ? plan.immediate_actions : [''],
-      things_to_avoid: plan.things_to_avoid.length ? plan.things_to_avoid : [''],
+      warning_signs: plan.warning_signs?.length ? plan.warning_signs : [''],
+      immediate_actions: plan.immediate_actions?.length ? plan.immediate_actions : [''],
+      things_to_avoid: plan.things_to_avoid?.length ? plan.things_to_avoid : [''],
       safe_space_location: plan.safe_space_location || '',
       medication_instructions: plan.medication_instructions || '',
-      when_to_call_911: plan.when_to_call_911.length ? plan.when_to_call_911 : [''],
+      when_to_call_911: plan.when_to_call_911?.length ? plan.when_to_call_911 : [''],
       additional_notes: plan.additional_notes || ''
     });
     setShowPlanForm(true);
@@ -87,7 +106,6 @@ export default function CrisisPlanComponent() {
     if (!user) return;
     try {
       const payload = {
-        user_id: user.id,
         child_name: planForm.child_name,
         warning_signs: planForm.warning_signs.filter(s => s.trim()),
         immediate_actions: planForm.immediate_actions.filter(s => s.trim()),
@@ -98,26 +116,23 @@ export default function CrisisPlanComponent() {
         additional_notes: planForm.additional_notes || null
       };
       if (editingPlan) {
-        const { error } = await supabase.from('crisis_plans').update(payload).eq('id', editingPlan.id);
-        if (error) throw error;
+        await updateCrisisPlan(editingPlan.id, payload);
       } else {
-        const { error } = await supabase.from('crisis_plans').insert(payload);
-        if (error) throw error;
+        await createCrisisPlan(user.id, payload);
       }
       setShowPlanForm(false); setEditingPlan(null); setPlanForm(emptyPlanForm); loadData();
     } catch (error) {
       logger.error('Error saving crisis plan:', error);
-      alert('Failed to save crisis plan');
+      notify('Failed to save crisis plan. Please try again.');
     }
   };
 
   const handleDeletePlan = async (id: string) => {
-    if (!confirm('Delete this crisis plan?')) return;
+    if (!(await confirm('Delete this crisis plan?'))) return;
     try {
-      const { error } = await supabase.from('crisis_plans').delete().eq('id', id);
-      if (error) throw error;
+      await deleteCrisisPlan(id);
       loadData();
-    } catch (error) { logger.error('Error deleting plan:', error); alert('Failed to delete plan'); }
+    } catch (error) { logger.error('Error deleting plan:', error); notify('Failed to delete plan. Please try again.'); }
   };
 
   // --- Contact handlers ---
@@ -130,7 +145,7 @@ export default function CrisisPlanComponent() {
       phone_number: contact.phone_number,
       email: contact.email || '',
       contact_type: contact.contact_type,
-      priority_order: contact.priority_order,
+      priority_order: contact.priority_order ?? 1,
       notes: contact.notes || ''
     });
     setShowContactForm(true);
@@ -141,7 +156,6 @@ export default function CrisisPlanComponent() {
     if (!user) return;
     try {
       const payload = {
-        user_id: user.id,
         contact_name: contactForm.contact_name,
         relationship: contactForm.relationship,
         phone_number: contactForm.phone_number,
@@ -151,26 +165,23 @@ export default function CrisisPlanComponent() {
         notes: contactForm.notes || null
       };
       if (editingContact) {
-        const { error } = await supabase.from('crisis_contacts').update(payload).eq('id', editingContact.id);
-        if (error) throw error;
+        await updateCrisisContact(editingContact.id, payload);
       } else {
-        const { error } = await supabase.from('crisis_contacts').insert(payload);
-        if (error) throw error;
+        await createCrisisContact(user.id, payload);
       }
       setShowContactForm(false); setEditingContact(null); setContactForm(emptyContactForm); loadData();
     } catch (error) {
       logger.error('Error saving contact:', error);
-      alert('Failed to save contact');
+      notify('Failed to save contact. Please try again.');
     }
   };
 
   const handleDeleteContact = async (id: string) => {
-    if (!confirm('Delete this contact?')) return;
+    if (!(await confirm('Delete this contact?'))) return;
     try {
-      const { error } = await supabase.from('crisis_contacts').delete().eq('id', id);
-      if (error) throw error;
+      await deleteCrisisContact(id);
       loadData();
-    } catch (error) { logger.error('Error deleting contact:', error); alert('Failed to delete contact'); }
+    } catch (error) { logger.error('Error deleting contact:', error); notify('Failed to delete contact. Please try again.'); }
   };
 
   // --- Strategy handlers ---
@@ -185,7 +196,7 @@ export default function CrisisPlanComponent() {
       effectiveness_rating: strategy.effectiveness_rating ? String(strategy.effectiveness_rating) : '',
       duration_minutes: strategy.duration_minutes ? String(strategy.duration_minutes) : '',
       materials_needed: strategy.materials_needed?.length ? strategy.materials_needed : [''],
-      instructions: strategy.instructions.length ? strategy.instructions : ['']
+      instructions: strategy.instructions?.length ? strategy.instructions : ['']
     });
     setShowStrategyForm(true);
   };
@@ -195,7 +206,6 @@ export default function CrisisPlanComponent() {
     if (!user) return;
     try {
       const payload = {
-        user_id: user.id,
         child_name: strategyForm.child_name,
         strategy_name: strategyForm.strategy_name,
         strategy_type: strategyForm.strategy_type,
@@ -206,26 +216,23 @@ export default function CrisisPlanComponent() {
         instructions: strategyForm.instructions.filter(s => s.trim())
       };
       if (editingStrategy) {
-        const { error } = await supabase.from('calming_strategies').update(payload).eq('id', editingStrategy.id);
-        if (error) throw error;
+        await updateCalmingStrategy(editingStrategy.id, payload);
       } else {
-        const { error } = await supabase.from('calming_strategies').insert(payload);
-        if (error) throw error;
+        await createCalmingStrategy(user.id, payload);
       }
       setShowStrategyForm(false); setEditingStrategy(null); setStrategyForm(emptyStrategyForm); loadData();
     } catch (error) {
       logger.error('Error saving strategy:', error);
-      alert('Failed to save calming strategy');
+      notify('Failed to save calming strategy. Please try again.');
     }
   };
 
   const handleDeleteStrategy = async (id: string) => {
-    if (!confirm('Delete this calming strategy?')) return;
+    if (!(await confirm('Delete this calming strategy?'))) return;
     try {
-      const { error } = await supabase.from('calming_strategies').delete().eq('id', id);
-      if (error) throw error;
+      await deleteCalmingStrategy(id);
       loadData();
-    } catch (error) { logger.error('Error deleting strategy:', error); alert('Failed to delete strategy'); }
+    } catch (error) { logger.error('Error deleting strategy:', error); notify('Failed to delete strategy. Please try again.'); }
   };
 
   const addArrayField = <T extends object>(setter: React.Dispatch<React.SetStateAction<T>>, field: string, currentArray: string[]) => {
@@ -328,9 +335,8 @@ export default function CrisisPlanComponent() {
                 <form onSubmit={handlePlanSubmit} className="space-y-6">
                   <div>
                     <label htmlFor="crisis-plan-child-name" className="block text-sm font-medium text-gray-700 mb-1">Child Name</label>
-                    <input id="crisis-plan-child-name" type="text" required value={planForm.child_name}
-                      onChange={(e) => setPlanForm({ ...planForm, child_name: e.target.value })}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500" />
+                    <ChildPicker id="crisis-plan-child-name" required value={planForm.child_name} onChange={(name) => setPlanForm({ ...planForm, child_name: name })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500" />
                   </div>
                   <div>
                     <p className="block text-sm font-medium text-gray-700 mb-1">Warning Signs</p>
@@ -424,22 +430,22 @@ export default function CrisisPlanComponent() {
                     </button>
                   </div>
                 </div>
-                {plan.warning_signs.length > 0 && (
+                {(plan.warning_signs?.length ?? 0) > 0 && (
                   <div className="mb-6">
                     <h3 className="font-bold text-red-800 mb-3 flex items-center gap-2"><AlertTriangle className="w-5 h-5" /> Warning Signs</h3>
-                    <ul className="list-disc list-inside space-y-1">{plan.warning_signs.map((s, i) => <li key={i} className="text-gray-700">{s}</li>)}</ul>
+                    <ul className="list-disc list-inside space-y-1">{(plan.warning_signs ?? []).map((s, i) => <li key={i} className="text-gray-700">{s}</li>)}</ul>
                   </div>
                 )}
-                {plan.immediate_actions.length > 0 && (
+                {(plan.immediate_actions?.length ?? 0) > 0 && (
                   <div className="mb-6">
                     <h3 className="font-bold text-green-800 mb-3 flex items-center gap-2"><Shield className="w-5 h-5" /> Immediate Actions</h3>
-                    <ol className="list-decimal list-inside space-y-1">{plan.immediate_actions.map((a, i) => <li key={i} className="text-gray-700">{a}</li>)}</ol>
+                    <ol className="list-decimal list-inside space-y-1">{(plan.immediate_actions ?? []).map((a, i) => <li key={i} className="text-gray-700">{a}</li>)}</ol>
                   </div>
                 )}
-                {plan.things_to_avoid.length > 0 && (
+                {(plan.things_to_avoid?.length ?? 0) > 0 && (
                   <div className="mb-6">
                     <h3 className="font-bold text-orange-800 mb-3">Things to AVOID</h3>
-                    <ul className="list-disc list-inside space-y-1">{plan.things_to_avoid.map((t, i) => <li key={i} className="text-gray-700">{t}</li>)}</ul>
+                    <ul className="list-disc list-inside space-y-1">{(plan.things_to_avoid ?? []).map((t, i) => <li key={i} className="text-gray-700">{t}</li>)}</ul>
                   </div>
                 )}
                 {plan.safe_space_location && (
@@ -451,10 +457,10 @@ export default function CrisisPlanComponent() {
                     <p className="text-gray-700 whitespace-pre-line">{plan.medication_instructions}</p>
                   </div>
                 )}
-                {plan.when_to_call_911.length > 0 && (
+                {(plan.when_to_call_911?.length ?? 0) > 0 && (
                   <div className="bg-red-50 p-4 rounded-lg">
                     <h3 className="font-bold text-red-900 mb-3 flex items-center gap-2"><Phone className="w-5 h-5" /> When to Call 911</h3>
-                    <ul className="list-disc list-inside space-y-1">{plan.when_to_call_911.map((s, i) => <li key={i} className="text-red-800">{s}</li>)}</ul>
+                    <ul className="list-disc list-inside space-y-1">{(plan.when_to_call_911 ?? []).map((s, i) => <li key={i} className="text-red-800">{s}</li>)}</ul>
                   </div>
                 )}
                 {plan.additional_notes && (
@@ -600,9 +606,8 @@ export default function CrisisPlanComponent() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label htmlFor="crisis-plan-child-name-2" className="block text-sm font-medium text-gray-700 mb-1">Child Name</label>
-                      <input id="crisis-plan-child-name-2" type="text" required value={strategyForm.child_name}
-                        onChange={(e) => setStrategyForm({ ...strategyForm, child_name: e.target.value })}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500" />
+                      <ChildPicker id="crisis-plan-child-name-2" required value={strategyForm.child_name} onChange={(name) => setStrategyForm({ ...strategyForm, child_name: name })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500" />
                     </div>
                     <div>
                       <label htmlFor="crisis-plan-strategy-name" className="block text-sm font-medium text-gray-700 mb-1">Strategy Name</label>
@@ -697,11 +702,11 @@ export default function CrisisPlanComponent() {
                     </ul>
                   </div>
                 )}
-                {strategy.instructions.length > 0 && (
+                {(strategy.instructions?.length ?? 0) > 0 && (
                   <div className="mb-4">
                     <h4 className="font-semibold text-gray-800 mb-2">Steps:</h4>
                     <ol className="list-decimal list-inside space-y-1 text-sm text-gray-700">
-                      {strategy.instructions.map((instruction, idx) => <li key={idx}>{instruction}</li>)}
+                      {(strategy.instructions ?? []).map((instruction, idx) => <li key={idx}>{instruction}</li>)}
                     </ol>
                   </div>
                 )}
