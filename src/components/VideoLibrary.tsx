@@ -256,7 +256,7 @@ export default function VideoLibrary({ userId, onBack }: VideoLibraryProps) {
                     className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
                       selectedVideo.progress?.watched
                         ? 'bg-green-100 text-green-700'
-                        : 'bg-blue-600 text-white hover:bg-blue-700'
+                        : 'bg-teal-700 text-white hover:bg-teal-800'
                     }`}
                   >
                     <CheckCircle className="w-4 h-4" />

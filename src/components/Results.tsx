@@ -371,7 +371,7 @@ export function Results({
               {onViewDashboard && !isGuest && (
                 <button
                   onClick={onViewDashboard}
-                  className="flex-1 flex items-center justify-center gap-2 px-6 py-3.5 sm:py-4 bg-blue-600 text-white rounded-xl font-semibold sm:text-lg hover:bg-blue-700 transition-colors"
+                  className="flex-1 flex items-center justify-center gap-2 px-6 py-3.5 sm:py-4 bg-white border-2 border-teal-600 text-teal-700 rounded-xl font-semibold sm:text-lg hover:bg-teal-50 transition-colors"
                 >
                   <TrendingUp className="w-5 h-5" />
                   {t('View Progress', 'Ver Progreso')}

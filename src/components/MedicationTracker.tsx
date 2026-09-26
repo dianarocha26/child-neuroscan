@@ -318,7 +318,7 @@ export default function MedicationTracker() {
           <button
             onClick={() => setFilterActive(true)}
             className={`px-4 py-2 rounded-lg transition ${
-              filterActive ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              filterActive ? 'bg-teal-700 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
           >
             Active ({medications.filter(m => m.active).length})
@@ -326,7 +326,7 @@ export default function MedicationTracker() {
           <button
             onClick={() => setFilterActive(false)}
             className={`px-4 py-2 rounded-lg transition ${
-              !filterActive ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              !filterActive ? 'bg-teal-700 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
           >
             Inactive ({medications.filter(m => !m.active).length})
@@ -349,8 +349,8 @@ export default function MedicationTracker() {
             <form onSubmit={handleSubmitMed} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Child's Name *</label>
-                  <input
+                  <label htmlFor="medication-tracker-child-s-name" className="block text-sm font-medium text-gray-700 mb-2">Child's Name *</label>
+                  <input id="medication-tracker-child-s-name"
                     type="text"
                     value={medForm.child_name}
                     onChange={(e) => setMedForm({ ...medForm, child_name: e.target.value })}
@@ -359,8 +359,8 @@ export default function MedicationTracker() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Type *</label>
-                  <select
+                  <label htmlFor="medication-tracker-type" className="block text-sm font-medium text-gray-700 mb-2">Type *</label>
+                  <select id="medication-tracker-type"
                     value={medForm.type}
                     onChange={(e) => setMedForm({ ...medForm, type: e.target.value as Medication['type'] })}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
@@ -373,10 +373,10 @@ export default function MedicationTracker() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Name *</label>
-                <input
+                <label htmlFor="medication-tracker-name" className="block text-sm font-medium text-gray-700 mb-2">Name *</label>
+                <input id="medication-tracker-name"
                   type="text"
-                  placeholder="e.g., Methylphenidate, Omega-3, Vitamin D"
+                  placeholder="e.g., Melatonin"
                   value={medForm.name}
                   onChange={(e) => setMedForm({ ...medForm, name: e.target.value })}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
@@ -386,8 +386,8 @@ export default function MedicationTracker() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Dosage *</label>
-                  <input
+                  <label htmlFor="medication-tracker-dosage" className="block text-sm font-medium text-gray-700 mb-2">Dosage *</label>
+                  <input id="medication-tracker-dosage"
                     type="text"
                     placeholder="e.g., 5mg, 1 tablet"
                     value={medForm.dosage}
@@ -397,8 +397,8 @@ export default function MedicationTracker() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Frequency *</label>
-                  <input
+                  <label htmlFor="medication-tracker-frequency" className="block text-sm font-medium text-gray-700 mb-2">Frequency *</label>
+                  <input id="medication-tracker-frequency"
                     type="text"
                     placeholder="e.g., twice daily, as needed"
                     value={medForm.frequency}
@@ -410,10 +410,10 @@ export default function MedicationTracker() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="medication-tracker-schedule-times-comma-separated" className="block text-sm font-medium text-gray-700 mb-2">
                   Schedule Times (comma-separated)
                 </label>
-                <input
+                <input id="medication-tracker-schedule-times-comma-separated"
                   type="text"
                   placeholder="e.g., 08:00, 20:00"
                   value={medForm.schedule_times}
@@ -424,8 +424,8 @@ export default function MedicationTracker() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Purpose</label>
-                  <input
+                  <label htmlFor="medication-tracker-purpose" className="block text-sm font-medium text-gray-700 mb-2">Purpose</label>
+                  <input id="medication-tracker-purpose"
                     type="text"
                     placeholder="e.g., ADHD management"
                     value={medForm.purpose}
@@ -434,8 +434,8 @@ export default function MedicationTracker() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Related Condition</label>
-                  <input
+                  <label htmlFor="medication-tracker-related-condition" className="block text-sm font-medium text-gray-700 mb-2">Related Condition</label>
+                  <input id="medication-tracker-related-condition"
                     type="text"
                     placeholder="e.g., ADHD, Autism"
                     value={medForm.linked_condition}
@@ -446,8 +446,8 @@ export default function MedicationTracker() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Prescribing Doctor</label>
-                <input
+                <label htmlFor="medication-tracker-prescribing-doctor" className="block text-sm font-medium text-gray-700 mb-2">Prescribing Doctor</label>
+                <input id="medication-tracker-prescribing-doctor"
                   type="text"
                   placeholder="e.g., Dr. Smith"
                   value={medForm.prescribing_doctor}
@@ -458,8 +458,8 @@ export default function MedicationTracker() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Start Date *</label>
-                  <input
+                  <label htmlFor="medication-tracker-start-date" className="block text-sm font-medium text-gray-700 mb-2">Start Date *</label>
+                  <input id="medication-tracker-start-date"
                     type="date"
                     value={medForm.start_date}
                     onChange={(e) => setMedForm({ ...medForm, start_date: e.target.value })}
@@ -468,8 +468,8 @@ export default function MedicationTracker() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">End Date (Optional)</label>
-                  <input
+                  <label htmlFor="medication-tracker-end-date-optional" className="block text-sm font-medium text-gray-700 mb-2">End Date (Optional)</label>
+                  <input id="medication-tracker-end-date-optional"
                     type="date"
                     value={medForm.end_date}
                     onChange={(e) => setMedForm({ ...medForm, end_date: e.target.value })}
@@ -479,8 +479,8 @@ export default function MedicationTracker() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Known Side Effects</label>
-                <textarea
+                <label htmlFor="medication-tracker-known-side-effects" className="block text-sm font-medium text-gray-700 mb-2">Known Side Effects</label>
+                <textarea id="medication-tracker-known-side-effects"
                   value={medForm.side_effects}
                   onChange={(e) => setMedForm({ ...medForm, side_effects: e.target.value })}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
@@ -490,8 +490,8 @@ export default function MedicationTracker() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Notes</label>
-                <textarea
+                <label htmlFor="medication-tracker-notes" className="block text-sm font-medium text-gray-700 mb-2">Notes</label>
+                <textarea id="medication-tracker-notes"
                   value={medForm.notes}
                   onChange={(e) => setMedForm({ ...medForm, notes: e.target.value })}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
@@ -499,7 +499,7 @@ export default function MedicationTracker() {
                 />
               </div>
 
-              <div className="flex gap-3 pt-4">
+              <div className="modal-footer flex gap-3">
                 <button
                   type="button"
                   onClick={() => setShowMedForm(false)}
@@ -509,7 +509,7 @@ export default function MedicationTracker() {
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                  className="flex-1 px-4 py-3 bg-teal-700 text-white rounded-lg hover:bg-teal-800 transition"
                 >
                   {editingMed ? 'Update' : 'Add'} Medication
                 </button>
@@ -591,7 +591,7 @@ export default function MedicationTracker() {
                 {selectedMed.active && (
                   <button
                     onClick={() => setShowLogForm(true)}
-                    className="text-sm bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
+                    className="text-sm bg-teal-700 text-white px-4 py-2 rounded-lg hover:bg-teal-800 transition"
                   >
                     Log Dose
                   </button>
@@ -601,8 +601,8 @@ export default function MedicationTracker() {
               {showLogForm && (
                 <form onSubmit={handleLogDose} className="bg-gray-50 p-4 rounded-lg mb-4">
                   <div className="mb-3">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Status *</label>
-                    <select
+                    <label htmlFor="medication-tracker-status" className="block text-sm font-medium text-gray-700 mb-2">Status *</label>
+                    <select id="medication-tracker-status"
                       value={logForm.status}
                       onChange={(e) => setLogForm({ ...logForm, status: e.target.value as MedicationLog['status'] })}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
@@ -613,8 +613,8 @@ export default function MedicationTracker() {
                     </select>
                   </div>
                   <div className="mb-3">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Notes</label>
-                    <textarea
+                    <label htmlFor="medication-tracker-notes-2" className="block text-sm font-medium text-gray-700 mb-2">Notes</label>
+                    <textarea id="medication-tracker-notes-2"
                       value={logForm.notes}
                       onChange={(e) => setLogForm({ ...logForm, notes: e.target.value })}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
@@ -622,8 +622,8 @@ export default function MedicationTracker() {
                     />
                   </div>
                   <div className="mb-3">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Side Effects Observed</label>
-                    <textarea
+                    <label htmlFor="medication-tracker-side-effects-observed" className="block text-sm font-medium text-gray-700 mb-2">Side Effects Observed</label>
+                    <textarea id="medication-tracker-side-effects-observed"
                       value={logForm.side_effects_observed}
                       onChange={(e) => setLogForm({ ...logForm, side_effects_observed: e.target.value })}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
@@ -631,8 +631,8 @@ export default function MedicationTracker() {
                     />
                   </div>
                   <div className="mb-3">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Behavioral Changes</label>
-                    <textarea
+                    <label htmlFor="medication-tracker-behavioral-changes" className="block text-sm font-medium text-gray-700 mb-2">Behavioral Changes</label>
+                    <textarea id="medication-tracker-behavioral-changes"
                       value={logForm.behavioral_changes}
                       onChange={(e) => setLogForm({ ...logForm, behavioral_changes: e.target.value })}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
@@ -649,7 +649,7 @@ export default function MedicationTracker() {
                     </button>
                     <button
                       type="submit"
-                      className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                      className="flex-1 px-4 py-2 bg-teal-700 text-white rounded-lg hover:bg-teal-800"
                     >
                       Save Log
                     </button>
@@ -684,7 +684,7 @@ export default function MedicationTracker() {
               </div>
             </div>
 
-            <div className="flex flex-wrap gap-2 sm:gap-3">
+            <div className="modal-footer flex flex-wrap gap-2 sm:gap-3">
               <button
                 onClick={() => handleToggleActive(selectedMed)}
                 className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
@@ -693,7 +693,7 @@ export default function MedicationTracker() {
               </button>
               <button
                 onClick={() => openEditMed(selectedMed)}
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-3 border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition"
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-3 border border-teal-700 text-teal-700 rounded-lg hover:bg-teal-50 transition"
               >
                 <Edit2 className="w-4 h-4" />
                 Edit
@@ -725,7 +725,7 @@ export default function MedicationTracker() {
                 resetMedForm();
                 setShowMedForm(true);
               }}
-              className="inline-flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition"
+              className="inline-flex items-center gap-2 bg-teal-700 text-white px-6 py-3 rounded-lg hover:bg-teal-800 transition"
             >
               <Plus className="w-5 h-5" />
               Add First Medication

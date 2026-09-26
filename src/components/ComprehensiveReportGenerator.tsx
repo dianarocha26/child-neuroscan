@@ -417,17 +417,17 @@ export default function ComprehensiveReportGenerator() {
     <div>
 
       {showSuccess && (
-        <div className="fixed top-4 right-4 left-4 sm:left-auto z-[70] animate-in">
+        <div className="fixed top-4 right-4 left-4 sm:left-auto z-[70] animate-in" role="status" aria-live="polite">
           <div className="bg-white rounded-2xl shadow-soft-lg border-2 border-emerald-200 p-4 sm:p-6 sm:max-w-sm">
             <div className="flex items-start gap-4">
               <div className="w-16 h-16 flex-shrink-0">
                 <SuccessIllustration />
               </div>
               <div>
-                <h3 className="font-bold text-gray-900 text-lg flex items-center gap-2">
+                <p className="font-bold text-gray-900 text-lg flex items-center gap-2">
                   {t('Report generated successfully!', '¡Informe generado con éxito!')}
-                  <Sparkles className="w-5 h-5 text-yellow-500" />
-                </h3>
+                  <Sparkles className="w-5 h-5 text-yellow-500" aria-hidden="true" />
+                </p>
                 <p className="text-gray-600 mt-1">{t('Your report is ready to view, print, or download.', 'Tu informe está listo para ver, imprimir o descargar.')}</p>
               </div>
             </div>
@@ -625,7 +625,7 @@ export default function ComprehensiveReportGenerator() {
                       <div className="grid grid-cols-2 gap-2">
                         <button
                           onClick={() => handleDownloadHTML(report)}
-                          className="bg-blue-600 text-white px-3 py-2 rounded text-sm font-medium hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+                          className="bg-teal-700 text-white px-3 py-2 rounded text-sm font-medium hover:bg-teal-800 transition-colors flex items-center justify-center gap-2"
                           title="Download as HTML"
                         >
                           <Download className="w-4 h-4" />

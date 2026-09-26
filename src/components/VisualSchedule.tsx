@@ -386,8 +386,8 @@ export default function VisualSchedule() {
           <form onSubmit={handleScheduleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Child Name</label>
-                <input
+                <label htmlFor="visual-schedule-child-name" className="block text-sm font-medium text-gray-700 mb-1">Child Name</label>
+                <input id="visual-schedule-child-name"
                   type="text"
                   required
                   value={scheduleForm.child_name}
@@ -396,8 +396,8 @@ export default function VisualSchedule() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Schedule Name</label>
-                <input
+                <label htmlFor="visual-schedule-schedule-name" className="block text-sm font-medium text-gray-700 mb-1">Schedule Name</label>
+                <input id="visual-schedule-schedule-name"
                   type="text"
                   required
                   value={scheduleForm.schedule_name}
@@ -407,8 +407,8 @@ export default function VisualSchedule() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
-                <select
+                <label htmlFor="visual-schedule-type" className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+                <select id="visual-schedule-type"
                   value={scheduleForm.schedule_type}
                   onChange={(e) => setScheduleForm({ ...scheduleForm, schedule_type: e.target.value })}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
@@ -423,7 +423,7 @@ export default function VisualSchedule() {
             </div>
 
             <div className="flex gap-3">
-              <button type="submit" className="flex-1 bg-blue-600 text-white py-2.5 rounded-lg hover:bg-blue-700 transition">
+              <button type="submit" className="flex-1 bg-teal-700 text-white py-2.5 rounded-lg hover:bg-teal-800 transition">
                 {editingScheduleId ? 'Save Changes' : 'Create Schedule'}
               </button>
               <button
@@ -548,7 +548,7 @@ export default function VisualSchedule() {
                         });
                         setShowActivityForm(true);
                       }}
-                      className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
+                      className="flex items-center gap-2 bg-teal-700 text-white px-4 py-2 rounded-lg hover:bg-teal-800 transition"
                     >
                       <Plus className="w-4 h-4" />
                       Add Activity
@@ -579,8 +579,8 @@ export default function VisualSchedule() {
                       />
                       <div className="grid grid-cols-2 gap-3">
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Start time</label>
-                          <input
+                          <label htmlFor="visual-schedule-start-time" className="block text-sm font-medium text-gray-700 mb-1">Start time</label>
+                          <input id="visual-schedule-start-time"
                             type="time"
                             value={activityForm.start_time}
                             onChange={(e) => setActivityForm({ ...activityForm, start_time: e.target.value })}
@@ -588,8 +588,8 @@ export default function VisualSchedule() {
                           />
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Duration (min)</label>
-                          <input
+                          <label htmlFor="visual-schedule-duration-min" className="block text-sm font-medium text-gray-700 mb-1">Duration (min)</label>
+                          <input id="visual-schedule-duration-min"
                             type="number"
                             min="1"
                             value={activityForm.duration_minutes}
@@ -599,8 +599,8 @@ export default function VisualSchedule() {
                         </div>
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Icon Color</label>
-                        <input
+                        <label htmlFor="visual-schedule-icon-color" className="block text-sm font-medium text-gray-700 mb-2">Icon Color</label>
+                        <input id="visual-schedule-icon-color"
                           type="color"
                           value={activityForm.icon_color}
                           onChange={(e) => setActivityForm({ ...activityForm, icon_color: e.target.value })}
@@ -608,7 +608,7 @@ export default function VisualSchedule() {
                         />
                       </div>
                       <div className="flex gap-2">
-                        <button type="submit" className="flex-1 bg-blue-600 text-white py-2.5 rounded-lg hover:bg-blue-700 transition">
+                        <button type="submit" className="flex-1 bg-teal-700 text-white py-2.5 rounded-lg hover:bg-teal-800 transition">
                           {editingActivity ? 'Save Changes' : 'Add Activity'}
                         </button>
                         <button
@@ -690,8 +690,8 @@ export default function VisualSchedule() {
                               />
                               <div className="flex gap-2">
                                 <div className="flex-1">
-                                  <label className="block text-xs text-gray-600 mb-0.5">Start time</label>
-                                  <input
+                                  <label htmlFor="visual-schedule-start-time-2" className="block text-xs text-gray-600 mb-0.5">Start time</label>
+                                  <input id="visual-schedule-start-time-2"
                                     type="time"
                                     value={quickEditValues.start_time}
                                     onChange={(e) => setQuickEditValues({ ...quickEditValues, start_time: e.target.value })}
@@ -699,8 +699,8 @@ export default function VisualSchedule() {
                                   />
                                 </div>
                                 <div className="flex-1">
-                                  <label className="block text-xs text-gray-600 mb-0.5">Duration (min)</label>
-                                  <input
+                                  <label htmlFor="visual-schedule-duration-min-2" className="block text-xs text-gray-600 mb-0.5">Duration (min)</label>
+                                  <input id="visual-schedule-duration-min-2"
                                     type="number"
                                     min="1"
                                     value={quickEditValues.duration_minutes}
@@ -743,6 +743,7 @@ export default function VisualSchedule() {
                                 onClick={() => saveQuickEdit(activity.id)}
                                 className="p-2 text-white bg-green-600 hover:bg-green-700 rounded-lg transition"
                                 title="Save changes"
+                                aria-label="Save changes"
                               >
                                 <Save className="w-5 h-5" />
                               </button>
@@ -750,6 +751,7 @@ export default function VisualSchedule() {
                                 onClick={() => setQuickEditId(null)}
                                 className="p-2 text-gray-600 hover:bg-gray-200 rounded-lg transition"
                                 title="Cancel"
+                                aria-label="Cancel"
                               >
                                 <X className="w-5 h-5" />
                               </button>
@@ -760,6 +762,7 @@ export default function VisualSchedule() {
                                 onClick={() => handleEditActivity(activity)}
                                 className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition"
                                 title="Edit full activity"
+                                aria-label="Edit full activity"
                               >
                                 <Edit2 className="w-5 h-5" />
                               </button>
@@ -767,6 +770,7 @@ export default function VisualSchedule() {
                                 onClick={() => handleDeleteActivity(activity.id)}
                                 className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition"
                                 title="Delete activity"
+                                aria-label="Delete activity"
                               >
                                 <Trash2 className="w-5 h-5" />
                               </button>
@@ -797,7 +801,7 @@ export default function VisualSchedule() {
           <p className="text-gray-600 mb-6">Create visual schedules to help with transitions and routines</p>
           <button
             onClick={() => setShowScheduleForm(true)}
-            className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition"
+            className="bg-teal-700 text-white px-6 py-3 rounded-lg hover:bg-teal-800 transition"
           >
             Create First Schedule
           </button>

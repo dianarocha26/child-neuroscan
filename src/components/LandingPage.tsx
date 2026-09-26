@@ -407,9 +407,9 @@ export function LandingPage({ onConditionSelect, onViewDashboard, onViewResource
           )}
 
           {!loading && !error && (
-            <div className="grid gap-4">
+            <div className="grid gap-4 lg:grid-cols-2">
               {conditions.length === 0 && (
-                <div className="text-center py-8 text-gray-600">
+                <div className="text-center py-8 text-gray-600 lg:col-span-2">
                   {t('No conditions available right now.', 'No hay condiciones disponibles en este momento.')}
                 </div>
               )}

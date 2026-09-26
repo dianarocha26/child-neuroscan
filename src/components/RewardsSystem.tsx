@@ -216,24 +216,24 @@ export default function RewardsSystem() {
             <form onSubmit={handleChartSubmit} className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Child Name</label>
-                  <input type="text" required value={chartForm.child_name} onChange={(e) => setChartForm({ ...chartForm, child_name: e.target.value })}
+                  <label htmlFor="rewards-system-child-name" className="block text-sm font-medium text-gray-700 mb-1">Child Name</label>
+                  <input id="rewards-system-child-name" type="text" required value={chartForm.child_name} onChange={(e) => setChartForm({ ...chartForm, child_name: e.target.value })}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Chart Name</label>
-                  <input type="text" required value={chartForm.chart_name} onChange={(e) => setChartForm({ ...chartForm, chart_name: e.target.value })}
+                  <label htmlFor="rewards-system-chart-name" className="block text-sm font-medium text-gray-700 mb-1">Chart Name</label>
+                  <input id="rewards-system-chart-name" type="text" required value={chartForm.chart_name} onChange={(e) => setChartForm({ ...chartForm, chart_name: e.target.value })}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500"
                     placeholder="e.g., Morning Routine Chart" />
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Target Behavior</label>
-                <input type="text" required value={chartForm.target_behavior} onChange={(e) => setChartForm({ ...chartForm, target_behavior: e.target.value })}
+                <label htmlFor="rewards-system-target-behavior" className="block text-sm font-medium text-gray-700 mb-1">Target Behavior</label>
+                <input id="rewards-system-target-behavior" type="text" required value={chartForm.target_behavior} onChange={(e) => setChartForm({ ...chartForm, target_behavior: e.target.value })}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500"
                   placeholder="e.g., Completing morning tasks without reminders" />
               </div>
-              <div className="flex gap-3">
+              <div className="modal-footer flex gap-3">
                 <button type="submit" className="flex-1 bg-amber-700 text-white py-2.5 rounded-lg font-medium hover:bg-amber-800 transition">
                   {editingChart ? 'Update Chart' : 'Create Chart'}
                 </button>
@@ -262,16 +262,18 @@ export default function RewardsSystem() {
                     <span className="text-xs text-gray-600">Is this chart working?</span>
                     <button
                       onClick={() => handleRateChart(chart, true)}
-                      className={`p-2 rounded transition ${chart.is_effective === true ? 'bg-green-100 text-green-700' : 'text-gray-400 hover:text-green-600 hover:bg-green-50'}`}
+                      className={`w-10 h-10 flex-shrink-0 inline-flex items-center justify-center rounded-lg transition ${chart.is_effective === true ? 'bg-green-100 text-green-700' : 'text-gray-400 hover:text-green-600 hover:bg-green-50'}`}
                       title="Working"
+                      aria-label="Chart is working"
                       aria-pressed={chart.is_effective === true}
                     >
                       <ThumbsUp className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => handleRateChart(chart, false)}
-                      className={`p-2 rounded transition ${chart.is_effective === false ? 'bg-red-100 text-red-700' : 'text-gray-400 hover:text-red-600 hover:bg-red-50'}`}
+                      className={`w-10 h-10 flex-shrink-0 inline-flex items-center justify-center rounded-lg transition ${chart.is_effective === false ? 'bg-red-100 text-red-700' : 'text-gray-400 hover:text-red-600 hover:bg-red-50'}`}
                       title="Not working"
+                      aria-label="Chart is not working"
                       aria-pressed={chart.is_effective === false}
                     >
                       <ThumbsDown className="w-4 h-4" />
@@ -286,8 +288,8 @@ export default function RewardsSystem() {
                     <p className="text-xs text-gray-600 mt-1">Stars</p>
                   </div>
                   <div className="flex flex-col">
-                    <button onClick={() => openEditChart(chart)} className="p-2.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition" title="Edit chart"><Edit2 className="w-4 h-4" /></button>
-                    <button onClick={() => handleDeleteChart(chart.id)} className="p-2.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition" title="Delete chart"><Trash2 className="w-4 h-4" /></button>
+                    <button onClick={() => openEditChart(chart)} className="p-2.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition" title="Edit chart" aria-label="Edit chart"><Edit2 className="w-4 h-4" /></button>
+                    <button onClick={() => handleDeleteChart(chart.id)} className="p-2.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition" title="Delete chart" aria-label="Delete chart"><Trash2 className="w-4 h-4" /></button>
                   </div>
                 </div>
               </div>
@@ -329,8 +331,8 @@ export default function RewardsSystem() {
                           </div>
                           <div className="flex items-center gap-1">
                             <span className="text-xs text-gray-600">{totalStars}/{goal.stars_required} ⭐</span>
-                            <button onClick={() => openEditGoal(goal, chart.id)} className="p-2 text-gray-400 hover:text-blue-600 rounded transition"><Edit2 className="w-3 h-3" /></button>
-                            <button onClick={() => handleDeleteGoal(goal.id)} className="p-2 text-gray-400 hover:text-red-600 rounded transition"><Trash2 className="w-3 h-3" /></button>
+                            <button onClick={() => openEditGoal(goal, chart.id)} className="p-2 text-gray-400 hover:text-blue-600 rounded transition" aria-label="Edit reward goal"><Edit2 className="w-3 h-3" /></button>
+                            <button onClick={() => handleDeleteGoal(goal.id)} className="p-2 text-gray-400 hover:text-red-600 rounded transition" aria-label="Delete reward goal"><Trash2 className="w-3 h-3" /></button>
                           </div>
                         </div>
                         <div className="w-full bg-gray-200 rounded-full h-2">
@@ -376,8 +378,8 @@ export default function RewardsSystem() {
                       </div>
                       <div className="flex items-center gap-1">
                         <span className="text-xs font-semibold text-yellow-600">+{entry.stars_earned}⭐</span>
-                        <button onClick={() => openEditEntry(entry, chart.id)} className="p-2 text-gray-400 hover:text-blue-600 rounded transition"><Edit2 className="w-3 h-3" /></button>
-                        <button onClick={() => handleDeleteEntry(entry.id)} className="p-2 text-gray-400 hover:text-red-600 rounded transition"><Trash2 className="w-3 h-3" /></button>
+                        <button onClick={() => openEditEntry(entry, chart.id)} className="p-2 text-gray-400 hover:text-blue-600 rounded transition" aria-label="Edit star entry"><Edit2 className="w-3 h-3" /></button>
+                        <button onClick={() => handleDeleteEntry(entry.id)} className="p-2 text-gray-400 hover:text-red-600 rounded transition" aria-label="Delete star entry"><Trash2 className="w-3 h-3" /></button>
                       </div>
                     </div>
                   ))}

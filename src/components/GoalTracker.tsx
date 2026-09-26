@@ -357,8 +357,8 @@ export default function GoalTracker() {
             <form onSubmit={handleSubmitGoal} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Child's Name *</label>
-                  <input
+                  <label htmlFor="goal-tracker-child-s-name" className="block text-sm font-medium text-gray-700 mb-2">Child's Name *</label>
+                  <input id="goal-tracker-child-s-name"
                     type="text"
                     value={goalForm.child_name}
                     onChange={(e) => setGoalForm({ ...goalForm, child_name: e.target.value })}
@@ -367,8 +367,8 @@ export default function GoalTracker() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Category *</label>
-                  <select
+                  <label htmlFor="goal-tracker-category" className="block text-sm font-medium text-gray-700 mb-2">Category *</label>
+                  <select id="goal-tracker-category"
                     value={goalForm.category}
                     onChange={(e) => setGoalForm({ ...goalForm, category: e.target.value as Goal['category'] })}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
@@ -385,8 +385,8 @@ export default function GoalTracker() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Goal Title *</label>
-                <input
+                <label htmlFor="goal-tracker-goal-title" className="block text-sm font-medium text-gray-700 mb-2">Goal Title *</label>
+                <input id="goal-tracker-goal-title"
                   type="text"
                   placeholder="e.g., Use 50 words spontaneously"
                   value={goalForm.title}
@@ -397,8 +397,8 @@ export default function GoalTracker() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
-                <textarea
+                <label htmlFor="goal-tracker-description" className="block text-sm font-medium text-gray-700 mb-2">Description</label>
+                <textarea id="goal-tracker-description"
                   value={goalForm.description}
                   onChange={(e) => setGoalForm({ ...goalForm, description: e.target.value })}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
@@ -408,8 +408,8 @@ export default function GoalTracker() {
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Current Value *</label>
-                  <input
+                  <label htmlFor="goal-tracker-current-value" className="block text-sm font-medium text-gray-700 mb-2">Current Value *</label>
+                  <input id="goal-tracker-current-value"
                     type="number"
                     value={goalForm.current_value}
                     onChange={(e) => setGoalForm({ ...goalForm, current_value: parseFloat(e.target.value) })}
@@ -418,8 +418,8 @@ export default function GoalTracker() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Target Value *</label>
-                  <input
+                  <label htmlFor="goal-tracker-target-value" className="block text-sm font-medium text-gray-700 mb-2">Target Value *</label>
+                  <input id="goal-tracker-target-value"
                     type="number"
                     value={goalForm.target_value}
                     onChange={(e) => setGoalForm({ ...goalForm, target_value: parseFloat(e.target.value) })}
@@ -428,8 +428,8 @@ export default function GoalTracker() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Unit *</label>
-                  <input
+                  <label htmlFor="goal-tracker-unit" className="block text-sm font-medium text-gray-700 mb-2">Unit *</label>
+                  <input id="goal-tracker-unit"
                     type="text"
                     placeholder="e.g., words, times"
                     value={goalForm.unit}
@@ -442,8 +442,8 @@ export default function GoalTracker() {
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Priority *</label>
-                  <select
+                  <label htmlFor="goal-tracker-priority" className="block text-sm font-medium text-gray-700 mb-2">Priority *</label>
+                  <select id="goal-tracker-priority"
                     value={goalForm.priority}
                     onChange={(e) => setGoalForm({ ...goalForm, priority: e.target.value as Goal['priority'] })}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
@@ -454,8 +454,8 @@ export default function GoalTracker() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Target Date *</label>
-                  <input
+                  <label htmlFor="goal-tracker-target-date" className="block text-sm font-medium text-gray-700 mb-2">Target Date *</label>
+                  <input id="goal-tracker-target-date"
                     type="date"
                     required
                     value={goalForm.target_date}
@@ -465,8 +465,8 @@ export default function GoalTracker() {
                   {dateError && <p className="text-red-500 text-xs mt-1">Target date is required</p>}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Related Condition</label>
-                  <input
+                  <label htmlFor="goal-tracker-related-condition" className="block text-sm font-medium text-gray-700 mb-2">Related Condition</label>
+                  <input id="goal-tracker-related-condition"
                     type="text"
                     placeholder="e.g., Autism"
                     value={goalForm.linked_condition}
@@ -477,8 +477,8 @@ export default function GoalTracker() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Notes</label>
-                <textarea
+                <label htmlFor="goal-tracker-notes" className="block text-sm font-medium text-gray-700 mb-2">Notes</label>
+                <textarea id="goal-tracker-notes"
                   value={goalForm.notes}
                   onChange={(e) => setGoalForm({ ...goalForm, notes: e.target.value })}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
@@ -486,7 +486,7 @@ export default function GoalTracker() {
                 />
               </div>
 
-              <div className="flex gap-3 pt-4">
+              <div className="modal-footer flex gap-3">
                 <button
                   type="button"
                   onClick={() => setActiveModal("none")}
@@ -496,7 +496,7 @@ export default function GoalTracker() {
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                  className="flex-1 px-4 py-3 bg-teal-700 text-white rounded-lg hover:bg-teal-800 transition"
                 >
                   {editingGoal ? 'Update Goal' : 'Create Goal'}
                 </button>
@@ -578,7 +578,7 @@ export default function GoalTracker() {
                       setProgressForm({ value: selectedGoal.current_value, notes: '' });
                       setShowProgressForm(true);
                     }}
-                    className="text-sm bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
+                    className="text-sm bg-teal-700 text-white px-4 py-2 rounded-lg hover:bg-teal-800 transition"
                   >
                     Log Progress
                   </button>
@@ -588,8 +588,8 @@ export default function GoalTracker() {
               {showProgressForm && (
                 <form onSubmit={handleLogProgress} className="bg-gray-50 p-4 rounded-lg mb-4">
                   <div className="mb-3">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">New Value</label>
-                    <input
+                    <label htmlFor="goal-tracker-new-value" className="block text-sm font-medium text-gray-700 mb-2">New Value</label>
+                    <input id="goal-tracker-new-value"
                       type="number"
                       value={progressForm.value}
                       onChange={(e) => setProgressForm({ ...progressForm, value: parseFloat(e.target.value) })}
@@ -598,8 +598,8 @@ export default function GoalTracker() {
                     />
                   </div>
                   <div className="mb-3">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Notes</label>
-                    <textarea
+                    <label htmlFor="goal-tracker-notes-2" className="block text-sm font-medium text-gray-700 mb-2">Notes</label>
+                    <textarea id="goal-tracker-notes-2"
                       value={progressForm.notes}
                       onChange={(e) => setProgressForm({ ...progressForm, notes: e.target.value })}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
@@ -616,7 +616,7 @@ export default function GoalTracker() {
                     </button>
                     <button
                       type="submit"
-                      className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                      className="flex-1 px-4 py-2 bg-teal-700 text-white rounded-lg hover:bg-teal-800"
                     >
                       Save
                     </button>
@@ -641,10 +641,10 @@ export default function GoalTracker() {
               </div>
             </div>
 
-            <div className="flex flex-wrap gap-2 sm:gap-3">
+            <div className="modal-footer flex flex-wrap gap-2 sm:gap-3">
               <button
                 onClick={() => openEditGoal(selectedGoal)}
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-3 border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition"
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-3 border border-teal-700 text-teal-700 rounded-lg hover:bg-teal-50 transition"
               >
                 <Edit2 className="w-4 h-4" />
                 Edit Goal
@@ -671,7 +671,7 @@ export default function GoalTracker() {
               resetGoalForm();
               setActiveModal("form");
             }}
-            className="inline-flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition"
+            className="inline-flex items-center gap-2 bg-teal-700 text-white px-6 py-3 rounded-lg hover:bg-teal-800 transition"
           >
             <Plus className="w-5 h-5" />
             Create First Goal

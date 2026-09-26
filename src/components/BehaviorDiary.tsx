@@ -257,8 +257,8 @@ export default function BehaviorDiary() {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Child Name</label>
-                  <input
+                  <label htmlFor="behavior-diary-child-name" className="block text-sm font-medium text-gray-700 mb-1">Child Name</label>
+                  <input id="behavior-diary-child-name"
                     type="text"
                     required
                     value={formData.child_name}
@@ -267,8 +267,8 @@ export default function BehaviorDiary() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Behavior Type</label>
-                  <select
+                  <label htmlFor="behavior-diary-behavior-type" className="block text-sm font-medium text-gray-700 mb-1">Behavior Type</label>
+                  <select id="behavior-diary-behavior-type"
                     required
                     value={formData.behavior_type}
                     onChange={(e) => setFormData({ ...formData, behavior_type: e.target.value })}
@@ -284,8 +284,8 @@ export default function BehaviorDiary() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
-                  <input
+                  <label htmlFor="behavior-diary-date" className="block text-sm font-medium text-gray-700 mb-1">Date</label>
+                  <input id="behavior-diary-date"
                     type="date"
                     required
                     value={formData.entry_date}
@@ -294,8 +294,8 @@ export default function BehaviorDiary() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Time</label>
-                  <input
+                  <label htmlFor="behavior-diary-time" className="block text-sm font-medium text-gray-700 mb-1">Time</label>
+                  <input id="behavior-diary-time"
                     type="time"
                     value={formData.entry_time}
                     onChange={(e) => setFormData({ ...formData, entry_time: e.target.value })}
@@ -306,8 +306,8 @@ export default function BehaviorDiary() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Severity (1-5)</label>
-                  <input
+                  <label htmlFor="behavior-diary-severity-1-5" className="block text-sm font-medium text-gray-700 mb-1">Severity (1-5)</label>
+                  <input id="behavior-diary-severity-1-5"
                     type="range"
                     min="1"
                     max="5"
@@ -318,8 +318,8 @@ export default function BehaviorDiary() {
                   <div className="text-center font-semibold text-lg">{formData.severity}</div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Duration (minutes)</label>
-                  <input
+                  <label htmlFor="behavior-diary-duration-minutes" className="block text-sm font-medium text-gray-700 mb-1">Duration (minutes)</label>
+                  <input id="behavior-diary-duration-minutes"
                     type="number"
                     value={formData.duration_minutes}
                     onChange={(e) => setFormData({ ...formData, duration_minutes: e.target.value })}
@@ -329,8 +329,8 @@ export default function BehaviorDiary() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
-                <input
+                <label htmlFor="behavior-diary-location" className="block text-sm font-medium text-gray-700 mb-1">Location</label>
+                <input id="behavior-diary-location"
                   type="text"
                   value={formData.location}
                   onChange={(e) => setFormData({ ...formData, location: e.target.value })}
@@ -339,8 +339,8 @@ export default function BehaviorDiary() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">What happened before? (Antecedents)</label>
-                <textarea
+                <label htmlFor="behavior-diary-what-happened-before-anteceden" className="block text-sm font-medium text-gray-700 mb-1">What happened before? (Antecedents)</label>
+                <textarea id="behavior-diary-what-happened-before-anteceden"
                   value={formData.antecedents}
                   onChange={(e) => setFormData({ ...formData, antecedents: e.target.value })}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
@@ -349,8 +349,8 @@ export default function BehaviorDiary() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">What happened after? (Consequences)</label>
-                <textarea
+                <label htmlFor="behavior-diary-what-happened-after-consequenc" className="block text-sm font-medium text-gray-700 mb-1">What happened after? (Consequences)</label>
+                <textarea id="behavior-diary-what-happened-after-consequenc"
                   value={formData.consequences}
                   onChange={(e) => setFormData({ ...formData, consequences: e.target.value })}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
@@ -359,8 +359,8 @@ export default function BehaviorDiary() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
-                <textarea
+                <label htmlFor="behavior-diary-notes" className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                <textarea id="behavior-diary-notes"
                   value={formData.notes}
                   onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
@@ -368,10 +368,10 @@ export default function BehaviorDiary() {
                 />
               </div>
 
-              <div className="flex gap-3 pt-4">
+              <div className="modal-footer flex gap-3">
                 <button
                   type="submit"
-                  className="flex-1 bg-blue-600 text-white py-2.5 rounded-lg hover:bg-blue-700 transition"
+                  className="flex-1 bg-teal-700 text-white py-2.5 rounded-lg hover:bg-teal-800 transition"
                 >
                   {editingEntry ? 'Update Entry' : 'Save Entry'}
                 </button>
@@ -420,15 +420,17 @@ export default function BehaviorDiary() {
               <div className="flex items-center gap-1 flex-shrink-0">
                 <button
                   onClick={() => openEditEntry(entry)}
-                  className="p-2.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"
+                  className="w-10 h-10 inline-flex items-center justify-center text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"
                   title="Edit entry"
+                  aria-label="Edit entry"
                 >
                   <Edit2 className="w-4 h-4" />
                 </button>
                 <button
                   onClick={() => handleDelete(entry.id)}
-                  className="p-2.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
+                  className="w-10 h-10 inline-flex items-center justify-center text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
                   title="Delete entry"
+                  aria-label="Delete entry"
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
@@ -479,7 +481,7 @@ export default function BehaviorDiary() {
             <p className="text-gray-600 mb-6">Start tracking behaviors to see patterns and progress</p>
             <button
               onClick={openNewEntry}
-              className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition"
+              className="bg-teal-700 text-white px-6 py-3 rounded-lg hover:bg-teal-800 transition"
             >
               Create First Entry
             </button>

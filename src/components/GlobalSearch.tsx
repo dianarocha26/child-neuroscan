@@ -172,13 +172,13 @@ export function GlobalSearch({ isOpen, onClose, onNavigate }: GlobalSearchProps)
             onChange={e => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Search tools and help"
-            className="flex-1 min-w-0 bg-transparent border-none outline-none text-lg text-gray-900 dark:text-white placeholder-gray-400"
-            aria-label="Search input"
+            className="flex-1 min-w-0 bg-transparent border-none outline-none rounded-md px-2 py-1 text-lg text-gray-900 dark:text-white placeholder-gray-500 focus-visible:ring-2 focus-visible:ring-teal-500"
+            aria-label="Search tools and help"
             autoComplete="off"
           />
           <button
             onClick={onClose}
-            className="p-2.5 -mr-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition focus:ring-2 focus:ring-blue-500 focus:outline-none"
+            className="p-2.5 -mr-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500"
             aria-label="Close search"
           >
             <X className="w-5 h-5 text-gray-500" aria-hidden="true" />

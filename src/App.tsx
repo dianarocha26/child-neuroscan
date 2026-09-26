@@ -64,8 +64,13 @@ function AppContent() {
     }
   }, [user, currentScreen]);
 
+  // Every screen change is a page navigation: start the new screen at the top.
   useEffect(() => {
-    const handleKeyPress = (e: KeyboardEvent) => {
+    window.scrollTo(0, 0);
+  }, [currentScreen]);
+
+  useEffect(() => {
+    const handleKeyPress =(e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault();
         setIsSearchOpen(true);

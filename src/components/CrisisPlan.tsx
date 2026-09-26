@@ -297,7 +297,7 @@ export default function CrisisPlanComponent() {
         </div>
       </div>
 
-      <div className="flex gap-1 sm:gap-2 mb-6 border-b border-gray-200 overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
+      <div className="flex gap-1 sm:gap-2 mb-6 border-b border-gray-200 overflow-x-auto -mx-4 px-4 scroll-fade-x sm:mx-0 sm:px-0">
         {(['plan', 'contacts', 'strategies'] as const).map(tab => (
           <button
             key={tab}
@@ -327,15 +327,15 @@ export default function CrisisPlanComponent() {
                 </div>
                 <form onSubmit={handlePlanSubmit} className="space-y-6">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Child Name</label>
-                    <input type="text" required value={planForm.child_name}
+                    <label htmlFor="crisis-plan-child-name" className="block text-sm font-medium text-gray-700 mb-1">Child Name</label>
+                    <input id="crisis-plan-child-name" type="text" required value={planForm.child_name}
                       onChange={(e) => setPlanForm({ ...planForm, child_name: e.target.value })}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500" />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Warning Signs</label>
+                    <p className="block text-sm font-medium text-gray-700 mb-1">Warning Signs</p>
                     {planForm.warning_signs.map((sign, idx) => (
-                      <input key={idx} type="text" value={sign}
+                      <input key={idx} aria-label={`Warning sign ${idx + 1}`} type="text" value={sign}
                         onChange={(e) => updateArrayField(setPlanForm, 'warning_signs', idx, e.target.value, planForm.warning_signs)}
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 mb-2"
                         placeholder="e.g., Increased pacing, hand flapping" />
@@ -344,9 +344,9 @@ export default function CrisisPlanComponent() {
                       className="text-red-600 hover:text-red-700 text-sm font-semibold">+ Add Warning Sign</button>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Immediate Actions</label>
+                    <p className="block text-sm font-medium text-gray-700 mb-1">Immediate Actions</p>
                     {planForm.immediate_actions.map((action, idx) => (
-                      <input key={idx} type="text" value={action}
+                      <input key={idx} aria-label={`Immediate action ${idx + 1}`} type="text" value={action}
                         onChange={(e) => updateArrayField(setPlanForm, 'immediate_actions', idx, e.target.value, planForm.immediate_actions)}
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 mb-2"
                         placeholder="e.g., Move to quiet space" />
@@ -355,9 +355,9 @@ export default function CrisisPlanComponent() {
                       className="text-red-600 hover:text-red-700 text-sm font-semibold">+ Add Action</button>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Things to AVOID</label>
+                    <p className="block text-sm font-medium text-gray-700 mb-1">Things to AVOID</p>
                     {planForm.things_to_avoid.map((thing, idx) => (
-                      <input key={idx} type="text" value={thing}
+                      <input key={idx} aria-label={`Thing to avoid ${idx + 1}`} type="text" value={thing}
                         onChange={(e) => updateArrayField(setPlanForm, 'things_to_avoid', idx, e.target.value, planForm.things_to_avoid)}
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 mb-2"
                         placeholder="e.g., Loud voices, physical restraint" />
@@ -366,25 +366,25 @@ export default function CrisisPlanComponent() {
                       className="text-red-600 hover:text-red-700 text-sm font-semibold">+ Add Item</button>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Safe Space Location</label>
-                    <input type="text" value={planForm.safe_space_location}
+                    <label htmlFor="crisis-plan-safe-space-location" className="block text-sm font-medium text-gray-700 mb-1">Safe Space Location</label>
+                    <input id="crisis-plan-safe-space-location" type="text" value={planForm.safe_space_location}
                       onChange={(e) => setPlanForm({ ...planForm, safe_space_location: e.target.value })}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500"
                       placeholder="e.g., Bedroom, sensory corner" />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label htmlFor="crisis-plan-medication-instructions" className="block text-sm font-medium text-gray-700 mb-1">
                       {t('Medication Instructions', 'Instrucciones de medicamentos')}
                     </label>
-                    <textarea value={planForm.medication_instructions}
+                    <textarea id="crisis-plan-medication-instructions" value={planForm.medication_instructions}
                       onChange={(e) => setPlanForm({ ...planForm, medication_instructions: e.target.value })}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500" rows={3}
                       placeholder={t('e.g., Medication name, dose, and when to give it, as directed by your child\'s doctor', 'p. ej., nombre del medicamento, dosis y cuándo darlo, según las indicaciones del médico de su hijo')} />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">When to Call 911</label>
+                    <p className="block text-sm font-medium text-gray-700 mb-1">When to Call 911</p>
                     {planForm.when_to_call_911.map((situation, idx) => (
-                      <input key={idx} type="text" value={situation}
+                      <input key={idx} aria-label={`When to call 911 ${idx + 1}`} type="text" value={situation}
                         onChange={(e) => updateArrayField(setPlanForm, 'when_to_call_911', idx, e.target.value, planForm.when_to_call_911)}
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 mb-2"
                         placeholder="e.g., Risk of self-harm, seizure" />
@@ -393,12 +393,12 @@ export default function CrisisPlanComponent() {
                       className="text-red-600 hover:text-red-700 text-sm font-semibold">+ Add Situation</button>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Additional Notes</label>
-                    <textarea value={planForm.additional_notes}
+                    <label htmlFor="crisis-plan-additional-notes" className="block text-sm font-medium text-gray-700 mb-1">Additional Notes</label>
+                    <textarea id="crisis-plan-additional-notes" value={planForm.additional_notes}
                       onChange={(e) => setPlanForm({ ...planForm, additional_notes: e.target.value })}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500" rows={3} />
                   </div>
-                  <div className="flex gap-3">
+                  <div className="modal-footer flex gap-3">
                     <button type="submit" className="flex-1 bg-red-600 text-white py-2.5 rounded-lg hover:bg-red-700 transition">
                       {editingPlan ? 'Update Crisis Plan' : 'Save Crisis Plan'}
                     </button>
@@ -416,10 +416,10 @@ export default function CrisisPlanComponent() {
                 <div className="flex items-start justify-between gap-2 mb-6">
                   <h2 className="text-xl sm:text-2xl font-bold text-gray-900">{plan.child_name}'s Crisis Plan</h2>
                   <div className="flex gap-2">
-                    <button onClick={() => openEditPlan(plan)} className="p-2.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition" title="Edit">
+                    <button onClick={() => openEditPlan(plan)} className="p-2.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition" title="Edit" aria-label="Edit crisis plan">
                       <Edit2 className="w-4 h-4" />
                     </button>
-                    <button onClick={() => handleDeletePlan(plan.id)} className="p-2.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition" title="Delete">
+                    <button onClick={() => handleDeletePlan(plan.id)} className="p-2.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition" title="Delete" aria-label="Delete crisis plan">
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
@@ -493,28 +493,28 @@ export default function CrisisPlanComponent() {
                 <form onSubmit={handleContactSubmit} className="space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
-                      <input type="text" required value={contactForm.contact_name}
+                      <label htmlFor="crisis-plan-name" className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                      <input id="crisis-plan-name" type="text" required value={contactForm.contact_name}
                         onChange={(e) => setContactForm({ ...contactForm, contact_name: e.target.value })}
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500" />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Relationship</label>
-                      <input type="text" required value={contactForm.relationship}
+                      <label htmlFor="crisis-plan-relationship" className="block text-sm font-medium text-gray-700 mb-1">Relationship</label>
+                      <input id="crisis-plan-relationship" type="text" required value={contactForm.relationship}
                         onChange={(e) => setContactForm({ ...contactForm, relationship: e.target.value })}
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500" />
                     </div>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-                      <input type="tel" required value={contactForm.phone_number}
+                      <label htmlFor="crisis-plan-phone" className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                      <input id="crisis-plan-phone" type="tel" required value={contactForm.phone_number}
                         onChange={(e) => setContactForm({ ...contactForm, phone_number: e.target.value })}
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500" />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Contact Type</label>
-                      <select value={contactForm.contact_type}
+                      <label htmlFor="crisis-plan-contact-type" className="block text-sm font-medium text-gray-700 mb-1">Contact Type</label>
+                      <select id="crisis-plan-contact-type" value={contactForm.contact_type}
                         onChange={(e) => setContactForm({ ...contactForm, contact_type: e.target.value })}
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500">
                         {contactTypes.map(type => <option key={type} value={type.toLowerCase()}>{type}</option>)}
@@ -522,18 +522,18 @@ export default function CrisisPlanComponent() {
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Email (optional)</label>
-                    <input type="email" value={contactForm.email}
+                    <label htmlFor="crisis-plan-email-optional" className="block text-sm font-medium text-gray-700 mb-1">Email (optional)</label>
+                    <input id="crisis-plan-email-optional" type="email" value={contactForm.email}
                       onChange={(e) => setContactForm({ ...contactForm, email: e.target.value })}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500" />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
-                    <textarea value={contactForm.notes}
+                    <label htmlFor="crisis-plan-notes" className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                    <textarea id="crisis-plan-notes" value={contactForm.notes}
                       onChange={(e) => setContactForm({ ...contactForm, notes: e.target.value })}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500" rows={2} />
                   </div>
-                  <div className="flex gap-3">
+                  <div className="modal-footer flex gap-3">
                     <button type="submit" className="flex-1 bg-red-600 text-white py-2.5 rounded-lg hover:bg-red-700 transition">
                       {editingContact ? 'Update Contact' : 'Save Contact'}
                     </button>
@@ -555,8 +555,8 @@ export default function CrisisPlanComponent() {
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="px-3 py-1 bg-red-100 text-red-800 rounded-full text-sm font-semibold">{contact.contact_type}</span>
-                    <button onClick={() => openEditContact(contact)} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition" title="Edit"><Edit2 className="w-4 h-4" /></button>
-                    <button onClick={() => handleDeleteContact(contact.id)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition" title="Delete"><Trash2 className="w-4 h-4" /></button>
+                    <button onClick={() => openEditContact(contact)} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition" title="Edit" aria-label="Edit contact"><Edit2 className="w-4 h-4" /></button>
+                    <button onClick={() => handleDeleteContact(contact.id)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition" title="Delete" aria-label="Delete contact"><Trash2 className="w-4 h-4" /></button>
                   </div>
                 </div>
                 <div className="space-y-2">
@@ -599,21 +599,21 @@ export default function CrisisPlanComponent() {
                 <form onSubmit={handleStrategySubmit} className="space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Child Name</label>
-                      <input type="text" required value={strategyForm.child_name}
+                      <label htmlFor="crisis-plan-child-name-2" className="block text-sm font-medium text-gray-700 mb-1">Child Name</label>
+                      <input id="crisis-plan-child-name-2" type="text" required value={strategyForm.child_name}
                         onChange={(e) => setStrategyForm({ ...strategyForm, child_name: e.target.value })}
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500" />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Strategy Name</label>
-                      <input type="text" required value={strategyForm.strategy_name}
+                      <label htmlFor="crisis-plan-strategy-name" className="block text-sm font-medium text-gray-700 mb-1">Strategy Name</label>
+                      <input id="crisis-plan-strategy-name" type="text" required value={strategyForm.strategy_name}
                         onChange={(e) => setStrategyForm({ ...strategyForm, strategy_name: e.target.value })}
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500" />
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Strategy Type</label>
-                    <select required value={strategyForm.strategy_type}
+                    <label htmlFor="crisis-plan-strategy-type" className="block text-sm font-medium text-gray-700 mb-1">Strategy Type</label>
+                    <select id="crisis-plan-strategy-type" required value={strategyForm.strategy_type}
                       onChange={(e) => setStrategyForm({ ...strategyForm, strategy_type: e.target.value })}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500">
                       <option value="">Select type</option>
@@ -621,15 +621,15 @@ export default function CrisisPlanComponent() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                    <textarea required value={strategyForm.description}
+                    <label htmlFor="crisis-plan-description" className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                    <textarea id="crisis-plan-description" required value={strategyForm.description}
                       onChange={(e) => setStrategyForm({ ...strategyForm, description: e.target.value })}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500" rows={3} />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Instructions</label>
+                    <p className="block text-sm font-medium text-gray-700 mb-1">Instructions</p>
                     {strategyForm.instructions.map((instruction, idx) => (
-                      <input key={idx} type="text" value={instruction}
+                      <input key={idx} aria-label={`Instruction step ${idx + 1}`} type="text" value={instruction}
                         onChange={(e) => updateArrayField(setStrategyForm, 'instructions', idx, e.target.value, strategyForm.instructions)}
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 mb-2"
                         placeholder={`Step ${idx + 1}`} />
@@ -638,9 +638,9 @@ export default function CrisisPlanComponent() {
                       className="text-red-600 hover:text-red-700 text-sm font-semibold">+ Add Step</button>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('Materials Needed', 'Materiales necesarios')}</label>
+                    <p className="block text-sm font-medium text-gray-700 mb-1">{t('Materials Needed', 'Materiales necesarios')}</p>
                     {strategyForm.materials_needed.map((material, idx) => (
-                      <input key={idx} type="text" value={material}
+                      <input key={idx} aria-label={`Material needed ${idx + 1}`} type="text" value={material}
                         onChange={(e) => updateArrayField(setStrategyForm, 'materials_needed', idx, e.target.value, strategyForm.materials_needed)}
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 mb-2"
                         placeholder={t('e.g., Weighted blanket, headphones', 'p. ej., manta con peso, audífonos')} />
@@ -650,19 +650,19 @@ export default function CrisisPlanComponent() {
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Effectiveness (1-5)</label>
-                      <input type="number" min="1" max="5" value={strategyForm.effectiveness_rating}
+                      <label htmlFor="crisis-plan-effectiveness-1-5" className="block text-sm font-medium text-gray-700 mb-1">Effectiveness (1-5)</label>
+                      <input id="crisis-plan-effectiveness-1-5" type="number" min="1" max="5" value={strategyForm.effectiveness_rating}
                         onChange={(e) => setStrategyForm({ ...strategyForm, effectiveness_rating: e.target.value })}
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500" />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Duration (minutes)</label>
-                      <input type="number" value={strategyForm.duration_minutes}
+                      <label htmlFor="crisis-plan-duration-minutes" className="block text-sm font-medium text-gray-700 mb-1">Duration (minutes)</label>
+                      <input id="crisis-plan-duration-minutes" type="number" value={strategyForm.duration_minutes}
                         onChange={(e) => setStrategyForm({ ...strategyForm, duration_minutes: e.target.value })}
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500" />
                     </div>
                   </div>
-                  <div className="flex gap-3">
+                  <div className="modal-footer flex gap-3">
                     <button type="submit" className="flex-1 bg-red-600 text-white py-2.5 rounded-lg hover:bg-red-700 transition">
                       {editingStrategy ? 'Update Strategy' : 'Save Strategy'}
                     </button>
@@ -684,8 +684,8 @@ export default function CrisisPlanComponent() {
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm font-semibold">{strategy.strategy_type}</span>
-                    <button onClick={() => openEditStrategy(strategy)} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition" title="Edit"><Edit2 className="w-4 h-4" /></button>
-                    <button onClick={() => handleDeleteStrategy(strategy.id)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition" title="Delete"><Trash2 className="w-4 h-4" /></button>
+                    <button onClick={() => openEditStrategy(strategy)} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition" title="Edit" aria-label="Edit strategy"><Edit2 className="w-4 h-4" /></button>
+                    <button onClick={() => handleDeleteStrategy(strategy.id)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition" title="Delete" aria-label="Delete strategy"><Trash2 className="w-4 h-4" /></button>
                   </div>
                 </div>
                 <p className="text-gray-700 mb-4">{strategy.description}</p>

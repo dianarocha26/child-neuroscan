@@ -126,7 +126,7 @@ export default function ProgressDashboard({ userId, onGenerateReport, onBack }: 
           subtitle="Your child's screening history and development over time"
         />
 
-        <div className="flex gap-2 overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0">
+        <div className="flex flex-wrap gap-2">
           <button
             onClick={() => setSelectedCondition('all')}
             className={`px-4 py-2 rounded-lg whitespace-nowrap transition-colors ${
@@ -156,7 +156,7 @@ export default function ProgressDashboard({ userId, onGenerateReport, onBack }: 
       {filteredResults.length === 0 ? (
         <div className="text-center py-12 bg-gray-50 rounded-lg">
           <Calendar className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-xl font-semibold text-gray-700 mb-2">No Screenings Yet</h3>
+          <h2 className="text-xl font-semibold text-gray-700 mb-2">No Screenings Yet</h2>
           <p className="text-gray-600">Complete your first screening to start tracking progress</p>
         </div>
       ) : (

@@ -3,7 +3,7 @@ import type { LucideIcon } from 'lucide-react';
 type Tone = 'blue' | 'teal' | 'red' | 'amber' | 'purple' | 'slate' | 'green' | 'pink';
 
 const TONES: Record<Tone, { tile: string; button: string }> = {
-  blue: { tile: 'bg-blue-50 text-blue-600', button: 'bg-blue-600 hover:bg-blue-700 focus-visible:ring-blue-500' },
+  blue: { tile: 'bg-blue-50 text-blue-600', button: 'bg-teal-700 hover:bg-teal-800 focus-visible:ring-teal-500' },
   teal: { tile: 'bg-teal-50 text-teal-700', button: 'bg-teal-700 hover:bg-teal-800 focus-visible:ring-teal-500' },
   red: { tile: 'bg-red-50 text-red-600', button: 'bg-red-600 hover:bg-red-700 focus-visible:ring-red-500' },
   amber: { tile: 'bg-amber-50 text-amber-600', button: 'bg-amber-700 hover:bg-amber-800 focus-visible:ring-amber-500' },

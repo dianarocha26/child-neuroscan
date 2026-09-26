@@ -357,9 +357,9 @@ export default function PhotoJournal() {
             <form onSubmit={editingEntry ? handleUpdate : handleUpload} className="space-y-4">
               {!editingEntry && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <p className="block text-sm font-medium text-gray-700 mb-2">
                     Photo or Video *
-                  </label>
+                  </p>
                   <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 sm:p-6 text-center">
                     {previewUrl ? (
                       <div className="relative">
@@ -401,10 +401,10 @@ export default function PhotoJournal() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label htmlFor="photo-journal-child-s-name" className="block text-sm font-medium text-gray-700 mb-2">
                     Child's Name *
                   </label>
-                  <input
+                  <input id="photo-journal-child-s-name"
                     type="text"
                     value={formData.child_name}
                     onChange={(e) => setFormData({ ...formData, child_name: e.target.value })}
@@ -413,10 +413,10 @@ export default function PhotoJournal() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label htmlFor="photo-journal-age-at-time" className="block text-sm font-medium text-gray-700 mb-2">
                     Age at Time *
                   </label>
-                  <input
+                  <input id="photo-journal-age-at-time"
                     type="text"
                     placeholder="e.g., 3 years 2 months"
                     value={formData.age_at_capture}
@@ -428,10 +428,10 @@ export default function PhotoJournal() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="photo-journal-title" className="block text-sm font-medium text-gray-700 mb-2">
                   Title *
                 </label>
-                <input
+                <input id="photo-journal-title"
                   type="text"
                   placeholder="e.g., First time using fork independently"
                   value={formData.title}
@@ -442,10 +442,10 @@ export default function PhotoJournal() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="photo-journal-description" className="block text-sm font-medium text-gray-700 mb-2">
                   Description
                 </label>
-                <textarea
+                <textarea id="photo-journal-description"
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
@@ -455,10 +455,10 @@ export default function PhotoJournal() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label htmlFor="photo-journal-milestone-type" className="block text-sm font-medium text-gray-700 mb-2">
                     Milestone Type
                   </label>
-                  <input
+                  <input id="photo-journal-milestone-type"
                     type="text"
                     placeholder="e.g., Motor Skills, Social"
                     value={formData.milestone_type}
@@ -467,10 +467,10 @@ export default function PhotoJournal() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label htmlFor="photo-journal-related-condition" className="block text-sm font-medium text-gray-700 mb-2">
                     Related Condition
                   </label>
-                  <input
+                  <input id="photo-journal-related-condition"
                     type="text"
                     placeholder="e.g., Autism, ADHD"
                     value={formData.linked_condition}
@@ -481,10 +481,10 @@ export default function PhotoJournal() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="photo-journal-tags-comma-separated" className="block text-sm font-medium text-gray-700 mb-2">
                   Tags (comma-separated)
                 </label>
-                <input
+                <input id="photo-journal-tags-comma-separated"
                   type="text"
                   placeholder="e.g., eating, independence, progress"
                   value={formData.tags}
@@ -493,7 +493,7 @@ export default function PhotoJournal() {
                 />
               </div>
 
-              <div className="flex gap-3 pt-4">
+              <div className="modal-footer flex gap-3">
                 <button
                   type="button"
                   onClick={closeForm}
@@ -504,7 +504,7 @@ export default function PhotoJournal() {
                 <button
                   type="submit"
                   disabled={uploading}
-                  className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:bg-gray-400"
+                  className="flex-1 px-4 py-3 bg-teal-700 text-white rounded-lg hover:bg-teal-800 transition disabled:bg-gray-400"
                 >
                   {uploading ? (editingEntry ? 'Updating...' : 'Uploading...') : (editingEntry ? 'Update Entry' : 'Add Entry')}
                 </button>
@@ -581,7 +581,7 @@ export default function PhotoJournal() {
               <div className="flex gap-3">
                 <button
                   onClick={() => handleEdit(selectedEntry)}
-                  className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                  className="flex-1 px-4 py-3 bg-teal-700 text-white rounded-lg hover:bg-teal-800 transition"
                 >
                   Edit Entry
                 </button>
@@ -604,7 +604,7 @@ export default function PhotoJournal() {
           <p className="text-gray-600 mb-6">Start documenting your child's milestones and progress</p>
           <button
             onClick={openAddForm}
-            className="inline-flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition"
+            className="inline-flex items-center gap-2 bg-teal-700 text-white px-6 py-3 rounded-lg hover:bg-teal-800 transition"
           >
             <Upload className="w-5 h-5" />
             Add First Entry

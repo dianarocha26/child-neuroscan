@@ -265,7 +265,7 @@ export default function Community({ userId, onBack }: CommunityProps) {
           <button
             onClick={() => setSortBy('recent')}
             className={`px-3 sm:px-4 py-2 min-h-[40px] rounded-lg font-medium transition-colors flex items-center gap-2 ${
-              sortBy === 'recent' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              sortBy === 'recent' ? 'bg-teal-700 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
           >
             <Clock className="w-4 h-4" />
@@ -274,7 +274,7 @@ export default function Community({ userId, onBack }: CommunityProps) {
           <button
             onClick={() => setSortBy('popular')}
             className={`px-3 sm:px-4 py-2 min-h-[40px] rounded-lg font-medium transition-colors flex items-center gap-2 ${
-              sortBy === 'popular' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              sortBy === 'popular' ? 'bg-teal-700 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
           >
             <TrendingUp className="w-4 h-4" />

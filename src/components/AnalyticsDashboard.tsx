@@ -100,8 +100,8 @@ export default function AnalyticsDashboard() {
   const getCorrelationColor = (strength: number) => {
     const abs = Math.abs(strength);
     if (abs >= 0.7) return 'text-red-600 bg-red-50';
-    if (abs >= 0.4) return 'text-orange-600 bg-orange-50';
-    return 'text-yellow-600 bg-yellow-50';
+    if (abs >= 0.4) return 'text-orange-700 bg-orange-50';
+    return 'text-yellow-800 bg-yellow-50';
   };
 
   const formatCorrelationText = (factorA: string, factorB: string) => {
@@ -143,8 +143,8 @@ export default function AnalyticsDashboard() {
               aria-pressed={timeRange === range}
               className={`h-10 px-4 text-sm rounded-lg font-medium whitespace-nowrap transition-colors border ${
                 timeRange === range
-                  ? 'bg-blue-600 border-blue-600 text-white'
-                  : 'bg-white text-gray-700 border-gray-200 hover:bg-blue-50 hover:text-blue-700'
+                  ? 'bg-teal-700 border-teal-700 text-white'
+                  : 'bg-white text-gray-700 border-gray-200 hover:bg-teal-50 hover:text-teal-700'
               }`}
             >
               {range === '7days' && 'Last 7 Days'}

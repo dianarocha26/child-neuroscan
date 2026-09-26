@@ -438,10 +438,10 @@ export default function AppointmentPrep({ userId, onBack }: AppointmentPrepProps
 
             <form onSubmit={handleCreateAppointment} className="space-y-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="appointment-prep-child-name" className="block text-sm font-medium text-gray-700 mb-2">
                   {t('Child Name', 'Nombre del Niño')}
                 </label>
-                <input
+                <input id="appointment-prep-child-name"
                   type="text"
                   required
                   value={formData.child_name}
@@ -451,10 +451,10 @@ export default function AppointmentPrep({ userId, onBack }: AppointmentPrepProps
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="appointment-prep-appointment-type" className="block text-sm font-medium text-gray-700 mb-2">
                   {t('Appointment Type', 'Tipo de Cita')}
                 </label>
-                <select
+                <select id="appointment-prep-appointment-type"
                   required
                   value={formData.appointment_type_id}
                   onChange={(e) => setFormData({ ...formData, appointment_type_id: e.target.value })}
@@ -468,10 +468,10 @@ export default function AppointmentPrep({ userId, onBack }: AppointmentPrepProps
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="appointment-prep-date-and-time" className="block text-sm font-medium text-gray-700 mb-2">
                   {t('Date and Time', 'Fecha y Hora')}
                 </label>
-                <input
+                <input id="appointment-prep-date-and-time"
                   type="datetime-local"
                   required
                   value={formData.appointment_date}
@@ -481,10 +481,10 @@ export default function AppointmentPrep({ userId, onBack }: AppointmentPrepProps
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="appointment-prep-provider-name" className="block text-sm font-medium text-gray-700 mb-2">
                   {t('Provider Name', 'Nombre del Proveedor')}
                 </label>
-                <input
+                <input id="appointment-prep-provider-name"
                   type="text"
                   value={formData.provider_name}
                   onChange={(e) => setFormData({ ...formData, provider_name: e.target.value })}
@@ -494,10 +494,10 @@ export default function AppointmentPrep({ userId, onBack }: AppointmentPrepProps
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="appointment-prep-location" className="block text-sm font-medium text-gray-700 mb-2">
                   {t('Location', 'Ubicación')}
                 </label>
-                <input
+                <input id="appointment-prep-location"
                   type="text"
                   value={formData.location}
                   onChange={(e) => setFormData({ ...formData, location: e.target.value })}
@@ -507,10 +507,10 @@ export default function AppointmentPrep({ userId, onBack }: AppointmentPrepProps
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="appointment-prep-notes" className="block text-sm font-medium text-gray-700 mb-2">
                   {t('Notes', 'Notas')}
                 </label>
-                <textarea
+                <textarea id="appointment-prep-notes"
                   value={formData.notes}
                   onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                   rows={4}
@@ -521,7 +521,7 @@ export default function AppointmentPrep({ userId, onBack }: AppointmentPrepProps
 
               <button
                 type="submit"
-                className="w-full bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+                className="w-full bg-teal-700 text-white py-3 rounded-lg font-medium hover:bg-teal-800 transition-colors flex items-center justify-center gap-2"
               >
                 <Save className="w-5 h-5" />
                 {editingApt ? t('Update Appointment', 'Actualizar Cita') : t('Create Appointment', 'Crear Cita')}
@@ -582,7 +582,7 @@ export default function AppointmentPrep({ userId, onBack }: AppointmentPrepProps
             </p>
             <button
               onClick={() => setView('create')}
-              className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-teal-700 text-white rounded-lg hover:bg-teal-800 transition-colors font-medium"
             >
               <Plus className="w-5 h-5" />
               {t('Create Appointment', 'Crear Cita')}
@@ -702,7 +702,7 @@ function AppointmentDetail({
           <div className="flex flex-wrap items-center gap-2 sm:gap-3">
             <button
               onClick={() => onEditAppointment(appointment)}
-              className="flex items-center gap-2 px-4 py-2 border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors"
+              className="flex items-center gap-2 px-4 py-2 border border-teal-700 text-teal-700 rounded-lg hover:bg-teal-50 transition-colors"
             >
               <Edit2 className="w-4 h-4" />
               {t('Edit', 'Editar')}
@@ -772,7 +772,7 @@ function AppointmentDetail({
 
         <div className="bg-white rounded-xl shadow-lg overflow-hidden">
           <div className="border-b border-gray-200">
-            <div className="flex overflow-x-auto">
+            <div className="flex overflow-x-auto scroll-fade-x">
               <TabButton
                 active={activeTab === 'overview'}
                 onClick={() => setActiveTab('overview')}
@@ -993,7 +993,7 @@ function ObservationsTab({ observations, onAdd, onDelete }: ObservationsTabProps
         <h3 className="text-lg font-semibold text-gray-900">Observations & Concerns</h3>
         <button
           onClick={() => setShowForm(!showForm)}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          className="flex items-center gap-2 px-4 py-2 bg-teal-700 text-white rounded-lg hover:bg-teal-800 transition-colors"
         >
           {showForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
           {showForm ? 'Cancel' : 'Add Observation'}
@@ -1004,8 +1004,8 @@ function ObservationsTab({ observations, onAdd, onDelete }: ObservationsTabProps
         <form onSubmit={handleSubmit} className="bg-gray-50 p-6 rounded-lg space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
-              <select
+              <label htmlFor="appointment-prep-category" className="block text-sm font-medium text-gray-700 mb-2">Category</label>
+              <select id="appointment-prep-category"
                 value={formData.category}
                 onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
@@ -1017,8 +1017,8 @@ function ObservationsTab({ observations, onAdd, onDelete }: ObservationsTabProps
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Date Observed</label>
-              <input
+              <label htmlFor="appointment-prep-date-observed" className="block text-sm font-medium text-gray-700 mb-2">Date Observed</label>
+              <input id="appointment-prep-date-observed"
                 type="date"
                 value={formData.date_observed}
                 onChange={(e) => setFormData({ ...formData, date_observed: e.target.value })}
@@ -1028,8 +1028,8 @@ function ObservationsTab({ observations, onAdd, onDelete }: ObservationsTabProps
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Observation</label>
-            <textarea
+            <label htmlFor="appointment-prep-observation" className="block text-sm font-medium text-gray-700 mb-2">Observation</label>
+            <textarea id="appointment-prep-observation"
               value={formData.observation}
               onChange={(e) => setFormData({ ...formData, observation: e.target.value })}
               rows={3}
@@ -1040,8 +1040,8 @@ function ObservationsTab({ observations, onAdd, onDelete }: ObservationsTabProps
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Frequency</label>
-              <select
+              <label htmlFor="appointment-prep-frequency" className="block text-sm font-medium text-gray-700 mb-2">Frequency</label>
+              <select id="appointment-prep-frequency"
                 value={formData.frequency}
                 onChange={(e) => setFormData({ ...formData, frequency: e.target.value })}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
@@ -1052,8 +1052,8 @@ function ObservationsTab({ observations, onAdd, onDelete }: ObservationsTabProps
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Concern Level</label>
-              <select
+              <label htmlFor="appointment-prep-concern-level" className="block text-sm font-medium text-gray-700 mb-2">Concern Level</label>
+              <select id="appointment-prep-concern-level"
                 value={formData.concern_level}
                 onChange={(e) => setFormData({ ...formData, concern_level: e.target.value })}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
@@ -1066,7 +1066,7 @@ function ObservationsTab({ observations, onAdd, onDelete }: ObservationsTabProps
           </div>
           <button
             type="submit"
-            className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors"
+            className="w-full bg-teal-700 text-white py-2 rounded-lg hover:bg-teal-800 transition-colors"
           >
             Add Observation
           </button>
@@ -1098,6 +1098,7 @@ function ObservationsTab({ observations, onAdd, onDelete }: ObservationsTabProps
               </div>
               <button
                 onClick={() => obs.id && onDelete(obs.id)}
+                aria-label="Delete observation"
                 className="text-red-600 hover:text-red-700 p-2"
               >
                 <Trash2 className="w-4 h-4" />
@@ -1152,7 +1153,7 @@ function QuestionsTab({ questions, onAdd, onDelete }: QuestionsTabProps) {
         <h3 className="text-lg font-semibold text-gray-900">Questions to Ask</h3>
         <button
           onClick={() => setShowForm(!showForm)}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          className="flex items-center gap-2 px-4 py-2 bg-teal-700 text-white rounded-lg hover:bg-teal-800 transition-colors"
         >
           {showForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
           {showForm ? 'Cancel' : 'Add Question'}
@@ -1162,8 +1163,8 @@ function QuestionsTab({ questions, onAdd, onDelete }: QuestionsTabProps) {
       {showForm && (
         <form onSubmit={handleSubmit} className="bg-gray-50 p-6 rounded-lg space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Question</label>
-            <textarea
+            <label htmlFor="appointment-prep-question" className="block text-sm font-medium text-gray-700 mb-2">Question</label>
+            <textarea id="appointment-prep-question"
               value={formData.question}
               onChange={(e) => setFormData({ ...formData, question: e.target.value })}
               rows={2}
@@ -1173,8 +1174,8 @@ function QuestionsTab({ questions, onAdd, onDelete }: QuestionsTabProps) {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Priority</label>
-            <select
+            <label htmlFor="appointment-prep-priority" className="block text-sm font-medium text-gray-700 mb-2">Priority</label>
+            <select id="appointment-prep-priority"
               value={formData.priority}
               onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
@@ -1186,7 +1187,7 @@ function QuestionsTab({ questions, onAdd, onDelete }: QuestionsTabProps) {
           </div>
           <button
             type="submit"
-            className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors"
+            className="w-full bg-teal-700 text-white py-2 rounded-lg hover:bg-teal-800 transition-colors"
           >
             Add Question
           </button>
@@ -1219,6 +1220,7 @@ function QuestionsTab({ questions, onAdd, onDelete }: QuestionsTabProps) {
               </div>
               <button
                 onClick={() => q.id && onDelete(q.id)}
+                aria-label="Delete question"
                 className="text-red-600 hover:text-red-700 p-2"
               >
                 <Trash2 className="w-4 h-4" />
@@ -1276,7 +1278,7 @@ function DocumentsTab({ documents, onAdd, onDelete }: DocumentsTabProps) {
         <h3 className="text-lg font-semibold text-gray-900">Documents to Bring</h3>
         <button
           onClick={() => setShowForm(!showForm)}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          className="flex items-center gap-2 px-4 py-2 bg-teal-700 text-white rounded-lg hover:bg-teal-800 transition-colors"
         >
           {showForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
           {showForm ? 'Cancel' : 'Add Document'}
@@ -1286,8 +1288,8 @@ function DocumentsTab({ documents, onAdd, onDelete }: DocumentsTabProps) {
       {showForm && (
         <form onSubmit={handleSubmit} className="bg-gray-50 p-6 rounded-lg space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Document Type</label>
-            <select
+            <label htmlFor="appointment-prep-document-type" className="block text-sm font-medium text-gray-700 mb-2">Document Type</label>
+            <select id="appointment-prep-document-type"
               value={formData.document_type}
               onChange={(e) => setFormData({ ...formData, document_type: e.target.value })}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
@@ -1298,8 +1300,8 @@ function DocumentsTab({ documents, onAdd, onDelete }: DocumentsTabProps) {
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Document Name</label>
-            <input
+            <label htmlFor="appointment-prep-document-name" className="block text-sm font-medium text-gray-700 mb-2">Document Name</label>
+            <input id="appointment-prep-document-name"
               type="text"
               value={formData.document_name}
               onChange={(e) => setFormData({ ...formData, document_name: e.target.value })}
@@ -1309,8 +1311,8 @@ function DocumentsTab({ documents, onAdd, onDelete }: DocumentsTabProps) {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Notes</label>
-            <textarea
+            <label htmlFor="appointment-prep-notes-2" className="block text-sm font-medium text-gray-700 mb-2">Notes</label>
+            <textarea id="appointment-prep-notes-2"
               value={formData.notes}
               onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
               rows={2}
@@ -1320,7 +1322,7 @@ function DocumentsTab({ documents, onAdd, onDelete }: DocumentsTabProps) {
           </div>
           <button
             type="submit"
-            className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors"
+            className="w-full bg-teal-700 text-white py-2 rounded-lg hover:bg-teal-800 transition-colors"
           >
             Add Document
           </button>
@@ -1342,6 +1344,7 @@ function DocumentsTab({ documents, onAdd, onDelete }: DocumentsTabProps) {
             </div>
             <button
               onClick={() => doc.id && onDelete(doc.id)}
+              aria-label="Delete document"
               className="text-red-600 hover:text-red-700 p-2"
             >
               <Trash2 className="w-4 h-4" />
@@ -1388,7 +1391,7 @@ function FollowupTab({ followups, onAdd, onDelete }: FollowupTabProps) {
         <h3 className="text-lg font-semibold text-gray-900">Follow-up Tasks</h3>
         <button
           onClick={() => setShowForm(!showForm)}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          className="flex items-center gap-2 px-4 py-2 bg-teal-700 text-white rounded-lg hover:bg-teal-800 transition-colors"
         >
           {showForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
           {showForm ? 'Cancel' : 'Add Task'}
@@ -1398,8 +1401,8 @@ function FollowupTab({ followups, onAdd, onDelete }: FollowupTabProps) {
       {showForm && (
         <form onSubmit={handleSubmit} className="bg-gray-50 p-6 rounded-lg space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Task</label>
-            <input
+            <label htmlFor="appointment-prep-task" className="block text-sm font-medium text-gray-700 mb-2">Task</label>
+            <input id="appointment-prep-task"
               type="text"
               value={formData.followup_item}
               onChange={(e) => setFormData({ ...formData, followup_item: e.target.value })}
@@ -1409,8 +1412,8 @@ function FollowupTab({ followups, onAdd, onDelete }: FollowupTabProps) {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Due Date</label>
-            <input
+            <label htmlFor="appointment-prep-due-date" className="block text-sm font-medium text-gray-700 mb-2">Due Date</label>
+            <input id="appointment-prep-due-date"
               type="date"
               value={formData.due_date}
               onChange={(e) => setFormData({ ...formData, due_date: e.target.value })}
@@ -1419,7 +1422,7 @@ function FollowupTab({ followups, onAdd, onDelete }: FollowupTabProps) {
           </div>
           <button
             type="submit"
-            className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors"
+            className="w-full bg-teal-700 text-white py-2 rounded-lg hover:bg-teal-800 transition-colors"
           >
             Add Task
           </button>
@@ -1446,6 +1449,7 @@ function FollowupTab({ followups, onAdd, onDelete }: FollowupTabProps) {
             </div>
             <button
               onClick={() => task.id && onDelete(task.id)}
+              aria-label="Delete task"
               className="text-red-600 hover:text-red-700 p-2"
             >
               <Trash2 className="w-4 h-4" />

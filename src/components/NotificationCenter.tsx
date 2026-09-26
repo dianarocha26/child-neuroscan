@@ -162,12 +162,12 @@ export default function NotificationCenter() {
           </div>
           <div className="flex flex-col sm:flex-row gap-0.5 sm:gap-1 -my-1 flex-shrink-0">
             <button onClick={() => handleToggleDone(r)}
-              className={`p-2.5 rounded transition ${r.is_active ? 'text-gray-400 hover:text-green-600 hover:bg-green-50' : 'text-gray-400 hover:text-teal-600 hover:bg-teal-50'}`}
+              className={`w-10 h-10 inline-flex items-center justify-center rounded-lg transition ${r.is_active ? 'text-gray-400 hover:text-green-600 hover:bg-green-50' : 'text-gray-400 hover:text-teal-600 hover:bg-teal-50'}`}
               title={r.is_active ? 'Mark done' : 'Mark not done'} aria-label={r.is_active ? 'Mark done' : 'Mark not done'}>
               {r.is_active ? <Check className="w-4 h-4" /> : <RotateCcw className="w-4 h-4" />}
             </button>
-            <button onClick={() => openEdit(r)} className="p-2.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition" title="Edit reminder" aria-label="Edit reminder"><Edit2 className="w-4 h-4" /></button>
-            <button onClick={() => handleDelete(r.id)} className="p-2.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition" title="Delete reminder" aria-label="Delete reminder"><Trash2 className="w-4 h-4" /></button>
+            <button onClick={() => openEdit(r)} className="w-10 h-10 inline-flex items-center justify-center text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition" title="Edit reminder" aria-label="Edit reminder"><Edit2 className="w-4 h-4" /></button>
+            <button onClick={() => handleDelete(r.id)} className="w-10 h-10 inline-flex items-center justify-center text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition" title="Delete reminder" aria-label="Delete reminder"><Trash2 className="w-4 h-4" /></button>
           </div>
         </div>
       </div>
@@ -236,7 +236,7 @@ export default function NotificationCenter() {
                 <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={3}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500" />
               </div>
-              <div className="flex gap-3">
+              <div className="modal-footer flex gap-3">
                 <button type="submit" className="flex-1 bg-teal-600 text-white py-2.5 rounded-lg hover:bg-teal-700 transition">
                   {editing ? 'Update Reminder' : 'Add Reminder'}
                 </button>

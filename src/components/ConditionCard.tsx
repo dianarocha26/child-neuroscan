@@ -30,7 +30,7 @@ export function ConditionCard({ condition, onClick }: ConditionCardProps) {
   return (
     <button
       onClick={onClick}
-      className={`w-full text-left p-4 sm:p-6 rounded-xl border-2 ${colors.border} ${colors.bg} ${colors.hover} hover:shadow-lg transition-all duration-200 hover:scale-[1.02] active:scale-100`}
+      className={`w-full h-full text-left p-4 sm:p-6 rounded-xl border-2 ${colors.border} ${colors.bg} ${colors.hover} hover:shadow-lg transition-all duration-200 hover:scale-[1.02] active:scale-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-offset-2`}
     >
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1">
