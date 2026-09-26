@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Brain, Loader2, TrendingUp, Search, Users, Video, Calendar, Camera, Target, Pill, BookOpen, AlertTriangle, Trophy, Bell, Sparkles, CalendarClock, BarChart3, FileText } from 'lucide-react';
+import { Brain, Loader2, TrendingUp, Search, Users, Video, Calendar, Camera, Target, Pill, BookOpen, AlertTriangle, Trophy, Bell, Sparkles, CalendarClock, BarChart3, FileText, Instagram } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { translations } from '../lib/translations';
@@ -440,6 +440,18 @@ export function LandingPage({ onConditionSelect, onViewDashboard, onViewResource
           <p className="text-sm text-blue-800 leading-relaxed">
             {translations.disclaimerText[language]}
           </p>
+        </div>
+
+        <div className="mt-6 flex justify-center">
+          <a
+            href="https://www.instagram.com/childneuroscan"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-pink-600 transition-colors"
+          >
+            <Instagram className="w-5 h-5" aria-hidden="true" />
+            {t('Follow us on Instagram', 'Síguenos en Instagram')}
+          </a>
         </div>
       </div>
     </div>
