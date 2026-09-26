@@ -59,46 +59,6 @@ export function LandingPage({ onConditionSelect, onViewDashboard, onViewResource
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50">
 
       <div className="max-w-6xl mx-auto px-4 py-6 relative">
-        {/* Quick links (language, search and account controls live in the app header) */}
-        <nav className={`${user ? 'grid grid-cols-2' : 'flex'} sm:flex sm:flex-wrap gap-2 mb-6 sm:mb-8 animate-in`} aria-label={t('Quick links', 'Accesos rápidos')}>
-          {user && onViewDashboard && (
-            <button
-              onClick={onViewDashboard}
-              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 min-h-[44px] text-sm sm:text-base whitespace-nowrap text-white rounded-xl hover:shadow-lg hover:scale-105 active:scale-100 transition-all duration-200 font-semibold bg-gradient-to-r from-primary-600 to-primary-700 hover:shadow-primary-500/30"
-            >
-              <TrendingUp className="w-4 h-4" aria-hidden="true" />
-              {t('Progress', 'Progreso')}
-            </button>
-          )}
-          {onViewVideoLibrary && (
-            <button
-              onClick={onViewVideoLibrary}
-              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 min-h-[44px] text-sm sm:text-base whitespace-nowrap text-white rounded-xl hover:shadow-lg hover:scale-105 active:scale-100 transition-all duration-200 font-semibold bg-gradient-to-r from-emerald-600 to-emerald-700 hover:shadow-emerald-500/30"
-            >
-              <Video className="w-4 h-4" aria-hidden="true" />
-              {t('Videos', 'Videos')}
-            </button>
-          )}
-          {user && onViewResourceFinder && (
-            <button
-              onClick={onViewResourceFinder}
-              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 min-h-[44px] text-sm sm:text-base whitespace-nowrap text-white rounded-xl hover:shadow-lg hover:scale-105 active:scale-100 transition-all duration-200 font-semibold bg-gradient-to-r from-teal-600 to-teal-700 hover:shadow-teal-500/30"
-            >
-              <Search className="w-4 h-4" aria-hidden="true" />
-              {t('Resources', 'Recursos')}
-            </button>
-          )}
-          {user && onViewCommunity && (
-            <button
-              onClick={onViewCommunity}
-              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 min-h-[44px] text-sm sm:text-base whitespace-nowrap text-white rounded-xl hover:shadow-lg hover:scale-105 active:scale-100 transition-all duration-200 font-semibold bg-gradient-to-r from-orange-600 to-orange-700 hover:shadow-orange-500/30"
-            >
-              <Users className="w-4 h-4" aria-hidden="true" />
-              {t('Community', 'Comunidad')}
-            </button>
-          )}
-        </nav>
-
         <div className="text-center mb-10 sm:mb-16 animate-in-delay-2">
           <div className="grid md:grid-cols-2 gap-6 md:gap-12 items-center max-w-5xl mx-auto mb-8">
             <div className="order-2 md:order-1 text-left">
@@ -186,6 +146,48 @@ export function LandingPage({ onConditionSelect, onViewDashboard, onViewResource
             </div>
           )}
         </div>
+
+        {/* Quick links for signed-in users (language, search and account controls live in the app header) */}
+        {user && (
+          <nav className={`grid grid-cols-2 sm:flex sm:flex-wrap gap-2 mb-6 sm:mb-8 animate-in`} aria-label={t('Quick links', 'Accesos rápidos')}>
+            {user && onViewDashboard && (
+              <button
+                onClick={onViewDashboard}
+                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 min-h-[44px] text-sm sm:text-base whitespace-nowrap text-white rounded-xl hover:shadow-lg hover:scale-105 active:scale-100 transition-all duration-200 font-semibold bg-gradient-to-r from-primary-600 to-primary-700 hover:shadow-primary-500/30"
+              >
+                <TrendingUp className="w-4 h-4" aria-hidden="true" />
+                {t('Progress', 'Progreso')}
+              </button>
+            )}
+            {onViewVideoLibrary && (
+              <button
+                onClick={onViewVideoLibrary}
+                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 min-h-[44px] text-sm sm:text-base whitespace-nowrap text-white rounded-xl hover:shadow-lg hover:scale-105 active:scale-100 transition-all duration-200 font-semibold bg-gradient-to-r from-emerald-600 to-emerald-700 hover:shadow-emerald-500/30"
+              >
+                <Video className="w-4 h-4" aria-hidden="true" />
+                {t('Videos', 'Videos')}
+              </button>
+            )}
+            {user && onViewResourceFinder && (
+              <button
+                onClick={onViewResourceFinder}
+                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 min-h-[44px] text-sm sm:text-base whitespace-nowrap text-white rounded-xl hover:shadow-lg hover:scale-105 active:scale-100 transition-all duration-200 font-semibold bg-gradient-to-r from-teal-600 to-teal-700 hover:shadow-teal-500/30"
+              >
+                <Search className="w-4 h-4" aria-hidden="true" />
+                {t('Resources', 'Recursos')}
+              </button>
+            )}
+            {user && onViewCommunity && (
+              <button
+                onClick={onViewCommunity}
+                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 min-h-[44px] text-sm sm:text-base whitespace-nowrap text-white rounded-xl hover:shadow-lg hover:scale-105 active:scale-100 transition-all duration-200 font-semibold bg-gradient-to-r from-orange-600 to-orange-700 hover:shadow-orange-500/30"
+              >
+                <Users className="w-4 h-4" aria-hidden="true" />
+                {t('Community', 'Comunidad')}
+              </button>
+            )}
+          </nav>
+        )}
 
         {user && (
           <div className="mb-8 sm:mb-10 space-y-6 animate-in-delay-3">
