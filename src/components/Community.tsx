@@ -4,32 +4,10 @@ import { supabase } from '../lib/supabase';
 import { useLanguage } from '../contexts/LanguageContext';
 import { logger } from '../lib/logger';
 import { PageHeader } from './PageHeader';
+import type { Tables } from '../types/supabase';
 
-interface Post {
-  id: string;
-  user_id: string;
-  author_name: string;
-  title: string;
-  content: string;
-  category: string;
-  condition_tags: string[];
-  is_anonymous: boolean;
-  likes_count: number;
-  comments_count: number;
-  is_pinned: boolean;
-  created_at: string;
-}
-
-interface Comment {
-  id: string;
-  post_id: string;
-  user_id: string;
-  author_name: string;
-  content: string;
-  is_anonymous: boolean;
-  likes_count: number;
-  created_at: string;
-}
+type Post = Tables<'community_posts'>;
+type Comment = Tables<'community_comments'>;
 
 interface CommunityProps {
   userId: string;
@@ -169,7 +147,7 @@ export default function Community({ userId, onBack }: CommunityProps) {
 
   const filteredPosts = posts.filter(post => {
     const matchesCategory = selectedCategory === 'all' || post.category === selectedCategory;
-    const matchesCondition = selectedCondition === 'all' || post.condition_tags.includes(selectedCondition);
+    const matchesCondition = selectedCondition === 'all' || (post.condition_tags ?? []).includes(selectedCondition);
     return matchesCategory && matchesCondition;
   });
 
@@ -358,7 +336,7 @@ export default function Community({ userId, onBack }: CommunityProps) {
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${getCategoryColor(post.category)}`}>
                       {categories.find(c => c.id === post.category)?.label ?? post.category}
                     </span>
-                    {post.condition_tags.map(tag => (
+                    {(post.condition_tags ?? []).map(tag => (
                       <span key={tag} className="px-2 py-1 bg-gray-100 text-gray-700 rounded-full text-xs">
                         {getConditionLabel(tag)}
                       </span>
@@ -372,7 +350,7 @@ export default function Community({ userId, onBack }: CommunityProps) {
               <div className="flex items-center justify-between text-sm text-gray-500">
                 <div className="flex items-center gap-4">
                   <span className="font-medium">{post.author_name}</span>
-                  <span>{formatTimeAgo(post.created_at)}</span>
+                  <span>{formatTimeAgo(post.created_at ?? '')}</span>
                 </div>
                 <div className="flex items-center gap-4">
                   <button
@@ -482,7 +460,7 @@ function PostDetail({
           <span className={`px-3 py-1 rounded-full text-sm font-medium ${getCategoryColor(post.category)}`}>
             {post.category}
           </span>
-          {post.condition_tags.map(tag => (
+          {(post.condition_tags ?? []).map(tag => (
             <span key={tag} className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm">
               {getConditionLabel(tag)}
             </span>
@@ -493,7 +471,7 @@ function PostDetail({
 
         <div className="flex items-center gap-4 text-sm text-gray-500 mb-6">
           <span className="font-medium">{post.author_name}</span>
-          <span>{formatTimeAgo(post.created_at)}</span>
+          <span>{formatTimeAgo(post.created_at ?? '')}</span>
         </div>
 
         <p className="text-gray-700 text-lg leading-relaxed mb-6 whitespace-pre-wrap">{post.content}</p>
@@ -541,7 +519,7 @@ function PostDetail({
             <div key={comment.id} className="border-l-2 border-gray-200 pl-4 py-2">
               <div className="flex items-center gap-3 mb-2">
                 <span className="font-medium text-gray-900">{comment.author_name}</span>
-                <span className="text-sm text-gray-500">{formatTimeAgo(comment.created_at)}</span>
+                <span className="text-sm text-gray-500">{formatTimeAgo(comment.created_at ?? '')}</span>
               </div>
               <p className="text-gray-700 mb-2">{comment.content}</p>
               <button

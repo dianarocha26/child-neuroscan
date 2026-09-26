@@ -62,7 +62,7 @@ export default function RewardsSystem() {
   const openNewChart = () => { setEditingChart(null); setChartForm(emptyChartForm); setShowChartForm(true); };
   const openEditChart = (chart: RewardChart) => {
     setEditingChart(chart);
-    setChartForm({ child_name: chart.child_name, chart_name: chart.chart_name, chart_type: chart.chart_type, target_behavior: chart.target_behavior, points_per_star: chart.points_per_star });
+    setChartForm({ child_name: chart.child_name, chart_name: chart.chart_name, chart_type: chart.chart_type, target_behavior: chart.target_behavior, points_per_star: chart.points_per_star ?? 1 });
     setShowChartForm(true);
   };
   const handleChartSubmit = async (e: React.FormEvent) => {

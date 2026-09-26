@@ -71,12 +71,12 @@ export default function CrisisPlanComponent() {
     setEditingPlan(plan);
     setPlanForm({
       child_name: plan.child_name,
-      warning_signs: plan.warning_signs.length ? plan.warning_signs : [''],
-      immediate_actions: plan.immediate_actions.length ? plan.immediate_actions : [''],
-      things_to_avoid: plan.things_to_avoid.length ? plan.things_to_avoid : [''],
+      warning_signs: plan.warning_signs?.length ? plan.warning_signs : [''],
+      immediate_actions: plan.immediate_actions?.length ? plan.immediate_actions : [''],
+      things_to_avoid: plan.things_to_avoid?.length ? plan.things_to_avoid : [''],
       safe_space_location: plan.safe_space_location || '',
       medication_instructions: plan.medication_instructions || '',
-      when_to_call_911: plan.when_to_call_911.length ? plan.when_to_call_911 : [''],
+      when_to_call_911: plan.when_to_call_911?.length ? plan.when_to_call_911 : [''],
       additional_notes: plan.additional_notes || ''
     });
     setShowPlanForm(true);
@@ -130,7 +130,7 @@ export default function CrisisPlanComponent() {
       phone_number: contact.phone_number,
       email: contact.email || '',
       contact_type: contact.contact_type,
-      priority_order: contact.priority_order,
+      priority_order: contact.priority_order ?? 1,
       notes: contact.notes || ''
     });
     setShowContactForm(true);
@@ -185,7 +185,7 @@ export default function CrisisPlanComponent() {
       effectiveness_rating: strategy.effectiveness_rating ? String(strategy.effectiveness_rating) : '',
       duration_minutes: strategy.duration_minutes ? String(strategy.duration_minutes) : '',
       materials_needed: strategy.materials_needed?.length ? strategy.materials_needed : [''],
-      instructions: strategy.instructions.length ? strategy.instructions : ['']
+      instructions: strategy.instructions?.length ? strategy.instructions : ['']
     });
     setShowStrategyForm(true);
   };
@@ -424,22 +424,22 @@ export default function CrisisPlanComponent() {
                     </button>
                   </div>
                 </div>
-                {plan.warning_signs.length > 0 && (
+                {(plan.warning_signs?.length ?? 0) > 0 && (
                   <div className="mb-6">
                     <h3 className="font-bold text-red-800 mb-3 flex items-center gap-2"><AlertTriangle className="w-5 h-5" /> Warning Signs</h3>
-                    <ul className="list-disc list-inside space-y-1">{plan.warning_signs.map((s, i) => <li key={i} className="text-gray-700">{s}</li>)}</ul>
+                    <ul className="list-disc list-inside space-y-1">{(plan.warning_signs ?? []).map((s, i) => <li key={i} className="text-gray-700">{s}</li>)}</ul>
                   </div>
                 )}
-                {plan.immediate_actions.length > 0 && (
+                {(plan.immediate_actions?.length ?? 0) > 0 && (
                   <div className="mb-6">
                     <h3 className="font-bold text-green-800 mb-3 flex items-center gap-2"><Shield className="w-5 h-5" /> Immediate Actions</h3>
-                    <ol className="list-decimal list-inside space-y-1">{plan.immediate_actions.map((a, i) => <li key={i} className="text-gray-700">{a}</li>)}</ol>
+                    <ol className="list-decimal list-inside space-y-1">{(plan.immediate_actions ?? []).map((a, i) => <li key={i} className="text-gray-700">{a}</li>)}</ol>
                   </div>
                 )}
-                {plan.things_to_avoid.length > 0 && (
+                {(plan.things_to_avoid?.length ?? 0) > 0 && (
                   <div className="mb-6">
                     <h3 className="font-bold text-orange-800 mb-3">Things to AVOID</h3>
-                    <ul className="list-disc list-inside space-y-1">{plan.things_to_avoid.map((t, i) => <li key={i} className="text-gray-700">{t}</li>)}</ul>
+                    <ul className="list-disc list-inside space-y-1">{(plan.things_to_avoid ?? []).map((t, i) => <li key={i} className="text-gray-700">{t}</li>)}</ul>
                   </div>
                 )}
                 {plan.safe_space_location && (
@@ -451,10 +451,10 @@ export default function CrisisPlanComponent() {
                     <p className="text-gray-700 whitespace-pre-line">{plan.medication_instructions}</p>
                   </div>
                 )}
-                {plan.when_to_call_911.length > 0 && (
+                {(plan.when_to_call_911?.length ?? 0) > 0 && (
                   <div className="bg-red-50 p-4 rounded-lg">
                     <h3 className="font-bold text-red-900 mb-3 flex items-center gap-2"><Phone className="w-5 h-5" /> When to Call 911</h3>
-                    <ul className="list-disc list-inside space-y-1">{plan.when_to_call_911.map((s, i) => <li key={i} className="text-red-800">{s}</li>)}</ul>
+                    <ul className="list-disc list-inside space-y-1">{(plan.when_to_call_911 ?? []).map((s, i) => <li key={i} className="text-red-800">{s}</li>)}</ul>
                   </div>
                 )}
                 {plan.additional_notes && (
@@ -697,11 +697,11 @@ export default function CrisisPlanComponent() {
                     </ul>
                   </div>
                 )}
-                {strategy.instructions.length > 0 && (
+                {(strategy.instructions?.length ?? 0) > 0 && (
                   <div className="mb-4">
                     <h4 className="font-semibold text-gray-800 mb-2">Steps:</h4>
                     <ol className="list-decimal list-inside space-y-1 text-sm text-gray-700">
-                      {strategy.instructions.map((instruction, idx) => <li key={idx}>{instruction}</li>)}
+                      {(strategy.instructions ?? []).map((instruction, idx) => <li key={idx}>{instruction}</li>)}
                     </ol>
                   </div>
                 )}

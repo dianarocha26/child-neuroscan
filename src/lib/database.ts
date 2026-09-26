@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import type { Tables } from '../types/supabase';
 import type {
   Condition,
   Question,
@@ -28,21 +29,6 @@ export async function getConditions(): Promise<Condition[]> {
   return data || [];
 }
 
-interface QuestionWithDomains {
-  id: string;
-  condition_id: string;
-  question_text_en: string;
-  question_text_es: string;
-  weight: number;
-  is_red_flag: boolean;
-  age_min_months: number;
-  age_max_months: number;
-  order_index: number;
-  question_domains?: Array<{
-    functional_domains: FunctionalDomain;
-  }>;
-}
-
 export async function getQuestionsForCondition(conditionId: string): Promise<Question[]> {
   const { data, error } = await supabase
     .from('questions')
@@ -57,9 +43,11 @@ export async function getQuestionsForCondition(conditionId: string): Promise<Que
 
   if (error) throw error;
 
-  return (data || []).map((q: QuestionWithDomains) => ({
+  return (data || []).map(({ question_domains, ...q }) => ({
     ...q,
-    domains: q.question_domains?.map((qd) => qd.functional_domains) || []
+    domains: question_domains
+      .map((qd) => qd.functional_domains)
+      .filter((d): d is FunctionalDomain => d !== null)
   }));
 }
 
@@ -194,7 +182,7 @@ export async function saveScreeningResult(
     .single();
 
   if (error) throw error;
-  return data;
+  return toScreeningResult(data);
 }
 
 export async function getUserScreeningResults(userId: string): Promise<ScreeningResultWithCondition[]> {
@@ -208,7 +196,9 @@ export async function getUserScreeningResults(userId: string): Promise<Screening
     .order('created_at', { ascending: false });
 
   if (error) throw error;
-  return data || [];
+  return (data || [])
+    .map(toScreeningResultWithCondition)
+    .filter((r): r is ScreeningResultWithCondition => r !== null);
 }
 
 export async function getScreeningResultById(id: string): Promise<ScreeningResultWithCondition | null> {
@@ -222,27 +212,7 @@ export async function getScreeningResultById(id: string): Promise<ScreeningResul
     .maybeSingle();
 
   if (error) throw error;
-  return data;
-}
-
-interface RecommendationWithCategory {
-  id: string;
-  condition_id: string;
-  category_id: string;
-  title_en: string;
-  title_es: string;
-  description_en: string;
-  description_es: string;
-  risk_levels: RiskLevel[];
-  age_min_months: number;
-  age_max_months: number;
-  priority: number;
-  category?: {
-    id: string;
-    name_en: string;
-    name_es: string;
-    icon: string;
-  };
+  return data ? toScreeningResultWithCondition(data) : null;
 }
 
 export async function getRecommendationsForCondition(
@@ -265,10 +235,7 @@ export async function getRecommendationsForCondition(
 
   if (error) throw error;
 
-  return (data || []).map((r: RecommendationWithCategory) => ({
-    ...r,
-    category: r.category
-  }));
+  return data || [];
 }
 
 export async function getDailyTipsForCondition(
@@ -282,4 +249,26 @@ export async function getDailyTipsForCondition(
 
   if (error) throw error;
   return data || [];
+}
+
+// screening_results stores risk_level/language as text and responses/domain_scores
+// as JSON. risk_level is limited by a CHECK constraint, and saveScreeningResult is
+// the only writer of the JSON columns, so their shapes are trusted here.
+function toScreeningResult(row: Tables<'screening_results'>): ScreeningResult {
+  return {
+    ...row,
+    language: row.language === 'es' ? 'es' : 'en',
+    risk_level: row.risk_level as RiskLevel,
+    // Both columns default to now(); nothing inserts NULL.
+    created_at: row.created_at ?? row.completed_at ?? '',
+    responses: row.responses as Record<string, boolean>,
+    domain_scores: row.domain_scores as unknown as Record<string, DomainScore>
+  };
+}
+
+function toScreeningResultWithCondition(
+  row: Tables<'screening_results'> & { condition: Condition | null }
+): ScreeningResultWithCondition | null {
+  const { condition, ...rest } = row;
+  return condition ? { ...toScreeningResult(rest), condition } : null;
 }

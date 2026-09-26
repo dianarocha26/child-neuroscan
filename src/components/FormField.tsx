@@ -136,7 +136,7 @@ export const TextAreaField = memo(function TextAreaField({
       </label>
 
       <textarea
-        {...(props as any)}
+        {...props}
         rows={rows}
         className={`
           w-full px-4 py-3
@@ -215,7 +215,7 @@ export const SelectField = memo(function SelectField({
       </label>
 
       <select
-        {...(props as any)}
+        {...props}
         className={`
           w-full px-4 py-3
           border-2 rounded-xl

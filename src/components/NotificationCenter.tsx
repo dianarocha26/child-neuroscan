@@ -5,21 +5,11 @@ import { useAuth } from '../contexts/AuthContext';
 import { useLoadingState } from '../hooks/useLoadingState';
 import { logger } from '../lib/logger';
 import { PageHeader } from './PageHeader';
+import type { Tables } from '../types/supabase';
 
 type ReminderType = 'medication' | 'appointment' | 'therapy' | 'goal' | 'other';
 
-interface Reminder {
-  id: string;
-  user_id: string;
-  reminder_type: ReminderType;
-  title: string;
-  description: string | null;
-  child_name: string | null;
-  reminder_date: string;
-  reminder_time: string;
-  is_active: boolean;
-  created_at?: string;
-}
+type Reminder = Tables<'reminders'>;
 
 const REMINDER_TYPES: { value: ReminderType; label: string; icon: typeof Pill; color: string }[] = [
   { value: 'medication', label: 'Medication', icon: Pill, color: 'bg-purple-100 text-purple-700' },
@@ -67,7 +57,7 @@ export default function NotificationCenter() {
   const openEdit = (r: Reminder) => {
     setEditing(r);
     setForm({
-      reminder_type: r.reminder_type,
+      reminder_type: r.reminder_type as ReminderType,
       title: r.title,
       description: r.description || '',
       child_name: r.child_name || '',

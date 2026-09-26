@@ -10,62 +10,30 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { logger } from '../lib/logger';
 import { localToday, toLocalDateString, toDateTimeLocalInput, fromDateTimeLocalInput } from '../lib/dates';
 import { PageHeader } from './PageHeader';
+import type { Tables } from '../types/supabase';
 
-interface AppointmentType {
-  id: string;
-  name: string;
-  description: string;
-  icon: string;
-  typical_duration: number;
-  preparation_tips: string[];
-}
+type AppointmentType = Tables<'appointment_types'>;
+type Observation = Tables<'appointment_observations'>;
+type Question = Tables<'appointment_questions'>;
+type Document = Tables<'appointment_documents'>;
+type Followup = Tables<'appointment_followups'>;
 
-interface Appointment {
-  id: string;
-  child_name: string;
+interface Appointment extends Tables<'appointments'> {
   appointment_type: AppointmentType | null;
-  appointment_date: string;
-  provider_name: string;
-  location: string;
-  notes: string;
-  completed: boolean;
   observations: Observation[];
   questions: Question[];
   documents: Document[];
   followups: Followup[];
 }
 
-interface Observation {
-  id?: string;
-  category: string;
-  observation: string;
-  date_observed: string;
-  frequency: string;
-  concern_level: string;
-}
+// The child tables an appointment item can be deleted from.
+type AppointmentChildTable = 'appointment_observations' | 'appointment_questions' | 'appointment_documents' | 'appointment_followups';
 
-interface Question {
-  id?: string;
-  question: string;
-  priority: string;
-  answered: boolean;
-  answer: string;
-}
-
-interface Document {
-  id?: string;
-  document_type: string;
-  document_name: string;
-  notes: string;
-}
-
-interface Followup {
-  id?: string;
-  followup_item: string;
-  due_date: string;
-  completed: boolean;
-  completed_at?: string;
-}
+// Shapes used by the "add item" forms below, before the row has an id/appointment_id/created_at.
+type NewObservation = Pick<Observation, 'category' | 'observation' | 'date_observed' | 'frequency' | 'concern_level'>;
+type NewQuestion = Pick<Question, 'question' | 'priority' | 'answered' | 'answer'>;
+type NewDocument = Pick<Document, 'document_type' | 'document_name' | 'notes'>;
+type NewFollowup = Pick<Followup, 'followup_item' | 'due_date' | 'completed'>;
 
 interface AppointmentPrepProps {
   userId: string;
@@ -113,7 +81,7 @@ export default function AppointmentPrep({ userId, onBack }: AppointmentPrepProps
     ]);
 
     if (typesResult.data) setAppointmentTypes(typesResult.data);
-    if (appointmentsResult.data) setAppointments(appointmentsResult.data as any);
+    if (appointmentsResult.data) setAppointments(appointmentsResult.data);
     setLoading(false);
   };
 
@@ -148,8 +116,8 @@ export default function AppointmentPrep({ userId, onBack }: AppointmentPrepProps
         return;
       }
 
-      updateAppointmentInList(data as any);
-      setSelectedAppointment(data as any);
+      updateAppointmentInList(data);
+      setSelectedAppointment(data);
       setEditingApt(null);
       setFormData({ child_name: '', appointment_type_id: '', appointment_date: '', provider_name: '', location: '', notes: '' });
       setView('detail');
@@ -174,8 +142,8 @@ export default function AppointmentPrep({ userId, onBack }: AppointmentPrepProps
         return;
       }
 
-      setAppointments([...appointments, data as any]);
-      setSelectedAppointment(data as any);
+      setAppointments([...appointments, data]);
+      setSelectedAppointment(data);
       setView('detail');
       setFormData({ child_name: '', appointment_type_id: '', appointment_date: '', provider_name: '', location: '', notes: '' });
     }
@@ -206,7 +174,7 @@ export default function AppointmentPrep({ userId, onBack }: AppointmentPrepProps
     setView('list');
   };
 
-  const handleAddObservation = async (observation: Observation): Promise<boolean> => {
+  const handleAddObservation = async (observation: NewObservation): Promise<boolean> => {
     if (!selectedAppointment) return false;
 
     const { data, error } = await supabase
@@ -233,7 +201,7 @@ export default function AppointmentPrep({ userId, onBack }: AppointmentPrepProps
     return true;
   };
 
-  const handleAddQuestion = async (question: Question): Promise<boolean> => {
+  const handleAddQuestion = async (question: NewQuestion): Promise<boolean> => {
     if (!selectedAppointment) return false;
 
     const { data, error } = await supabase
@@ -261,7 +229,7 @@ export default function AppointmentPrep({ userId, onBack }: AppointmentPrepProps
     return true;
   };
 
-  const handleAddDocument = async (doc: Document): Promise<boolean> => {
+  const handleAddDocument = async (doc: NewDocument): Promise<boolean> => {
     if (!selectedAppointment) return false;
 
     const { data, error } = await supabase
@@ -288,7 +256,7 @@ export default function AppointmentPrep({ userId, onBack }: AppointmentPrepProps
     return true;
   };
 
-  const handleAddFollowup = async (followup: Followup): Promise<boolean> => {
+  const handleAddFollowup = async (followup: NewFollowup): Promise<boolean> => {
     if (!selectedAppointment) return false;
 
     const { data, error } = await supabase
@@ -316,7 +284,7 @@ export default function AppointmentPrep({ userId, onBack }: AppointmentPrepProps
     return true;
   };
 
-  const handleDeleteItem = async (table: string, id: string, field: keyof Appointment) => {
+  const handleDeleteItem = async (table: AppointmentChildTable, id: string, field: keyof Appointment) => {
     if (!confirm(t('Delete this item?', '¿Eliminar este elemento?'))) return;
 
     const { error } = await supabase.from(table).delete().eq('id', id);
@@ -380,7 +348,7 @@ export default function AppointmentPrep({ userId, onBack }: AppointmentPrepProps
         return priority[a.priority as keyof typeof priority] - priority[b.priority as keyof typeof priority];
       });
       sortedQuestions.forEach((q, idx) => {
-        summary += `${idx + 1}. [${q.priority.toUpperCase()}] ${q.question}\n`;
+        summary += `${idx + 1}. [${(q.priority ?? '').toUpperCase()}] ${q.question}\n`;
       });
     }
 
@@ -674,11 +642,11 @@ function AppointmentDetail({
 }: {
   appointment: Appointment;
   onBack: () => void;
-  onAddObservation: (obs: Observation) => Promise<boolean>;
-  onAddQuestion: (q: Question) => Promise<boolean>;
-  onAddDocument: (doc: Document) => Promise<boolean>;
-  onAddFollowup: (f: Followup) => Promise<boolean>;
-  onDeleteItem: (table: string, id: string, field: keyof Appointment) => void;
+  onAddObservation: (obs: NewObservation) => Promise<boolean>;
+  onAddQuestion: (q: NewQuestion) => Promise<boolean>;
+  onAddDocument: (doc: NewDocument) => Promise<boolean>;
+  onAddFollowup: (f: NewFollowup) => Promise<boolean>;
+  onDeleteItem: (table: AppointmentChildTable, id: string, field: keyof Appointment) => void;
   onGenerateSummary: () => void;
   onEditAppointment: (apt: Appointment) => void;
   onDeleteAppointment: (id: string) => void;
@@ -899,7 +867,7 @@ function OverviewTab({ appointment }: { appointment: Appointment }) {
         <div>
           <h3 className="text-lg font-semibold text-gray-900 mb-3">Preparation Tips</h3>
           <ul className="space-y-2">
-            {appointment.appointment_type?.preparation_tips.map((tip, idx) => (
+            {(appointment.appointment_type?.preparation_tips ?? []).map((tip, idx) => (
               <li key={idx} className="flex items-start gap-3">
                 <CheckCircle2 className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
                 <span className="text-gray-700">{tip}</span>
@@ -955,13 +923,13 @@ function StatCard({ icon, label, value }: StatCardProps) {
 
 interface ObservationsTabProps {
   observations: Observation[];
-  onAdd: (item: Observation) => Promise<boolean>;
+  onAdd: (item: NewObservation) => Promise<boolean>;
   onDelete: (id: string) => void;
 }
 
 function ObservationsTab({ observations, onAdd, onDelete }: ObservationsTabProps) {
   const [showForm, setShowForm] = useState(false);
-  const [formData, setFormData] = useState<Observation>({
+  const [formData, setFormData] = useState<NewObservation>({
     category: 'behavior',
     observation: '',
     date_observed: localToday(),
@@ -1020,7 +988,7 @@ function ObservationsTab({ observations, onAdd, onDelete }: ObservationsTabProps
               <label htmlFor="appointment-prep-date-observed" className="block text-sm font-medium text-gray-700 mb-2">Date Observed</label>
               <input id="appointment-prep-date-observed"
                 type="date"
-                value={formData.date_observed}
+                value={formData.date_observed ?? ""}
                 onChange={(e) => setFormData({ ...formData, date_observed: e.target.value })}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                 required
@@ -1042,7 +1010,7 @@ function ObservationsTab({ observations, onAdd, onDelete }: ObservationsTabProps
             <div>
               <label htmlFor="appointment-prep-frequency" className="block text-sm font-medium text-gray-700 mb-2">Frequency</label>
               <select id="appointment-prep-frequency"
-                value={formData.frequency}
+                value={formData.frequency ?? ""}
                 onChange={(e) => setFormData({ ...formData, frequency: e.target.value })}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
               >
@@ -1054,7 +1022,7 @@ function ObservationsTab({ observations, onAdd, onDelete }: ObservationsTabProps
             <div>
               <label htmlFor="appointment-prep-concern-level" className="block text-sm font-medium text-gray-700 mb-2">Concern Level</label>
               <select id="appointment-prep-concern-level"
-                value={formData.concern_level}
+                value={formData.concern_level ?? ""}
                 onChange={(e) => setFormData({ ...formData, concern_level: e.target.value })}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
               >
@@ -1116,13 +1084,13 @@ function ObservationsTab({ observations, onAdd, onDelete }: ObservationsTabProps
 
 interface QuestionsTabProps {
   questions: Question[];
-  onAdd: (item: Question) => Promise<boolean>;
+  onAdd: (item: NewQuestion) => Promise<boolean>;
   onDelete: (id: string) => void;
 }
 
 function QuestionsTab({ questions, onAdd, onDelete }: QuestionsTabProps) {
   const [showForm, setShowForm] = useState(false);
-  const [formData, setFormData] = useState<Question>({
+  const [formData, setFormData] = useState<NewQuestion>({
     question: '',
     priority: 'medium',
     answered: false,
@@ -1176,7 +1144,7 @@ function QuestionsTab({ questions, onAdd, onDelete }: QuestionsTabProps) {
           <div>
             <label htmlFor="appointment-prep-priority" className="block text-sm font-medium text-gray-700 mb-2">Priority</label>
             <select id="appointment-prep-priority"
-              value={formData.priority}
+              value={formData.priority ?? ""}
               onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
             >
@@ -1238,13 +1206,13 @@ function QuestionsTab({ questions, onAdd, onDelete }: QuestionsTabProps) {
 
 interface DocumentsTabProps {
   documents: Document[];
-  onAdd: (item: Document) => Promise<boolean>;
+  onAdd: (item: NewDocument) => Promise<boolean>;
   onDelete: (id: string) => void;
 }
 
 function DocumentsTab({ documents, onAdd, onDelete }: DocumentsTabProps) {
   const [showForm, setShowForm] = useState(false);
-  const [formData, setFormData] = useState<Document>({
+  const [formData, setFormData] = useState<NewDocument>({
     document_type: 'medical_records',
     document_name: '',
     notes: ''
@@ -1313,7 +1281,7 @@ function DocumentsTab({ documents, onAdd, onDelete }: DocumentsTabProps) {
           <div>
             <label htmlFor="appointment-prep-notes-2" className="block text-sm font-medium text-gray-700 mb-2">Notes</label>
             <textarea id="appointment-prep-notes-2"
-              value={formData.notes}
+              value={formData.notes ?? ""}
               onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
               rows={2}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
@@ -1361,13 +1329,13 @@ function DocumentsTab({ documents, onAdd, onDelete }: DocumentsTabProps) {
 
 interface FollowupTabProps {
   followups: Followup[];
-  onAdd: (item: Followup) => Promise<boolean>;
+  onAdd: (item: NewFollowup) => Promise<boolean>;
   onDelete: (id: string) => void;
 }
 
 function FollowupTab({ followups, onAdd, onDelete }: FollowupTabProps) {
   const [showForm, setShowForm] = useState(false);
-  const [formData, setFormData] = useState<Followup>({
+  const [formData, setFormData] = useState<NewFollowup>({
     followup_item: '',
     due_date: '',
     completed: false
@@ -1415,7 +1383,7 @@ function FollowupTab({ followups, onAdd, onDelete }: FollowupTabProps) {
             <label htmlFor="appointment-prep-due-date" className="block text-sm font-medium text-gray-700 mb-2">Due Date</label>
             <input id="appointment-prep-due-date"
               type="date"
-              value={formData.due_date}
+              value={formData.due_date ?? ""}
               onChange={(e) => setFormData({ ...formData, due_date: e.target.value })}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
             />

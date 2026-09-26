@@ -261,8 +261,8 @@ export default function VisualSchedule() {
     setActivityForm({
       activity_name: activity.activity_name,
       activity_description: activity.activity_description || '',
-      icon_name: activity.icon_name,
-      icon_color: activity.icon_color,
+      icon_name: activity.icon_name || '',
+      icon_color: activity.icon_color || '',
       start_time: activity.start_time || '',
       duration_minutes: activity.duration_minutes?.toString() || '30'
     });
@@ -495,7 +495,7 @@ export default function VisualSchedule() {
                       >
                         <div
                           className="w-6 h-6 rounded"
-                          style={{ backgroundColor: template.icon_color }}
+                          style={{ backgroundColor: template.icon_color || undefined }}
                         />
                         <div className="flex-1">
                           <div className="font-medium text-gray-900">{template.template_name}</div>
@@ -658,7 +658,7 @@ export default function VisualSchedule() {
 
                         <button
                           type="button"
-                          onClick={() => toggleActivityCompletion(activity.id, activity.is_completed)}
+                          onClick={() => toggleActivityCompletion(activity.id, activity.is_completed ?? false)}
                           aria-label={`Mark done: ${activity.activity_name}`}
                           className={`flex-shrink-0 w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center transition ${
                             activity.is_completed
@@ -675,7 +675,7 @@ export default function VisualSchedule() {
 
                         <div
                           className="w-7 h-7 sm:w-10 sm:h-10 rounded flex-shrink-0"
-                          style={{ backgroundColor: activity.icon_color }}
+                          style={{ backgroundColor: activity.icon_color || undefined }}
                         />
 
                         <div className="flex-1 min-w-0">

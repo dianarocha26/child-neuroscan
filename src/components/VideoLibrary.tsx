@@ -1,31 +1,22 @@
 import { useState, useEffect } from 'react';
 import { Play, Search, Filter, Clock, CheckCircle, Tag, ArrowLeft } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import type { Tables } from '../types/supabase';
 import { useLanguage } from '../contexts/LanguageContext';
 import { logger } from '../lib/logger';
 import { PageHeader } from './PageHeader';
 
-interface Video {
-  id: string;
-  title: string;
-  description: string;
-  video_url: string;
-  thumbnail_url: string;
-  duration: number;
-  condition_type: string;
-  age_group: string;
-  difficulty_level: string;
-  views: number;
+type Video = Tables<'videos'> & {
   category: {
     name: string;
-    icon: string;
-  };
+    icon: string | null;
+  } | null;
   tags: string[];
   progress?: {
     watched: boolean;
     progress_seconds: number;
   };
-}
+};
 
 interface VideoCategory {
   id: string;
@@ -87,9 +78,9 @@ export default function VideoLibrary({ userId, onBack }: VideoLibraryProps) {
     if (videosResult.error) {
       logger.error('Error loading videos:', videosResult.error);
     } else {
-      const videosWithTags = videosResult.data.map((video: any) => ({
+      const videosWithTags = videosResult.data.map((video) => ({
         ...video,
-        tags: video.tags?.map((t: any) => t.tag) || []
+        tags: video.tags?.map((t) => t.tag) || []
       }));
 
       if (userId) {
@@ -101,7 +92,7 @@ export default function VideoLibrary({ userId, onBack }: VideoLibraryProps) {
           .in('video_id', videoIds);
 
         const progressMap = new Map(
-          progressData?.map(p => [p.video_id, { watched: p.watched, progress_seconds: p.progress_seconds }])
+          progressData?.map(p => [p.video_id, { watched: p.watched ?? false, progress_seconds: p.progress_seconds ?? 0 }])
         );
 
         videosWithTags.forEach((video: Video) => {
@@ -115,7 +106,14 @@ export default function VideoLibrary({ userId, onBack }: VideoLibraryProps) {
     if (categoriesResult.error) {
       logger.error('Error loading categories:', categoriesResult.error);
     } else {
-      setCategories(categoriesResult.data || []);
+      setCategories(
+        (categoriesResult.data || []).map((c) => ({
+          id: c.id,
+          name: c.name,
+          description: c.description ?? '',
+          icon: c.icon ?? '',
+        }))
+      );
     }
 
     setLoading(false);
@@ -166,7 +164,7 @@ export default function VideoLibrary({ userId, onBack }: VideoLibraryProps) {
   const filteredVideos = videos.filter(video => {
     const matchesSearch = searchQuery === '' ||
       video.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      video.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (video.description ?? '').toLowerCase().includes(searchQuery.toLowerCase()) ||
       video.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
 
     return matchesSearch;
@@ -238,7 +236,7 @@ export default function VideoLibrary({ userId, onBack }: VideoLibraryProps) {
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-600">
                     <span className="flex items-center gap-1">
                       <Clock className="w-4 h-4" />
-                      {formatDuration(selectedVideo.duration)}
+                      {formatDuration(selectedVideo.duration ?? 0)}
                     </span>
                     <span className="flex items-center gap-1">
                       <Play className="w-4 h-4" />
@@ -450,7 +448,7 @@ export default function VideoLibrary({ userId, onBack }: VideoLibraryProps) {
                     </div>
                   </div>
                   <div className="absolute bottom-2 right-2 px-2 py-1 bg-black bg-opacity-75 text-white text-xs rounded">
-                    {formatDuration(video.duration)}
+                    {formatDuration(video.duration ?? 0)}
                   </div>
                   {video.progress?.watched && (
                     <div className="absolute top-2 right-2 bg-green-500 text-white p-1 rounded-full">

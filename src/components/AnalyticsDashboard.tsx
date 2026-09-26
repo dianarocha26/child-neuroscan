@@ -219,20 +219,20 @@ export default function AnalyticsDashboard() {
                 {correlations.map((corr) => (
                   <div
                     key={corr.id}
-                    className={`p-4 rounded-lg border ${getCorrelationColor(corr.correlation_strength)}`}
+                    className={`p-4 rounded-lg border ${getCorrelationColor(corr.correlation_strength ?? 0)}`}
                   >
                     <div className="flex justify-between items-start mb-2">
                       <p className="font-semibold capitalize">
                         {formatCorrelationText(corr.factor_a, corr.factor_b)}
                       </p>
                       <span className="text-sm font-bold">
-                        {(corr.correlation_strength * 100).toFixed(0)}%
+                        {((corr.correlation_strength ?? 0) * 100).toFixed(0)}%
                       </span>
                     </div>
                     <p className="text-sm">
                       Observed together {corr.occurrences} times
                     </p>
-                    {Math.abs(corr.correlation_strength) >= 0.7 && (
+                    {Math.abs(corr.correlation_strength ?? 0) >= 0.7 && (
                       <p className="text-xs mt-2 font-medium">
                         Strong correlation detected - consider this pattern when planning interventions
                       </p>
@@ -288,7 +288,7 @@ export default function AnalyticsDashboard() {
                     <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
                       <div
                         className="bg-blue-600 h-2 rounded-full"
-                        style={{ width: `${Math.min(100, (pattern.frequency / 20) * 100)}%` }}
+                        style={{ width: `${Math.min(100, ((pattern.frequency ?? 0) / 20) * 100)}%` }}
                       ></div>
                     </div>
                   </div>
@@ -318,12 +318,12 @@ export default function AnalyticsDashboard() {
                         {trigger.total_occurrences}x
                       </span>
                     </div>
-                    {trigger.successful_strategies && trigger.successful_strategies.length > 0 && (
+                    {Array.isArray(trigger.successful_strategies) && trigger.successful_strategies.length > 0 && (
                       <div className="mt-2 bg-green-50 rounded p-2">
                         <p className="text-xs text-green-800 font-medium mb-1">Effective Strategies:</p>
                         <ul className="text-xs text-green-700 space-y-1">
-                          {trigger.successful_strategies.slice(0, 2).map((strategy: string, idx: number) => (
-                            <li key={idx}>• {strategy}</li>
+                          {trigger.successful_strategies.slice(0, 2).map((strategy, idx: number) => (
+                            <li key={idx}>• {String(strategy)}</li>
                           ))}
                         </ul>
                       </div>

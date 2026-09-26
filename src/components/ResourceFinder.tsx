@@ -4,37 +4,10 @@ import { supabase } from '../lib/supabase';
 import { useLanguage } from '../contexts/LanguageContext';
 import { logger } from '../lib/logger';
 import { PageHeader } from './PageHeader';
+import type { Tables } from '../types/supabase';
 
-interface TherapyResource {
-  id: string;
-  name: string;
-  resource_type: string;
-  specialties: string[];
-  description: string;
-  contact_email: string | null;
-  contact_phone: string | null;
-  website: string | null;
-  address: string | null;
-  city: string | null;
-  state: string | null;
-  country: string;
-  zip_code: string | null;
-  services_offered: string[];
-  age_groups: string[];
-  languages: string[];
-  accepts_insurance: boolean;
-  insurance_types: string[];
-  teletherapy_available: boolean;
-  rating: number;
-}
-
-interface SavedResource {
-  id: string;
-  resource_id: string;
-  notes: string;
-  contacted: boolean;
-  contacted_date: string | null;
-}
+type TherapyResource = Tables<'therapy_resources'>;
+type SavedResource = Tables<'user_saved_resources'>;
 
 interface ResourceFinderProps {
   userId: string;
@@ -182,7 +155,7 @@ export default function ResourceFinder({ userId, initialCondition, onBack }: Res
            matchesState && matchesTeletherapy && matchesInsurance && matchesSaved;
   });
 
-  const uniqueStates = Array.from(new Set(resources.map(r => r.state).filter(Boolean))).sort();
+  const uniqueStates = Array.from(new Set(resources.map(r => r.state).filter((s): s is string => Boolean(s)))).sort();
 
   const isSaved = (resourceId: string) => {
     return savedResources.some(sr => sr.resource_id === resourceId);
@@ -398,10 +371,10 @@ export default function ResourceFinder({ userId, initialCondition, onBack }: Res
                   </div>
 
                   <div className="flex items-center gap-2">
-                    {resource.rating > 0 && (
+                    {(resource.rating ?? 0) > 0 && (
                       <div className="flex items-center gap-1 bg-yellow-50 px-2 py-1 rounded-lg">
                         <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
-                        <span className="text-sm font-semibold text-yellow-700">{resource.rating.toFixed(1)}</span>
+                        <span className="text-sm font-semibold text-yellow-700">{(resource.rating ?? 0).toFixed(1)}</span>
                       </div>
                     )}
                     <button
@@ -419,13 +392,13 @@ export default function ResourceFinder({ userId, initialCondition, onBack }: Res
 
                 <p className="text-gray-700 mb-4">{resource.description}</p>
 
-                {resource.services_offered.length > 0 && (
+                {(resource.services_offered ?? []).length > 0 && (
                   <div className="mb-4">
                     <h4 className="text-sm font-semibold text-gray-700 mb-2">
                       {t('Services Offered', 'Servicios Ofrecidos')}
                     </h4>
                     <div className="flex flex-wrap gap-2">
-                      {resource.services_offered.map((service, idx) => (
+                      {(resource.services_offered ?? []).map((service, idx) => (
                         <span key={idx} className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-sm">
                           {service}
                         </span>

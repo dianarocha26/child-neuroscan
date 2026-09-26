@@ -3,32 +3,10 @@ import { Target, Plus, Calendar, Edit2, Trash2, X } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { logger } from '../lib/logger';
 import { PageHeader } from './PageHeader';
+import type { Tables } from '../types/supabase';
 
-interface Goal {
-  id: string;
-  child_name: string;
-  title: string;
-  description: string;
-  category: 'speech' | 'motor' | 'social' | 'behavioral' | 'academic' | 'self-care';
-  linked_condition: string;
-  target_value: number;
-  current_value: number;
-  unit: string;
-  target_date: string | null;
-  status: 'not_started' | 'in_progress' | 'achieved' | 'archived';
-  priority: 'low' | 'medium' | 'high';
-  notes: string;
-  created_at: string;
-  completed_at: string | null;
-}
-
-interface ProgressLog {
-  id: string;
-  goal_id: string;
-  value: number;
-  notes: string;
-  logged_at: string;
-}
+type Goal = Tables<'goals'>;
+type ProgressLog = Tables<'goal_progress_logs'>;
 
 export default function GoalTracker() {
   const [goals, setGoals] = useState<Goal[]>([]);
@@ -239,15 +217,15 @@ export default function GoalTracker() {
     setGoalForm({
       child_name: goal.child_name,
       title: goal.title,
-      description: goal.description,
+      description: goal.description ?? '',
       category: goal.category,
-      linked_condition: goal.linked_condition,
+      linked_condition: goal.linked_condition ?? '',
       target_value: goal.target_value,
       current_value: goal.current_value,
       unit: goal.unit,
       target_date: goal.target_date || '',
       priority: goal.priority,
-      notes: goal.notes
+      notes: goal.notes ?? ''
     });
     setSelectedGoal(null);
     setActiveModal("form");
@@ -565,7 +543,7 @@ export default function GoalTracker() {
               )}
               <div>
                 <span className="font-semibold text-gray-700">Created: </span>
-                <span className="text-gray-600">{new Date(selectedGoal.created_at).toLocaleDateString()}</span>
+                <span className="text-gray-600">{new Date(selectedGoal.created_at ?? '').toLocaleDateString()}</span>
               </div>
             </div>
 
@@ -632,7 +610,7 @@ export default function GoalTracker() {
                     <div key={log.id} className="bg-gray-50 p-3 rounded-lg">
                       <div className="flex justify-between items-start mb-1">
                         <span className="font-medium text-gray-900">{log.value} {selectedGoal.unit}</span>
-                        <span className="text-xs text-gray-500">{new Date(log.logged_at).toLocaleDateString()}</span>
+                        <span className="text-xs text-gray-500">{new Date(log.logged_at ?? '').toLocaleDateString()}</span>
                       </div>
                       {log.notes && <p className="text-sm text-gray-600">{log.notes}</p>}
                     </div>

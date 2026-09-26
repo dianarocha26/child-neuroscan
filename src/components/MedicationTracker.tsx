@@ -3,37 +3,10 @@ import { Pill, Plus, Clock, X, Edit2, Trash2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { logger } from '../lib/logger';
 import { PageHeader } from './PageHeader';
+import type { Tables } from '../types/supabase';
 
-interface Medication {
-  id: string;
-  child_name: string;
-  name: string;
-  type: 'medication' | 'supplement' | 'vitamin';
-  dosage: string;
-  frequency: string;
-  schedule_times: string[];
-  purpose: string;
-  prescribing_doctor: string;
-  linked_condition: string;
-  start_date: string;
-  end_date: string | null;
-  active: boolean;
-  notes: string;
-  side_effects: string;
-  created_at: string;
-}
-
-interface MedicationLog {
-  id: string;
-  medication_id: string;
-  taken_at: string;
-  scheduled_time: string;
-  status: 'taken' | 'missed' | 'skipped';
-  notes: string;
-  side_effects_observed: string;
-  behavioral_changes: string;
-  logged_at: string;
-}
+type Medication = Tables<'medications'>;
+type MedicationLog = Tables<'medication_logs'>;
 
 export default function MedicationTracker() {
   const [medications, setMedications] = useState<Medication[]>([]);
@@ -248,14 +221,14 @@ export default function MedicationTracker() {
       type: med.type,
       dosage: med.dosage,
       frequency: med.frequency,
-      schedule_times: med.schedule_times.join(', '),
-      purpose: med.purpose,
-      prescribing_doctor: med.prescribing_doctor,
-      linked_condition: med.linked_condition,
-      start_date: med.start_date,
+      schedule_times: (med.schedule_times ?? []).join(', '),
+      purpose: med.purpose ?? '',
+      prescribing_doctor: med.prescribing_doctor ?? '',
+      linked_condition: med.linked_condition ?? '',
+      start_date: med.start_date ?? '',
       end_date: med.end_date || '',
-      notes: med.notes,
-      side_effects: med.side_effects
+      notes: med.notes ?? '',
+      side_effects: med.side_effects ?? ''
     });
     setSelectedMed(null);
     setShowMedForm(true);
@@ -555,10 +528,10 @@ export default function MedicationTracker() {
                 <span className="font-semibold text-gray-700">Frequency: </span>
                 <span className="text-gray-600">{selectedMed.frequency}</span>
               </div>
-              {selectedMed.schedule_times.length > 0 && (
+              {(selectedMed.schedule_times ?? []).length > 0 && (
                 <div className="col-span-2">
                   <span className="font-semibold text-gray-700">Schedule: </span>
-                  <span className="text-gray-600">{selectedMed.schedule_times.join(', ')}</span>
+                  <span className="text-gray-600">{(selectedMed.schedule_times ?? []).join(', ')}</span>
                 </div>
               )}
               {selectedMed.purpose && (
@@ -575,7 +548,7 @@ export default function MedicationTracker() {
               )}
               <div>
                 <span className="font-semibold text-gray-700">Started: </span>
-                <span className="text-gray-600">{new Date(selectedMed.start_date).toLocaleDateString()}</span>
+                <span className="text-gray-600">{new Date(selectedMed.start_date ?? '').toLocaleDateString()}</span>
               </div>
               {selectedMed.side_effects && (
                 <div className="col-span-2">
@@ -757,10 +730,10 @@ export default function MedicationTracker() {
                 <div className="text-gray-700">
                   <span className="font-medium">Frequency:</span> {med.frequency}
                 </div>
-                {med.schedule_times.length > 0 && (
+                {(med.schedule_times ?? []).length > 0 && (
                   <div className="flex items-center gap-1 text-gray-600">
                     <Clock className="w-3 h-3" />
-                    {med.schedule_times.join(', ')}
+                    {(med.schedule_times ?? []).join(', ')}
                   </div>
                 )}
               </div>
@@ -773,7 +746,7 @@ export default function MedicationTracker() {
 
               <div className="flex items-center justify-between text-xs pt-3 border-t border-gray-200">
                 <span className="text-gray-500">
-                  Since {new Date(med.start_date).toLocaleDateString()}
+                  Since {new Date(med.start_date ?? '').toLocaleDateString()}
                 </span>
                 {med.linked_condition && (
                   <span className="text-gray-600 font-medium">{med.linked_condition}</span>

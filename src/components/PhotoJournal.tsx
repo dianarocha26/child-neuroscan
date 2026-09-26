@@ -4,21 +4,11 @@ import { useLoadingState } from '../hooks/useLoadingState';
 import { supabase } from '../lib/supabase';
 import { logger } from '../lib/logger';
 import { PageHeader } from './PageHeader';
+import type { Tables } from '../types/supabase';
 
-interface PhotoEntry {
-  id: string;
-  child_name: string;
-  title: string;
-  description: string;
-  photo_url: string;
+type PhotoEntry = Tables<'photo_journal_entries'> & {
   display_url?: string;
-  media_type: 'photo' | 'video';
-  milestone_type: string;
-  age_at_capture: string;
-  linked_condition: string;
-  tags: string[];
-  created_at: string;
-}
+};
 
 export default function PhotoJournal() {
   const [entries, setEntries] = useState<PhotoEntry[]>([]);
@@ -132,8 +122,8 @@ export default function PhotoJournal() {
     if (searchTerm) {
       filtered = filtered.filter(entry =>
         entry.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        entry.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        entry.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()))
+        (entry.description ?? '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (entry.tags ?? []).some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()))
       );
     }
 
@@ -250,11 +240,11 @@ export default function PhotoJournal() {
     setFormData({
       child_name: entry.child_name,
       title: entry.title,
-      description: entry.description,
-      milestone_type: entry.milestone_type,
-      age_at_capture: entry.age_at_capture,
-      linked_condition: entry.linked_condition,
-      tags: entry.tags.join(', ')
+      description: entry.description ?? '',
+      milestone_type: entry.milestone_type ?? '',
+      age_at_capture: entry.age_at_capture ?? '',
+      linked_condition: entry.linked_condition ?? '',
+      tags: (entry.tags ?? []).join(', ')
     });
     setEditingEntry(entry);
     setSelectedEntry(null);
@@ -294,7 +284,7 @@ export default function PhotoJournal() {
     }
   };
 
-  const conditions = Array.from(new Set(entries.map(e => e.linked_condition).filter(c => c)));
+  const conditions = Array.from(new Set(entries.map(e => e.linked_condition).filter((c): c is string => Boolean(c))));
 
   if (loading) {
     return (
@@ -537,7 +527,7 @@ export default function PhotoJournal() {
                 <div className="flex flex-wrap gap-2 text-sm text-gray-600">
                   <span className="flex items-center gap-1">
                     <Calendar className="w-4 h-4" />
-                    {new Date(selectedEntry.created_at).toLocaleDateString()}
+                    {new Date(selectedEntry.created_at ?? '').toLocaleDateString()}
                   </span>
                   <span>•</span>
                   <span>{selectedEntry.child_name}</span>
@@ -565,10 +555,10 @@ export default function PhotoJournal() {
                 )}
               </div>
 
-              {selectedEntry.tags.length > 0 && (
+              {(selectedEntry.tags ?? []).length > 0 && (
                 <div className="mb-4">
                   <div className="flex flex-wrap gap-2">
-                    {selectedEntry.tags.map((tag, idx) => (
+                    {(selectedEntry.tags ?? []).map((tag, idx) => (
                       <span key={idx} className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
                         <Tag className="w-3 h-3" />
                         {tag}
@@ -637,19 +627,19 @@ export default function PhotoJournal() {
                 <div className="text-sm text-gray-600 mb-2">
                   <div>{entry.child_name} • {entry.age_at_capture}</div>
                   <div className="text-xs text-gray-500">
-                    {new Date(entry.created_at).toLocaleDateString()}
+                    {new Date(entry.created_at ?? '').toLocaleDateString()}
                   </div>
                 </div>
-                {entry.tags.length > 0 && (
+                {(entry.tags ?? []).length > 0 && (
                   <div className="flex flex-wrap gap-1">
-                    {entry.tags.slice(0, 3).map((tag, idx) => (
+                    {(entry.tags ?? []).slice(0, 3).map((tag, idx) => (
                       <span key={idx} className="px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs">
                         {tag}
                       </span>
                     ))}
-                    {entry.tags.length > 3 && (
+                    {(entry.tags ?? []).length > 3 && (
                       <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs">
-                        +{entry.tags.length - 3}
+                        +{(entry.tags ?? []).length - 3}
                       </span>
                     )}
                   </div>
