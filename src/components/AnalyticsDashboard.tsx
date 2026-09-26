@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import { BarChart3, TrendingUp, AlertCircle, Calendar, Brain, Activity, Sparkles } from 'lucide-react';
-import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useLoadingState } from '../hooks/useLoadingState';
 import { logger } from '../lib/logger';
 import { ThinkingIllustration, EmptyStateIllustration } from './FriendlyIllustrations';
 import type { BehaviorPattern, Correlation, WeeklySummary, TriggerAnalysis } from '../types/components';
+import { listBehaviorPatterns, listCorrelations, listWeeklySummaries, listTriggerAnalysis } from '../lib/api/analytics';
 import { PageHeader } from './PageHeader';
 
 export default function AnalyticsDashboard() {
@@ -53,43 +53,36 @@ export default function AnalyticsDashboard() {
           break;
       }
 
-      const [patternsRes, correlationsRes, summariesRes, triggersRes] = await Promise.all([
-        supabase
-          .from('analytics_behavior_patterns')
-          .select('*')
-          .eq('user_id', user.id)
-          .gte('time_range_start', startDate.toISOString())
-          .order('frequency', { ascending: false })
-          .limit(10),
-
-        supabase
-          .from('analytics_correlations')
-          .select('*')
-          .eq('user_id', user.id)
-          .gte('date_range_start', startDate.toISOString())
-          .order('correlation_strength', { ascending: false })
-          .limit(5),
-
-        supabase
-          .from('analytics_weekly_summaries')
-          .select('*')
-          .eq('user_id', user.id)
-          .gte('week_start_date', startDate.toISOString().split('T')[0])
-          .order('week_start_date', { ascending: false })
-          .limit(8),
-
-        supabase
-          .from('analytics_trigger_analysis')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('total_occurrences', { ascending: false })
-          .limit(10)
+      const [patternsResult, correlationsResult, summariesResult, triggersResult] = await Promise.allSettled([
+        listBehaviorPatterns(user.id, startDate.toISOString()),
+        listCorrelations(user.id, startDate.toISOString()),
+        listWeeklySummaries(user.id, startDate.toISOString().split('T')[0]),
+        listTriggerAnalysis(user.id)
       ]);
 
-      setPatterns(patternsRes.data || []);
-      setCorrelations(correlationsRes.data || []);
-      setWeeklySummaries(summariesRes.data || []);
-      setTriggerAnalysis(triggersRes.data || []);
+      if (patternsResult.status === 'rejected') {
+        logger.error('Error loading behavior patterns:', patternsResult.reason);
+      } else {
+        setPatterns(patternsResult.value);
+      }
+
+      if (correlationsResult.status === 'rejected') {
+        logger.error('Error loading correlations:', correlationsResult.reason);
+      } else {
+        setCorrelations(correlationsResult.value);
+      }
+
+      if (summariesResult.status === 'rejected') {
+        logger.error('Error loading weekly summaries:', summariesResult.reason);
+      } else {
+        setWeeklySummaries(summariesResult.value);
+      }
+
+      if (triggersResult.status === 'rejected') {
+        logger.error('Error loading trigger analysis:', triggersResult.reason);
+      } else {
+        setTriggerAnalysis(triggersResult.value);
+      }
     } catch (error) {
       logger.error('Error loading analytics:', error);
     } finally {
