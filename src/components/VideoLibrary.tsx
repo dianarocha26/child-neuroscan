@@ -3,6 +3,7 @@ import { Play, Search, Filter, Clock, CheckCircle, Tag, ArrowLeft } from 'lucide
 import { useLanguage } from '../contexts/LanguageContext';
 import { logger } from '../lib/logger';
 import { PageHeader } from './PageHeader';
+import { ErrorState, LOAD_ERROR_MESSAGE } from './ErrorState';
 import {
   listVideoCategories, listVideos, markVideoWatched, recordVideoView, startVideoProgress,
   type Video, type VideoCategory
@@ -18,6 +19,7 @@ export default function VideoLibrary({ userId, onBack }: VideoLibraryProps) {
   const [videos, setVideos] = useState<Video[]>([]);
   const [categories, setCategories] = useState<VideoCategory[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCondition, setSelectedCondition] = useState<string>('all');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -31,6 +33,7 @@ export default function VideoLibrary({ userId, onBack }: VideoLibraryProps) {
 
   const loadVideosAndCategories = async () => {
     setLoading(true);
+    setLoadFailed(false);
 
     const [videosResult, categoriesResult] = await Promise.allSettled([
       listVideos({ condition: selectedCondition, categoryId: selectedCategory, ageGroup: selectedAgeGroup }, userId),
@@ -39,12 +42,14 @@ export default function VideoLibrary({ userId, onBack }: VideoLibraryProps) {
 
     if (videosResult.status === 'rejected') {
       logger.error('Error loading videos:', videosResult.reason);
+      setLoadFailed(true);
     } else {
       setVideos(videosResult.value);
     }
 
     if (categoriesResult.status === 'rejected') {
       logger.error('Error loading categories:', categoriesResult.reason);
+      setLoadFailed(true);
     } else {
       setCategories(categoriesResult.value);
     }
@@ -335,6 +340,8 @@ export default function VideoLibrary({ userId, onBack }: VideoLibraryProps) {
           <div className="flex items-center justify-center py-20">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
           </div>
+        ) : loadFailed ? (
+          <ErrorState inline message={LOAD_ERROR_MESSAGE} onRetry={loadVideosAndCategories} />
         ) : filteredVideos.length === 0 ? (
           <div className="text-center py-20">
             <Play className="w-16 h-16 text-gray-400 mx-auto mb-4" />

@@ -3,6 +3,7 @@ import { Camera, Upload, X, Search, Calendar, Tag } from 'lucide-react';
 import { useLoadingState } from '../hooks/useLoadingState';
 import { logger } from '../lib/logger';
 import { PageHeader } from './PageHeader';
+import { ErrorState, LOAD_ERROR_MESSAGE } from './ErrorState';
 import {
   createPhotoEntry, deletePhotoEntry, listPhotoEntries, updatePhotoEntry,
   type PhotoEntry
@@ -15,6 +16,7 @@ export default function PhotoJournal() {
   const [entries, setEntries] = useState<PhotoEntry[]>([]);
   const [filteredEntries, setFilteredEntries] = useState<PhotoEntry[]>([]);
   const { loading, setLoading } = useLoadingState();
+  const [loadFailed, setLoadFailed] = useState(false);
   const [showUploadForm, setShowUploadForm] = useState(false);
   const [selectedEntry, setSelectedEntry] = useState<PhotoEntry | null>(null);
   const [editingEntry, setEditingEntry] = useState<PhotoEntry | null>(null);
@@ -77,10 +79,12 @@ export default function PhotoJournal() {
   };
 
   const loadEntries = async () => {
+    setLoadFailed(false);
     try {
       setEntries(await listPhotoEntries());
     } catch (error) {
       logger.error('Failed to load photo journal entries', error);
+      setLoadFailed(true);
     } finally {
       setLoading(false);
     }
@@ -195,6 +199,10 @@ export default function PhotoJournal() {
   };
 
   const conditions = Array.from(new Set(entries.map(e => e.linked_condition).filter((c): c is string => Boolean(c))));
+
+  if (loadFailed) {
+    return <ErrorState inline message={LOAD_ERROR_MESSAGE} onRetry={() => { setLoadFailed(false); setLoading(true); loadEntries(); }} />;
+  }
 
   if (loading) {
     return (
