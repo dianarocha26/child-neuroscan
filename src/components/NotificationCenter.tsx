@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useLoadingState } from '../hooks/useLoadingState';
 import { logger } from '../lib/logger';
 import { PageHeader } from './PageHeader';
+import { ErrorState, LOAD_ERROR_MESSAGE } from './ErrorState';
 import {
   createReminder, deleteReminder, listReminders, setReminderActive, updateReminder,
   type Reminder, type ReminderType
@@ -37,6 +38,7 @@ export default function NotificationCenter() {
   const { user } = useAuth();
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const { loading, setLoading } = useLoadingState();
+  const [loadFailed, setLoadFailed] = useState(false);
   const [filter, setFilter] = useState<ReminderType | 'all'>('all');
   const [showDone, setShowDone] = useState(false);
 
@@ -54,10 +56,12 @@ export default function NotificationCenter() {
 
   const loadData = async () => {
     if (!user) return;
+    setLoadFailed(false);
     try {
       setReminders(await listReminders(user.id));
     } catch (error) {
       logger.error('Error loading reminders:', error);
+      setLoadFailed(true);
     } finally {
       setLoading(false);
     }
@@ -122,6 +126,10 @@ export default function NotificationCenter() {
     const [h, m] = t.split(':').map(Number);
     return new Date(2000, 0, 1, h, m).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
   };
+
+  if (loadFailed) {
+    return <ErrorState inline message={LOAD_ERROR_MESSAGE} onRetry={() => { setLoadFailed(false); setLoading(true); loadData(); }} />;
+  }
 
   if (loading) {
     return (

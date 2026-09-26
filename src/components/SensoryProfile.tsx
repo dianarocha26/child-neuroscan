@@ -5,6 +5,7 @@ import { useLoadingState } from '../hooks/useLoadingState';
 import { logger } from '../lib/logger';
 import { createSensoryProfile, listSensoryProfiles, type SensoryProfile } from '../lib/api/sensory';
 import { PageHeader } from './PageHeader';
+import { ErrorState, LOAD_ERROR_MESSAGE } from './ErrorState';
 import { ChildPicker } from './ChildPicker';
 import { useDialog } from '../contexts/DialogContext';
 
@@ -13,6 +14,7 @@ export default function SensoryProfile() {
   const { user } = useAuth();
   const [profiles, setProfiles] = useState<SensoryProfile[]>([]);
   const { loading, setLoading } = useLoadingState();
+  const [loadFailed, setLoadFailed] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [selectedProfile, setSelectedProfile] = useState<string | null>(null);
 
@@ -106,6 +108,7 @@ export default function SensoryProfile() {
   }, [user]);
 
   const loadProfiles = async () => {
+    setLoadFailed(false);
     if (!user) {
       logger.error('Cannot load profiles: user is null');
       setLoading(false);
@@ -120,6 +123,7 @@ export default function SensoryProfile() {
       }
     } catch (error) {
       logger.error('Error loading sensory profiles:', error);
+      setLoadFailed(true);
     } finally {
       setLoading(false);
     }
@@ -186,6 +190,10 @@ export default function SensoryProfile() {
   };
 
   const currentProfile = profiles.find(p => p.id === selectedProfile);
+
+  if (loadFailed) {
+    return <ErrorState inline message={LOAD_ERROR_MESSAGE} onRetry={() => { setLoadFailed(false); setLoading(true); loadProfiles(); }} />;
+  }
 
   if (loading) {
     return (

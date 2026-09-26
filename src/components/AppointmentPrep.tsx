@@ -9,6 +9,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { logger } from '../lib/logger';
 import { localToday, toLocalDateString, toDateTimeLocalInput, fromDateTimeLocalInput } from '../lib/dates';
 import { PageHeader } from './PageHeader';
+import { ErrorState, LOAD_ERROR_MESSAGE } from './ErrorState';
 import {
   listAppointmentTypes, listAppointments, createAppointment, updateAppointment, deleteAppointment,
   addObservation, addQuestion, addDocument, addFollowup, deleteAppointmentItem,
@@ -33,6 +34,7 @@ export default function AppointmentPrep({ userId, onBack }: AppointmentPrepProps
   const [appointmentTypes, setAppointmentTypes] = useState<AppointmentType[]>([]);
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
 
   const [formData, setFormData] = useState({
     child_name: '',
@@ -49,6 +51,7 @@ export default function AppointmentPrep({ userId, onBack }: AppointmentPrepProps
 
   const loadData = async () => {
     setLoading(true);
+    setLoadFailed(false);
 
     const [apptsResult, typesResult] = await Promise.allSettled([
       listAppointments(userId),
@@ -57,12 +60,14 @@ export default function AppointmentPrep({ userId, onBack }: AppointmentPrepProps
 
     if (apptsResult.status === 'rejected') {
       logger.error('Error loading appointments:', apptsResult.reason);
+      setLoadFailed(true);
     } else {
       setAppointments(apptsResult.value);
     }
 
     if (typesResult.status === 'rejected') {
       logger.error('Error loading appointment types:', typesResult.reason);
+      setLoadFailed(true);
     } else {
       setAppointmentTypes(typesResult.value);
     }
@@ -318,6 +323,10 @@ export default function AppointmentPrep({ userId, onBack }: AppointmentPrepProps
 
     return summary;
   };
+
+  if (loadFailed) {
+    return <ErrorState inline message={LOAD_ERROR_MESSAGE} onRetry={() => { setLoadFailed(false); setLoading(true); loadData(); }} />;
+  }
 
   if (loading) {
     return (

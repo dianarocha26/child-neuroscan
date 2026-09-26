@@ -64,7 +64,7 @@ export function ResponsiveModal({
     >
       <div
         ref={modalRef}
-        className={`bg-white dark:bg-gray-800 w-full ${sizeClasses[size]}
+        className={`bg-white w-full ${sizeClasses[size]}
           rounded-t-2xl sm:rounded-2xl shadow-2xl
           max-h-[90vh] sm:max-h-[85vh]
           overflow-hidden flex flex-col
@@ -73,18 +73,18 @@ export function ResponsiveModal({
         onClick={(e) => e.stopPropagation()}
         tabIndex={-1}
       >
-        <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
+        <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200 flex-shrink-0">
           <h2
             id="modal-title"
-            className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white"
+            className="text-xl sm:text-2xl font-bold text-gray-900"
           >
             {title}
           </h2>
           {showCloseButton && (
             <button
               onClick={onClose}
-              className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200
-                p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700
+              className="text-gray-500 hover:text-gray-700
+                p-2 rounded-lg hover:bg-gray-100
                 transition-colors touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center"
               aria-label="Close modal"
             >
@@ -100,5 +100,3 @@ export function ResponsiveModal({
     </div>
   );
 }
-
-export default ResponsiveModal;

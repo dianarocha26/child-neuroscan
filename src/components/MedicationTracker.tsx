@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Pill, Plus, Clock, X, Edit2, Trash2 } from 'lucide-react';
 import { logger } from '../lib/logger';
 import { PageHeader } from './PageHeader';
+import { ErrorState, LOAD_ERROR_MESSAGE } from './ErrorState';
 import {
   createMedication, deleteMedication, listMedicationLogs, listMedications, logMedicationDose,
   setMedicationActive, updateMedication,
@@ -15,6 +16,7 @@ export default function MedicationTracker() {
   const [medications, setMedications] = useState<Medication[]>([]);
   const [logs, setLogs] = useState<MedicationLog[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [showMedForm, setShowMedForm] = useState(false);
   const [editingMed, setEditingMed] = useState<Medication | null>(null);
   const [selectedMed, setSelectedMed] = useState<Medication | null>(null);
@@ -55,10 +57,12 @@ export default function MedicationTracker() {
   }, [selectedMed]);
 
   const loadMedications = async () => {
+    setLoadFailed(false);
     try {
       setMedications(await listMedications());
     } catch (error) {
       logger.error('Error loading medications:', error);
+      setLoadFailed(true);
     } finally {
       setLoading(false);
     }
@@ -69,6 +73,7 @@ export default function MedicationTracker() {
       setLogs(await listMedicationLogs(medId));
     } catch (error) {
       logger.error('Error loading logs:', error);
+      notify('Could not load doses. Please try again.');
     }
   };
 
@@ -208,6 +213,10 @@ export default function MedicationTracker() {
   };
 
   const filteredMedications = medications.filter(med => filterActive ? med.active : !med.active);
+
+  if (loadFailed) {
+    return <ErrorState inline message={LOAD_ERROR_MESSAGE} onRetry={() => { setLoadFailed(false); setLoading(true); loadMedications(); }} />;
+  }
 
   if (loading) {
     return (

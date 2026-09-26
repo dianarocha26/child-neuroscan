@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Target, Plus, Calendar, Edit2, Trash2, X } from 'lucide-react';
 import { logger } from '../lib/logger';
 import { PageHeader } from './PageHeader';
+import { ErrorState, LOAD_ERROR_MESSAGE } from './ErrorState';
 import {
   createGoal, deleteGoal, listGoalProgress, listGoals, logGoalProgress, updateGoal,
   type Goal, type GoalProgressLog as ProgressLog
@@ -13,6 +14,7 @@ export default function GoalTracker() {
   const { notify, confirm } = useDialog();
   const [goals, setGoals] = useState<Goal[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [dateError, setDateError] = useState(false);
   const [activeModal, setActiveModal] = useState<'none' | 'form' | 'detail'>('none');
   const [editingGoal, setEditingGoal] = useState<Goal | null>(null);
@@ -52,10 +54,12 @@ export default function GoalTracker() {
   }, [selectedGoal]);
 
   const loadGoals = async () => {
+    setLoadFailed(false);
     try {
       setGoals(await listGoals());
     } catch (error) {
       logger.error('Failed to load goals', error);
+      setLoadFailed(true);
     } finally {
       setLoading(false);
     }
@@ -66,6 +70,7 @@ export default function GoalTracker() {
       setProgressLogs(await listGoalProgress(goalId));
     } catch (error) {
       logger.error('Failed to load progress logs', error);
+      notify('Could not load progress. Please try again.');
     }
   };
 
@@ -197,6 +202,10 @@ export default function GoalTracker() {
     if (filterCategory && goal.category !== filterCategory) return false;
     return true;
   });
+
+  if (loadFailed) {
+    return <ErrorState inline message={LOAD_ERROR_MESSAGE} onRetry={() => { setLoadFailed(false); setLoading(true); loadGoals(); }} />;
+  }
 
   if (loading) {
     return (
